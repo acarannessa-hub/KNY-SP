@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>User Management - KNY-SP</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+        }
+
+        header {
+            background: #800000;
+            color: white;
+            padding: 20px 30px;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .button {
+            display: inline-block;
+            background: #800000;
+            color: white;
+            padding: 9px 14px;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background: #600000;
+        }
+
+        .secondary {
+            background: #555;
+        }
+
+        .danger {
+            background: #b00020;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .active {
+            color: green;
+            font-weight: bold;
+        }
+
+        .inactive {
+            color: red;
+            font-weight: bold;
+        }
+
+        .message {
+            background: #d1e7dd;
+            color: #0f5132;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        form {
+            margin: 0;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <h1>KNY-SP</h1>
+
+    <p>
+        User Management
+    </p>
+
+</header>
+
+
+<div class="container">
+
+    <div class="top-bar">
+
+        <h2>Users</h2>
+
+        <div>
+
+            <a
+                href="{{ url_for('dashboard') }}"
+                class="button secondary"
+            >
+                Dashboard
+            </a>
+
+            <a
+                href="{{ url_for('add_user') }}"
+                class="button"
+            >
+                Add User
+            </a>
+
+        </div>
+
+    </div>
+
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% for category, message in messages %}
+
+            <div
+                class="message {% if category == 'error' %}error{% endif %}"
+            >
+                {{ message }}
+            </div>
+
+        {% endfor %}
+
+    {% endwith %}
+
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>ID</th>
+
+                <th>Full Name</th>
+
+                <th>Email</th>
+
+                <th>Role</th>
+
+                <th>Status</th>
+
+                <th>Created</th>
+
+                <th>Actions</th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            {% for user in users %}
+
+            <tr>
+
+                <td>
+                    {{ user.id }}
+                </td>
+
+                <td>
+                    {{ user.full_name }}
+                </td>
+
+                <td>
+                    {{ user.email }}
+                </td>
+
+                <td>
+                    {{ user.role }}
+                </td>
+
+                <td>
+
+                    {% if user.status == "active" %}
+
+                        <span class="active">
+                            Active
+                        </span>
+
+                    {% else %}
+
+                        <span class="inactive">
+                            Inactive
+                        </span>
+
+                    {% endif %}
+
+                </td>
+
+                <td>
+                    {{ user.created_at }}
+                </td>
+
+                <td>
+
+                    <div class="actions">
+
+                        <a
+                            href="{{ url_for('edit_user', user_id=user.id) }}"
+                            class="button"
+                        >
+                            Edit
+                        </a>
+
+
+                        {% if user.id != current_user.id %}
+
+                        <form
+                            action="{{ url_for('toggle_user', user_id=user.id) }}"
+                            method="POST"
+                        >
+
+                            <button
+                                type="submit"
+                                class="button secondary"
+                            >
+                                Toggle
+                            </button>
+
+                        </form>
+
+
+                        <form
+                            action="{{ url_for('delete_user', user_id=user.id) }}"
+                            method="POST"
+                            onsubmit="return confirm('Delete this user?');"
+                        >
+
+                            <button
+                                type="submit"
+                                class="button danger"
+                            >
+                                Delete
+                            </button>
+
+                        </form>
+
+                        {% endif %}
+
+                    </div>
+
+                </td>
+
+            </tr>
+
+            {% else %}
+
+            <tr>
+
+                <td colspan="7">
+                    No users found.
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+</body>
+
+</html>

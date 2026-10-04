@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sponsorships</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            color: #800000;
+        }
+
+        .box {
+            background: white;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+
+        input, textarea {
+            padding: 8px;
+            margin: 5px;
+        }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            background: #800000;
+            color: white;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #800000;
+            color: white;
+        }
+
+        .delete {
+            background: #a00000;
+        }
+    </style>
+</head>
+
+<body>
+
+<a href="{{ url_for('dashboard') }}">
+    ← Back to Dashboard
+</a>
+
+<h1>Sponsorships</h1>
+
+<div class="box">
+
+    <h2>Add Sponsorship</h2>
+
+    <form method="POST"
+          action="{{ url_for('add_sponsorship') }}">
+
+        <input
+            type="date"
+            name="sponsorship_date"
+            required
+        >
+
+        <input
+            type="text"
+            name="sponsor_name"
+            placeholder="Sponsor Name"
+            required
+        >
+
+        <input
+            type="number"
+            step="0.01"
+            name="amount"
+            placeholder="Amount"
+            required
+        >
+
+        <input
+            type="text"
+            name="payment_method"
+            placeholder="Payment Method"
+        >
+
+        <input
+            type="text"
+            name="reference_no"
+            placeholder="Reference No."
+        >
+
+        <textarea
+            name="notes"
+            placeholder="Notes"
+        ></textarea>
+
+        <button type="submit">
+            Add Record
+        </button>
+
+    </form>
+
+</div>
+
+<table>
+
+    <tr>
+        <th>Date</th>
+        <th>Sponsor</th>
+        <th>Amount</th>
+        <th>Payment Method</th>
+        <th>Reference</th>
+        <th>Notes</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for record in records %}
+
+    <tr>
+
+        <form method="POST"
+              action="{{ url_for('edit_sponsorship', id=record.id) }}">
+
+            <td>
+                <input
+                    type="date"
+                    name="sponsorship_date"
+                    value="{{ record.sponsorship_date }}"
+                    required
+                >
+            </td>
+
+            <td>
+                <input
+                    type="text"
+                    name="sponsor_name"
+                    value="{{ record.sponsor_name }}"
+                    required
+                >
+            </td>
+
+            <td>
+                <input
+                    type="number"
+                    step="0.01"
+                    name="amount"
+                    value="{{ record.amount }}"
+                    required
+                >
+            </td>
+
+            <td>
+                <input
+                    type="text"
+                    name="payment_method"
+                    value="{{ record.payment_method or '' }}"
+                >
+            </td>
+
+            <td>
+                <input
+                    type="text"
+                    name="reference_no"
+                    value="{{ record.reference_no or '' }}"
+                >
+            </td>
+
+            <td>
+                <input
+                    type="text"
+                    name="notes"
+                    value="{{ record.notes or '' }}"
+                >
+            </td>
+
+            <td>
+
+                <button type="submit">
+                    Save
+                </button>
+
+        </form>
+
+                <form
+                    method="POST"
+                    action="{{ url_for('delete_sponsorship', id=record.id) }}"
+                    style="display:inline;"
+                >
+
+                    <button
+                        type="submit"
+                        class="delete"
+                    >
+                        Delete
+                    </button>
+
+                </form>
+
+            </td>
+
+    </tr>
+
+    {% endfor %}
+
+</table>
+
+</body>
+</html>

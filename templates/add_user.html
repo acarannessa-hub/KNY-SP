@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Add User - KNY-SP</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+        }
+
+        .container {
+            width: 500px;
+            max-width: 90%;
+            margin: 50px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #800000;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            margin-bottom: 18px;
+        }
+
+        button,
+        a {
+            display: inline-block;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        button {
+            background: #800000;
+            color: white;
+        }
+
+        a {
+            background: #555;
+            color: white;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Add User</h1>
+
+    <form method="POST">
+
+        <label>
+            Full Name
+        </label>
+
+        <input
+            type="text"
+            name="full_name"
+            required
+        >
+
+
+        <label>
+            Email
+        </label>
+
+        <input
+            type="email"
+            name="email"
+            required
+        >
+
+
+        <label>
+            Password
+        </label>
+
+        <input
+            type="password"
+            name="password"
+            minlength="8"
+            required
+        >
+
+
+        <label>
+            Role
+        </label>
+
+        <select name="role">
+
+            <option value="admin">
+                Admin
+            </option>
+
+            <option value="encoder">
+                Encoder
+            </option>
+
+            <option value="member">
+                Member
+            </option>
+
+            <option value="viewer" selected>
+                Viewer
+            </option>
+
+        </select>
+
+
+        <label>
+            Status
+        </label>
+
+        <select name="status">
+
+            <option value="active" selected>
+                Active
+            </option>
+
+            <option value="inactive">
+                Inactive
+            </option>
+
+        </select>
+
+
+        <button type="submit">
+            Create User
+        </button>
+
+        <a href="{{ url_for('manage_users') }}">
+            Cancel
+        </a>
+
+    </form>
+
+</div>
+
+</body>
+
+</html>
