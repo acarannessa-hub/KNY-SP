@@ -1177,7 +1177,15 @@ def delete_expense(id):
         url_for("financial_management")
     )
 
+@app.route("/db-test")
+def db_test():
 
+    try:
+        db.session.execute(db.text("SELECT 1"))
+        return "Database connection successful."
+
+    except Exception as e:
+        return f"Database connection failed: {type(e).__name__}: {str(e)}", 500
 # ==================================================
 # RUN APPLICATION
 # ==================================================
