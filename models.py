@@ -252,7 +252,7 @@ class ExportRequest(db.Model):
         primary_key=True
     )
 
-    requester_id = db.Column(
+    user_id = db.Column(
         db.Integer,
         db.ForeignKey("users.id"),
         nullable=False
