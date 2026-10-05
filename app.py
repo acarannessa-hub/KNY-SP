@@ -19,7 +19,8 @@ from models import (
     Fundraising,
     Sponsorship,
     MembershipFee,
-    Expense
+    Expense,
+    ExportRequest
 )
 
 
@@ -481,7 +482,96 @@ def add_user():
         url_for("manage_users")
     )
 
+# ==================================================
+# EDIT USER
+# ==================================================
 
+@app.route(
+    "/admin/users/<int:user_id>/edit",
+    methods=["POST"]
+)
+@login_required
+@admin_required
+def edit_user(user_id):
+
+    user = User.query.get_or_404(
+        user_id
+    )
+
+    full_name = request.form.get(
+        "full_name",
+        ""
+    ).strip()
+
+    email = request.form.get(
+        "email",
+        ""
+    ).strip()
+
+    role = request.form.get(
+        "role",
+        "viewer"
+    )
+
+    status = request.form.get(
+        "status",
+        "active"
+    )
+
+    # ------------------------------------------
+    # VALIDATE REQUIRED FIELDS
+    # ------------------------------------------
+
+    if not full_name or not email:
+
+        flash(
+            "Full name and email are required.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("manage_users")
+        )
+
+    # ------------------------------------------
+    # CHECK IF EMAIL IS ALREADY USED
+    # ------------------------------------------
+
+    existing_user = User.query.filter(
+        User.email == email,
+        User.id != user.id
+    ).first()
+
+    if existing_user:
+
+        flash(
+            "A user with that email already exists.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("manage_users")
+        )
+
+    # ------------------------------------------
+    # UPDATE USER INFORMATION
+    # ------------------------------------------
+
+    user.full_name = full_name
+    user.email = email
+    user.role = role
+    user.status = status
+
+    db.session.commit()
+
+    flash(
+        "User information updated successfully.",
+        "success"
+    )
+
+    return redirect(
+        url_for("manage_users")
+    )
 # ==================================================
 # CHANGE USER STATUS
 # ==================================================
@@ -584,7 +674,111 @@ def reset_password(user_id):
         url_for("manage_users")
     )
 
+# ==================================================
+# FINANCIAL EXPORT REQUEST
+# ==================================================
 
+@app.route(
+    "/financial/export/request",
+    methods=["POST"]
+)
+@login_required
+def request_export():
+
+    table_name = request.form.get(
+        "table_name"
+    )
+
+    start_date = request.form.get(
+        "start_date"
+    )
+
+    end_date = request.form.get(
+        "end_date"
+    )
+
+    export_format = request.form.get(
+        "export_format"
+    )
+
+    allowed_tables = [
+        "fundraising",
+        "sponsorships",
+        "membership_fees",
+        "expenses",
+        "all"
+    ]
+
+    allowed_formats = [
+        "csv",
+        "pdf"
+    ]
+
+    if table_name not in allowed_tables:
+
+        flash(
+            "Invalid financial table selected.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("financial_management")
+        )
+
+    if export_format not in allowed_formats:
+
+        flash(
+            "Invalid export format selected.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("financial_management")
+        )
+
+    if start_date and end_date:
+
+        if start_date > end_date:
+
+            flash(
+                "Start date cannot be later than end date.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("financial_management")
+            )
+
+    export_request = ExportRequest(
+
+        user_id=current_user.id,
+
+        table_name=table_name,
+
+        start_date=start_date or None,
+
+        end_date=end_date or None,
+
+        export_format=export_format,
+
+        status="pending"
+    )
+
+    db.session.add(
+        export_request
+    )
+
+    db.session.commit()
+
+    flash(
+        "Export request submitted successfully. "
+        "Please wait for administrator approval.",
+        "success"
+    )
+
+    return redirect(
+        url_for("financial_management")
+    )
 # ==================================================
 # FINANCIAL MANAGEMENT
 # ==================================================

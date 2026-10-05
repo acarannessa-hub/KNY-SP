@@ -1,22 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
     <title>Financial Management - KNY-SP</title>
 
     <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
             background: #f5f5f5;
             margin: 0;
+            color: #333;
         }
 
         .navbar {
             background: #800000;
             color: white;
             padding: 18px 30px;
+
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -27,20 +38,34 @@
             font-size: 22px;
         }
 
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
         .navbar a {
             color: white;
             text-decoration: none;
-            margin-left: 20px;
         }
 
         .container {
-            max-width: 1000px;
-            margin: 40px auto;
+            max-width: 1200px;
+            margin: 35px auto;
             padding: 0 20px;
         }
 
+        .back {
+            display: inline-block;
+            margin-bottom: 20px;
+
+            color: #800000;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
         .header {
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
 
         .header h2 {
@@ -52,17 +77,59 @@
             color: #666;
         }
 
+        /* SUMMARY */
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(5, 1fr);
+
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+
+            box-shadow:
+                0 3px 12px rgba(0,0,0,0.08);
+        }
+
+        .summary-card h4 {
+            margin: 0 0 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .summary-card .amount {
+            font-size: 22px;
+            font-weight: bold;
+            color: #800000;
+        }
+
+        .summary-card.balance .amount {
+            color: #198754;
+        }
+
+        /* MODULE CARDS */
+
         .cards {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns:
+                repeat(2, 1fr);
+
             gap: 20px;
         }
 
         .card {
             background: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 10px;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.10);
+
+            box-shadow:
+                0 3px 12px rgba(0,0,0,0.08);
         }
 
         .card h3 {
@@ -77,11 +144,16 @@
 
         .button {
             display: inline-block;
+
             background: #800000;
             color: white;
+
             padding: 10px 18px;
+
             border-radius: 5px;
+
             text-decoration: none;
+
             margin-top: 10px;
         }
 
@@ -89,19 +161,134 @@
             background: #600000;
         }
 
-        .back {
-            display: inline-block;
-            margin-bottom: 20px;
+        .export-section {
+            background: white;
+            margin-top: 25px;
+            padding: 25px;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 3px 12px rgba(0,0,0,0.08);
+        }
+
+        .export-section h3 {
+            margin-top: 0;
             color: #800000;
+        }
+
+        .export-section p {
+            color: #666;
+        }
+
+        .export-button {
+            display: inline-block;
+
+            background: #444;
+            color: white;
+
+            padding: 11px 20px;
+
+            border-radius: 5px;
+
             text-decoration: none;
         }
 
-        @media (max-width: 700px) {
+        .export-button:hover {
+            background: #222;
+        }
+
+        @media (max-width: 900px) {
+
+            .summary-grid {
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
             .cards {
                 grid-template-columns: 1fr;
             }
+
+        }
+
+        @media (max-width: 600px) {
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .navbar {
+                padding: 15px;
+            }
+
+            .navbar-right {
+                gap: 10px;
+                font-size: 13px;
+            }
+
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            margin: 8% auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-content h3 {
+            color: #800000;
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .cancel-button {
+            background: #777;
+        }
+
+        .cancel-button:hover {
+            background: #555;
         }
     </style>
+
 </head>
 
 <body>
@@ -110,8 +297,11 @@
 
     <h1>KNY-SP</h1>
 
-    <div>
-        <span>{{ current_user.full_name }}</span>
+    <div class="navbar-right">
+
+        <span>
+            {{ current_user.full_name }}
+        </span>
 
         <a href="{{ url_for('dashboard') }}">
             Dashboard
@@ -120,36 +310,168 @@
         <a href="{{ url_for('logout') }}">
             Logout
         </a>
+
     </div>
 
 </div>
 
+
 <div class="container">
 
-    <a class="back" href="{{ url_for('dashboard') }}">
+    <a
+        class="back"
+        href="{{ url_for('dashboard') }}"
+    >
         ← Back to Dashboard
     </a>
 
+
     <div class="header">
 
-        <h2>Financial Management</h2>
+        <h2>
+            Financial Management
+        </h2>
 
         <p>
-            Manage fundraising, sponsorships, membership fees,
-            and organizational expenses.
+            Manage and monitor the organization's
+            financial records.
         </p>
 
     </div>
 
+    <div style="margin-bottom: 25px;">
+        <button
+            type="button"
+            class="button"
+            onclick="openExportModal()"
+        >
+            Request Export
+        </button>
+    </div>
+
+    <!-- ====================================== -->
+    <!-- FINANCIAL SUMMARY -->
+    <!-- ====================================== -->
+
+    <div class="summary-grid">
+
+        <div class="summary-card">
+
+            <h4>
+                Fundraising
+            </h4>
+
+            <div class="amount">
+                ₱{{ "%.2f"|format(
+                    fundraising
+                    |sum(attribute="amount")
+                ) }}
+            </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <h4>
+                Sponsorships
+            </h4>
+
+            <div class="amount">
+                ₱{{ "%.2f"|format(
+                    sponsorships
+                    |sum(attribute="amount")
+                ) }}
+            </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <h4>
+                Membership Fees
+            </h4>
+
+            <div class="amount">
+                ₱{{ "%.2f"|format(
+                    membership_fees
+                    |sum(attribute="amount")
+                ) }}
+            </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <h4>
+                Expenses
+            </h4>
+
+            <div class="amount">
+                ₱{{ "%.2f"|format(
+                    expenses
+                    |sum(attribute="amount")
+                ) }}
+            </div>
+
+        </div>
+
+
+        <div class="summary-card balance">
+
+            <h4>
+                Current Balance
+            </h4>
+
+            <div class="amount">
+
+                ₱{{ "%.2f"|format(
+                    (
+                        fundraising
+                        |sum(attribute="amount")
+                    )
+                    +
+                    (
+                        sponsorships
+                        |sum(attribute="amount")
+                    )
+                    +
+                    (
+                        membership_fees
+                        |sum(attribute="amount")
+                    )
+                    -
+                    (
+                        expenses
+                        |sum(attribute="amount")
+                    )
+                ) }}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ====================================== -->
+    <!-- FINANCIAL MODULES -->
+    <!-- ====================================== -->
+
     <div class="cards">
+
 
         <div class="card">
 
-            <h3>Fundraising</h3>
+            <h3>
+                Fundraising
+            </h3>
 
             <p>
-                Record and manage funds collected through
-                fundraising activities.
+                Record and manage funds collected
+                through fundraising activities.
             </p>
 
             <a
@@ -164,11 +486,14 @@
 
         <div class="card">
 
-            <h3>Sponsorships</h3>
+            <h3>
+                Sponsorships
+            </h3>
 
             <p>
-                Record and manage sponsorship contributions
-                received by the organization.
+                Record and manage sponsorship
+                contributions received by the
+                organization.
             </p>
 
             <a
@@ -183,11 +508,13 @@
 
         <div class="card">
 
-            <h3>Membership Fees</h3>
+            <h3>
+                Membership Fees
+            </h3>
 
             <p>
-                Record and manage quarterly membership
-                fee payments.
+                Record and manage quarterly
+                membership fee payments.
             </p>
 
             <a
@@ -202,11 +529,13 @@
 
         <div class="card">
 
-            <h3>Expenses</h3>
+            <h3>
+                Expenses
+            </h3>
 
             <p>
-                Record and manage organizational expenses
-                and financial disbursements.
+                Record and manage organizational
+                expenses and financial disbursements.
             </p>
 
             <a
@@ -220,7 +549,191 @@
 
     </div>
 
+
+<!-- EXPORT -->
+<!-- ====================================== -->
+
+<div class="export-section">
+
+    <h3>
+        Financial Records Export
+    </h3>
+
+    <p>
+        Need a copy of the organization's
+        financial records? Request a CSV or PDF
+        export for the selected table and date range.
+    </p>
+
+    <button
+        type="button"
+        class="export-button"
+        onclick="openExportModal()"
+    >
+        Request Export
+    </button>
+
 </div>
 
+
+<!-- EXPORT REQUEST MODAL -->
+<div
+    id="exportModal"
+    class="modal"
+>
+
+    <div class="modal-content">
+
+        <h3>
+            Request Financial Export
+        </h3>
+
+        <form
+            method="POST"
+            action="{{ url_for('request_export') }}"
+        >
+
+            <div class="form-group">
+
+                <label for="table_name">
+                    Financial Table
+                </label>
+
+                <select
+                    id="table_name"
+                    name="table_name"
+                    required
+                >
+
+                    <option value="fundraising">
+                        Fundraising
+                    </option>
+
+                    <option value="sponsorships">
+                        Sponsorships
+                    </option>
+
+                    <option value="membership_fees">
+                        Membership Fees
+                    </option>
+
+                    <option value="expenses">
+                        Expenses
+                    </option>
+
+                    <option value="all">
+                        All Financial Records
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="start_date">
+                    Start Date
+                </label>
+
+                <input
+                    type="date"
+                    id="start_date"
+                    name="start_date"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="end_date">
+                    End Date
+                </label>
+
+                <input
+                    type="date"
+                    id="end_date"
+                    name="end_date"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="export_format">
+                    Export Format
+                </label>
+
+                <select
+                    id="export_format"
+                    name="export_format"
+                    required
+                >
+
+                    <option value="csv">
+                        CSV
+                    </option>
+
+                    <option value="pdf">
+                        PDF
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="cancel-button"
+                    onclick="closeExportModal()"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="export-button"
+                >
+                    Submit Request
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+function openExportModal() {
+    document.getElementById("exportModal").style.display = "block";
+}
+
+function closeExportModal() {
+    document.getElementById("exportModal").style.display = "none";
+}
+
+window.onclick = function(event) {
+
+    const modal = document.getElementById("exportModal");
+
+    if (event.target === modal) {
+        closeExportModal();
+    }
+
+};
+
+</script>
+
 </body>
+
 </html>

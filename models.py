@@ -243,3 +243,68 @@ class Expense(db.Model):
         db.DateTime,
         server_default=db.func.current_timestamp()
     )
+
+class ExportRequest(db.Model):
+    __tablename__ = "export_requests"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    requester_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False
+    )
+
+    table_name = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    start_date = db.Column(
+        db.Date,
+        nullable=True
+    )
+
+    end_date = db.Column(
+        db.Date,
+        nullable=True
+    )
+
+    export_format = db.Column(
+        db.Enum("csv", "pdf"),
+        nullable=False
+    )
+
+    status = db.Column(
+        db.Enum(
+            "pending",
+            "approved",
+            "rejected"
+        ),
+        nullable=False,
+        default="pending"
+    )
+
+    admin_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=True
+    )
+
+    requested_at = db.Column(
+        db.DateTime,
+        server_default=db.func.current_timestamp()
+    )
+
+    approved_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    rejected_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
