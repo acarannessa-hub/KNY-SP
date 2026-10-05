@@ -146,6 +146,41 @@
             font-weight: bold;
         }
 
+        .edit-form {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .edit-form h3 {
+            margin-top: 0;
+            color: #800000;
+        }
+
+        .edit-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(180px, 1fr));
+
+            gap: 10px;
+        }
+
+        .edit-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .cancel-button {
+            background: #666;
+        }
+
+        .cancel-button:hover {
+            background: #444;
+        }
+
     </style>
 
 </head>
@@ -338,6 +373,129 @@
 
                     <div class="actions">
 
+                        <!-- EDIT USER -->
+
+                        <details>
+
+                            <summary>
+                                <button type="button">
+                                    Edit User
+                                </button>
+                            </summary>
+
+                            <div class="edit-form">
+
+                                <h3>
+                                    Edit User
+                                </h3>
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'edit_user',
+                                        user_id=account.id
+                                    ) }}"
+                                >
+
+                                    <div class="edit-grid">
+
+                                        <input
+                                            type="text"
+                                            name="full_name"
+                                            value="{{ account.full_name }}"
+                                            placeholder="Full Name"
+                                            required
+                                        >
+
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value="{{ account.email }}"
+                                            placeholder="Email"
+                                            required
+                                        >
+
+                                        <select name="role">
+
+                                            <option
+                                                value="viewer"
+                                                {% if account.role == "viewer" %}
+                                                selected
+                                                {% endif %}
+                                            >
+                                                Viewer
+                                            </option>
+
+                                            <option
+                                                value="member"
+                                                {% if account.role == "member" %}
+                                                selected
+                                                {% endif %}
+                                            >
+                                                Member
+                                            </option>
+
+                                            <option
+                                                value="encoder"
+                                                {% if account.role == "encoder" %}
+                                                selected
+                                                {% endif %}
+                                            >
+                                                Encoder
+                                            </option>
+
+                                            <option
+                                                value="admin"
+                                                {% if account.role == "admin" %}
+                                                selected
+                                                {% endif %}
+                                            >
+                                                Admin
+                                            </option>
+
+                                        </select>
+
+                                        <select name="status">
+
+                                            <option
+                                                value="active"
+                                                {% if account.status == "active" %}
+                                                selected
+                                                {% endif %}
+                                            >
+                                                Active
+                                            </option>
+
+                                            <option
+                                                value="inactive"
+                                                {% if account.status == "inactive" %}
+                                                selected
+                                                {% endif %}
+                                            >
+                                                Inactive
+                                            </option>
+
+                                        </select>
+
+                                    </div>
+
+                                    <div class="edit-actions">
+
+                                        <button type="submit">
+                                            Save Changes
+                                        </button>
+
+                                    </div>
+
+                                </form>
+
+                            </div>
+
+                        </details>
+
+
+                        <!-- ACTIVATE / DEACTIVATE -->
+
                         <form
                             method="POST"
                             action="{{ url_for(
@@ -358,6 +516,8 @@
 
                         </form>
 
+
+                        <!-- RESET PASSWORD -->
 
                         <form
                             method="POST"
