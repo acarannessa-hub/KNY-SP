@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Best Practices | KNY-SP</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #F7F8FA;
+            color: #333;
+        }
+
+        /* =========================
+           NAVIGATION
+        ========================= */
+
+        .navbar {
+            background: #7562B5;
+            padding: 18px 50px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* =========================
+           PAGE HEADER
+        ========================= */
+
+        .page-header {
+            background: #7562B5;
+            color: white;
+
+            padding: 80px 20px;
+
+            text-align: center;
+        }
+
+        .page-header h1 {
+            margin: 0 0 15px;
+            font-size: 40px;
+        }
+
+        .page-header p {
+            max-width: 700px;
+            margin: auto;
+
+            line-height: 1.7;
+            opacity: 0.9;
+        }
+
+
+        /* =========================
+           CONTENT
+        ========================= */
+
+        .container {
+            max-width: 1050px;
+
+            margin: 60px auto;
+
+            padding: 0 25px;
+        }
+
+
+        .intro {
+            text-align: center;
+
+            margin-bottom: 45px;
+        }
+
+        .intro h2 {
+            color: #7562B5;
+            margin-bottom: 12px;
+        }
+
+        .intro p {
+            max-width: 750px;
+
+            margin: auto;
+
+            color: #666;
+            line-height: 1.7;
+        }
+
+
+        /* =========================
+           PRACTICES GRID
+        ========================= */
+
+        .practice-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 25px;
+        }
+
+
+        /* =========================
+           PRACTICE CARD
+        ========================= */
+
+        .practice-card {
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease;
+        }
+
+        .practice-card:hover {
+            transform: translateY(-4px);
+
+            box-shadow:
+                0 8px 20px rgba(0,0,0,0.12);
+        }
+
+
+        .practice-number {
+            color: #7562B5;
+
+            font-size: 14px;
+            font-weight: bold;
+
+            margin-bottom: 10px;
+        }
+
+
+        .practice-card h3 {
+            color: #7562B5;
+
+            margin-top: 0;
+            margin-bottom: 15px;
+
+            font-size: 22px;
+        }
+
+
+        .practice-card p {
+            color: #666;
+
+            line-height: 1.7;
+        }
+
+
+        .practice-card ul {
+            color: #666;
+
+            line-height: 1.7;
+
+            padding-left: 20px;
+        }
+
+
+        /* =========================
+           HIGHLIGHT SECTION
+        ========================= */
+
+        .highlight {
+            background: #7562B5;
+
+            color: white;
+
+            padding: 35px;
+
+            margin-top: 35px;
+
+            border-radius: 12px;
+
+            text-align: center;
+        }
+
+        .highlight h2 {
+            margin-top: 0;
+        }
+
+        .highlight p {
+            max-width: 750px;
+
+            margin: auto;
+
+            line-height: 1.7;
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        footer {
+            margin-top: 70px;
+
+            background: #7562B5;
+            color: white;
+
+            text-align: center;
+
+            padding: 30px 20px;
+        }
+
+        footer p {
+            margin: 5px;
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 800px) {
+
+            .navbar {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .page-header h1 {
+                font-size: 32px;
+            }
+
+            .practice-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('public_static', filename='css/public.css') }}"
+    >
+
+</head>
+
+
+<body class="page-best-practices">
+
+
+<!-- =========================
+     NAVIGATION
+========================= -->
+
+{% include "site_header.html" %}
+
+
+
+
+
+
+<!-- =========================
+     PAGE HEADER
+========================= -->
+
+<header class="page-header">
+
+    <h1>
+        Best Practices
+    </h1>
+
+    <p>
+        Principles and practices that guide the
+        organization in carrying out its programs,
+        activities, and responsibilities.
+    </p>
+
+</header>
+
+
+
+<!-- =========================
+     MAIN CONTENT
+========================= -->
+
+<main class="container">
+
+
+    <!-- INTRODUCTION -->
+
+    <section class="intro">
+
+        <h2>
+            Our Best Practices
+        </h2>
+
+        <p>
+
+            [PLACEHOLDER: Add a short introduction
+            explaining the organization's approach
+            to responsible, transparent, and
+            effective organizational practices.]
+
+        </p>
+
+    </section>
+
+
+
+    <!-- PRACTICES -->
+
+    <section class="practice-grid">
+
+
+        <!-- PRACTICE 1 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 01
+            </div>
+
+            <h3>
+                Transparency
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how the
+                organization promotes transparency
+                in its activities and operations.]
+
+            </p>
+
+            <ul>
+
+                <li>
+                    [PLACEHOLDER]
+                </li>
+
+                <li>
+                    [PLACEHOLDER]
+                </li>
+
+                <li>
+                    [PLACEHOLDER]
+                </li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 2 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 02
+            </div>
+
+            <h3>
+                Accountability
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how officers
+                and members are held accountable
+                for their responsibilities.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 3 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 03
+            </div>
+
+            <h3>
+                Inclusive Participation
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how members
+                and stakeholders are encouraged
+                to participate.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 4 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 04
+            </div>
+
+            <h3>
+                Ethical Leadership
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe the
+                organization's expectations for
+                ethical leadership.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 5 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 05
+            </div>
+
+            <h3>
+                Effective Communication
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how the
+                organization maintains clear and
+                effective communication.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 6 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 06
+            </div>
+
+            <h3>
+                Proper Documentation
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how important
+                organizational records and documents
+                are maintained.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 7 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 07
+            </div>
+
+            <h3>
+                Sustainable Programs
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how programs
+                are planned and maintained for
+                long-term impact.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+
+        <!-- PRACTICE 8 -->
+
+        <article class="practice-card">
+
+            <div class="practice-number">
+                PRACTICE 08
+            </div>
+
+            <h3>
+                Continuous Improvement
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Describe how the
+                organization evaluates its activities
+                and improves its practices.]
+
+            </p>
+
+            <ul>
+
+                <li>[PLACEHOLDER]</li>
+
+                <li>[PLACEHOLDER]</li>
+
+                <li>[PLACEHOLDER]</li>
+
+            </ul>
+
+        </article>
+
+
+    </section>
+
+
+
+    <!-- =========================
+         HIGHLIGHT
+    ========================= -->
+
+    <section class="highlight">
+
+        <h2>
+            Our Commitment
+        </h2>
+
+        <p>
+
+            [PLACEHOLDER: Insert a short statement
+            describing the organization's commitment
+            to applying these best practices.]
+
+        </p>
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =========================
+     FOOTER
+========================= -->
+
+<footer>
+
+    <p>
+        [ORGANIZATION NAME]
+    </p>
+
+    <p>
+        [PLACEHOLDER: Footer information]
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>

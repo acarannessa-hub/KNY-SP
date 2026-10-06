@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Financial Dashboard | KNY-SP</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #F7F8FA;
+
+            color: #333;
+        }
+
+
+        /* =========================
+           NAVIGATION
+        ========================= */
+
+        .navbar {
+            background: #7562B5;
+
+            padding: 18px 50px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 100;
+        }
+
+
+        .logo {
+            color: white;
+
+            font-size: 22px;
+
+            font-weight: bold;
+
+            text-decoration: none;
+        }
+
+
+        .nav-links {
+            display: flex;
+
+            gap: 25px;
+        }
+
+
+        .nav-links a {
+            color: white;
+
+            text-decoration: none;
+
+            font-size: 14px;
+        }
+
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* =========================
+           PAGE HEADER
+        ========================= */
+
+        .page-header {
+            background: #7562B5;
+
+            color: white;
+
+            padding: 80px 20px;
+
+            text-align: center;
+        }
+
+
+        .page-header h1 {
+            margin: 0 0 15px;
+
+            font-size: 40px;
+        }
+
+
+        .page-header p {
+            max-width: 750px;
+
+            margin: auto;
+
+            line-height: 1.7;
+
+            opacity: 0.9;
+        }
+
+
+        /* =========================
+           MAIN CONTAINER
+        ========================= */
+
+        .container {
+            max-width: 1100px;
+
+            margin: 60px auto;
+
+            padding: 0 25px;
+        }
+
+
+        /* =========================
+           INTRODUCTION
+        ========================= */
+
+        .intro {
+            text-align: center;
+
+            margin-bottom: 45px;
+        }
+
+
+        .intro h2 {
+            color: #7562B5;
+
+            margin-bottom: 12px;
+        }
+
+
+        .intro p {
+            max-width: 750px;
+
+            margin: auto;
+
+            color: #666;
+
+            line-height: 1.7;
+        }
+
+
+        /* =========================
+           FINANCIAL CARDS
+        ========================= */
+
+        .financial-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 20px;
+
+            margin-bottom: 50px;
+        }
+
+
+        .financial-card {
+            background: white;
+
+            padding: 25px;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .financial-card h3 {
+            margin: 0 0 12px;
+
+            color: #666;
+
+            font-size: 14px;
+
+            font-weight: normal;
+        }
+
+
+        .financial-value {
+            color: #7562B5;
+
+            font-size: 28px;
+
+            font-weight: bold;
+
+            margin-bottom: 8px;
+        }
+
+
+        .financial-note {
+            color: #888;
+
+            font-size: 12px;
+        }
+
+
+        /* =========================
+           SECTION
+        ========================= */
+
+        .dashboard-section {
+            margin-bottom: 50px;
+        }
+
+
+        .dashboard-section h2 {
+            color: #7562B5;
+
+            margin-bottom: 20px;
+        }
+
+
+        /* =========================
+           CHART PLACEHOLDER
+        ========================= */
+
+        .chart-card {
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .chart-placeholder {
+            height: 320px;
+
+            border: 2px dashed #ccc;
+
+            border-radius: 10px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            text-align: center;
+
+            color: #888;
+
+            padding: 20px;
+        }
+
+
+        /* =========================
+           BREAKDOWN GRID
+        ========================= */
+
+        .breakdown-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 25px;
+        }
+
+
+        .breakdown-card {
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .breakdown-card h3 {
+            color: #7562B5;
+
+            margin-top: 0;
+
+            margin-bottom: 20px;
+        }
+
+
+        /* =========================
+           BREAKDOWN ROW
+        ========================= */
+
+        .breakdown-row {
+            display: flex;
+
+            justify-content: space-between;
+
+            padding: 13px 0;
+
+            border-bottom: 1px solid #eee;
+        }
+
+
+        .breakdown-row:last-child {
+            border-bottom: none;
+        }
+
+
+        .breakdown-label {
+            color: #555;
+        }
+
+
+        .breakdown-value {
+            font-weight: bold;
+
+            color: #333;
+        }
+
+
+        /* =========================
+           TRANSPARENCY NOTE
+        ========================= */
+
+        .transparency-box {
+            background: #fff;
+
+            border-left: 5px solid #7562B5;
+
+            padding: 25px 30px;
+
+            border-radius: 8px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.06);
+        }
+
+
+        .transparency-box h3 {
+            margin-top: 0;
+
+            color: #7562B5;
+        }
+
+
+        .transparency-box p {
+            color: #666;
+
+            line-height: 1.7;
+
+            margin-bottom: 0;
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        footer {
+            margin-top: 70px;
+
+            background: #7562B5;
+
+            color: white;
+
+            text-align: center;
+
+            padding: 30px 20px;
+        }
+
+
+        footer p {
+            margin: 5px;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 1000px) {
+
+            .financial-grid {
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
+        }
+
+
+        @media (max-width: 800px) {
+
+            .navbar {
+                padding: 15px 20px;
+            }
+
+
+            .nav-links {
+                display: none;
+            }
+
+
+            .page-header h1 {
+                font-size: 32px;
+            }
+
+
+            .breakdown-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+
+        @media (max-width: 600px) {
+
+            .financial-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('public_static', filename='css/public.css') }}"
+    >
+
+</head>
+
+
+<body class="page-financial">
+
+
+<!-- =========================
+     NAVIGATION
+========================= -->
+
+{% include "site_header.html" %}
+
+
+
+
+
+
+<!-- =========================
+     PAGE HEADER
+========================= -->
+
+<header class="page-header">
+
+    <h1>
+        Financial Dashboard
+    </h1>
+
+    <p>
+
+        A public overview of the organization's
+        financial activities and utilization of funds.
+
+    </p>
+
+</header>
+
+
+
+<!-- =========================
+     MAIN CONTENT
+========================= -->
+
+<main class="container">
+
+
+    <!-- INTRO -->
+
+    <section class="intro">
+
+        <h2>
+            Financial Transparency
+        </h2>
+
+        <p>
+
+            [PLACEHOLDER: Explain the organization's
+            commitment to financial transparency,
+            accountability, and responsible use
+            of organizational resources.]
+
+        </p>
+
+    </section>
+
+
+
+    <!-- =========================
+         SUMMARY CARDS
+    ========================= -->
+
+    <section class="dashboard-section">
+
+        <div class="financial-grid">
+
+
+            <!-- TOTAL FUNDS RAISED -->
+
+            <div class="financial-card">
+
+                <h3>
+                    Total Funds Raised
+                </h3>
+
+                <div class="financial-value">
+                    ₱0.00
+                </div>
+
+                <div class="financial-note">
+                    [PLACEHOLDER: Reporting period]
+                </div>
+
+            </div>
+
+
+
+            <!-- SPONSORSHIPS -->
+
+            <div class="financial-card">
+
+                <h3>
+                    Sponsorships
+                </h3>
+
+                <div class="financial-value">
+                    ₱0.00
+                </div>
+
+                <div class="financial-note">
+                    [PLACEHOLDER: Reporting period]
+                </div>
+
+            </div>
+
+
+
+            <!-- MEMBERSHIP FEES -->
+
+            <div class="financial-card">
+
+                <h3>
+                    Membership Fees
+                </h3>
+
+                <div class="financial-value">
+                    ₱0.00
+                </div>
+
+                <div class="financial-note">
+                    [PLACEHOLDER: Reporting period]
+                </div>
+
+            </div>
+
+
+
+            <!-- TOTAL EXPENSES -->
+
+            <div class="financial-card">
+
+                <h3>
+                    Total Expenses
+                </h3>
+
+                <div class="financial-value">
+                    ₱0.00
+                </div>
+
+                <div class="financial-note">
+                    [PLACEHOLDER: Reporting period]
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         FINANCIAL TREND
+    ========================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            Financial Overview
+        </h2>
+
+
+        <div class="chart-card">
+
+            <div class="chart-placeholder">
+
+                [PLACEHOLDER: Financial chart]
+
+                <br><br>
+
+                Example:
+
+                <br>
+
+                Funds Raised vs. Expenses
+                by Month / Quarter / Year
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         FUNDS RAISED
+    ========================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            Sources of Funds
+        </h2>
+
+
+        <div class="breakdown-grid">
+
+
+            <div class="breakdown-card">
+
+                <h3>
+                    Fundraising
+                </h3>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        [SOURCE]
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        [SOURCE]
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        [SOURCE]
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        Total
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="breakdown-card">
+
+                <h3>
+                    Other Sources
+                </h3>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        Sponsorships
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        Membership Fees
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        [OTHER SOURCE]
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+
+                <div class="breakdown-row">
+
+                    <span class="breakdown-label">
+                        Total
+                    </span>
+
+                    <span class="breakdown-value">
+                        ₱0.00
+                    </span>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         EXPENSE BREAKDOWN
+    ========================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            Expense Breakdown
+        </h2>
+
+
+        <div class="breakdown-card">
+
+
+            <div class="breakdown-row">
+
+                <span class="breakdown-label">
+                    [EXPENSE CATEGORY]
+                </span>
+
+                <span class="breakdown-value">
+                    ₱0.00
+                </span>
+
+            </div>
+
+
+            <div class="breakdown-row">
+
+                <span class="breakdown-label">
+                    [EXPENSE CATEGORY]
+                </span>
+
+                <span class="breakdown-value">
+                    ₱0.00
+                </span>
+
+            </div>
+
+
+            <div class="breakdown-row">
+
+                <span class="breakdown-label">
+                    [EXPENSE CATEGORY]
+                </span>
+
+                <span class="breakdown-value">
+                    ₱0.00
+                </span>
+
+            </div>
+
+
+            <div class="breakdown-row">
+
+                <span class="breakdown-label">
+                    [EXPENSE CATEGORY]
+                </span>
+
+                <span class="breakdown-value">
+                    ₱0.00
+                </span>
+
+            </div>
+
+
+            <div class="breakdown-row">
+
+                <span class="breakdown-label">
+                    <strong>
+                        Total Expenses
+                    </strong>
+                </span>
+
+                <span class="breakdown-value">
+                    <strong>
+                        ₱0.00
+                    </strong>
+                </span>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         TRANSPARENCY NOTE
+    ========================= -->
+
+    <section class="dashboard-section">
+
+        <div class="transparency-box">
+
+            <h3>
+                About This Dashboard
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Explain how financial
+                information is collected, reviewed,
+                summarized, and published.]
+
+                <br><br>
+
+                [PLACEHOLDER: State the reporting
+                period and frequency of updates.]
+
+                <br><br>
+
+                [PLACEHOLDER: Add any limitations
+                regarding publicly displayed
+                financial information.]
+
+            </p>
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =========================
+     FOOTER
+========================= -->
+
+<footer>
+
+    <p>
+        [ORGANIZATION NAME]
+    </p>
+
+    <p>
+        [PLACEHOLDER: Footer information]
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>

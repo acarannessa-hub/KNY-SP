@@ -1,0 +1,373 @@
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+}
+
+body {
+    display: block;
+    min-height: 0;
+    color: var(--dark);
+    font-family: "Segoe UI", "Aptos", Arial, Helvetica, sans-serif;
+    background:
+        linear-gradient(180deg, var(--light-purple) 0, #fff 300px, var(--background) 100%);
+}
+
+.public-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.public-navbar .navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 25px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+}
+
+.public-navbar .public-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    color: var(--purple-dark);
+    text-decoration: none;
+}
+
+.public-navbar .logo-placeholder {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--purple), var(--cyan), var(--green));
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.public-navbar .logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.public-navbar .logo-text strong {
+    color: var(--purple-dark);
+    font-size: 17px;
+}
+
+.public-navbar .logo-text span {
+    color: var(--gray);
+    font-size: 13px;
+}
+
+.public-navbar .public-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.public-navbar .public-nav a {
+    padding: 9px 11px;
+    border-radius: 8px;
+    color: var(--dark);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.public-navbar .public-nav a:hover {
+    background: var(--light-purple);
+    color: var(--purple-dark);
+}
+
+.public-navbar .public-nav .nav-contact {
+    color: white;
+    background: linear-gradient(135deg, var(--purple), var(--cyan));
+}
+
+.public-navbar .mobile-menu-button {
+    display: none;
+    border: 0;
+    background: transparent;
+    color: var(--purple-dark);
+    font-size: 25px;
+    cursor: pointer;
+}
+
+.public-navbar .mobile-public-nav {
+    display: none;
+    flex-direction: column;
+    padding: 10px 25px 20px;
+    border-top: 1px solid var(--line);
+    background: white;
+}
+
+.public-navbar .mobile-public-nav a {
+    padding: 12px 5px;
+    border-bottom: 1px solid var(--line);
+    color: var(--dark);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    color: var(--purple-dark);
+}
+
+.card:nth-child(3n + 1),
+.summary-card:nth-child(3n + 1) {
+    border-top: 3px solid var(--purple);
+}
+
+.card:nth-child(3n + 2),
+.summary-card:nth-child(3n + 2) {
+    border-top: 3px solid var(--cyan);
+}
+
+.card:nth-child(3n),
+.summary-card:nth-child(3n) {
+    border-top: 3px solid var(--green);
+}
+
+a {
+    color: var(--purple-dark);
+}
+
+header,
+.navbar {
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--dark);
+    border-bottom: 1px solid rgba(93, 75, 154, 0.12);
+    box-shadow: 0 8px 24px rgba(48, 50, 61, 0.06);
+}
+
+header {
+    padding: 18px 30px;
+}
+
+header h1,
+.navbar h1,
+.navbar h2 {
+    color: var(--purple-dark);
+}
+
+.navbar a,
+header a {
+    color: var(--purple-dark);
+}
+
+.navbar a:hover,
+header a:hover {
+    color: var(--purple);
+}
+
+.welcome,
+.card,
+.box,
+.header,
+.add-user,
+.export-section,
+.section,
+.summary-card,
+.login-box {
+    border: 1px solid rgba(93, 75, 154, 0.10);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+}
+
+.welcome,
+.card,
+.box,
+.header,
+.add-user,
+.export-section,
+.section,
+.summary-card,
+.login-box,
+.container > form,
+.container > table {
+    background-color: rgba(255, 255, 255, 0.96);
+}
+
+.card h3,
+.box h2,
+.header h1,
+.add-user h2,
+.export-section h3,
+.section h3,
+.summary-card .amount,
+.card .value {
+    color: var(--purple-dark);
+}
+
+button,
+.button,
+.submit-button,
+input[type="submit"] {
+    border: 0;
+    border-radius: 8px;
+    background: var(--purple);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+button:hover,
+.button:hover,
+.submit-button:hover,
+input[type="submit"]:hover {
+    background: var(--purple-dark);
+    color: #fff;
+}
+
+.button.secondary,
+.secondary,
+a:not([class]) {
+    color: var(--purple-dark);
+}
+
+a:not(.button) {
+    background-color: transparent;
+}
+
+.button.secondary,
+.secondary {
+    background: var(--light-gray);
+}
+
+.button.secondary:hover,
+.secondary:hover {
+    background: var(--cyan);
+    color: var(--dark);
+}
+
+.delete,
+.button.danger {
+    background: var(--light-purple);
+    color: var(--purple-dark);
+}
+
+.delete:hover,
+.button.danger:hover {
+    background: var(--purple);
+    color: #fff;
+}
+
+input,
+select,
+textarea {
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--dark);
+    font: inherit;
+    background: #fff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--cyan);
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(85, 184, 199, 0.18);
+}
+
+label {
+    color: var(--dark);
+}
+
+table {
+    border-color: var(--line);
+    border-collapse: collapse;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+th {
+    background: var(--light-purple);
+    color: var(--purple-dark);
+}
+
+td {
+    border-color: var(--line);
+}
+
+tbody tr:nth-child(even) {
+    background: rgba(226, 242, 243, 0.38);
+}
+
+.message {
+    border-radius: 8px;
+    background: var(--light-gray);
+    color: var(--dark);
+}
+
+.message.danger,
+.message.error,
+.error {
+    background: var(--light-purple);
+    color: var(--purple-dark);
+}
+
+.active,
+.success {
+    color: #4f8050;
+}
+
+.inactive {
+    color: var(--gray);
+}
+
+.back,
+.forgot-password {
+    color: var(--purple-dark);
+}
+
+@media (max-width: 850px) {
+    .public-navbar .navbar-container {
+        padding: 12px 18px;
+    }
+
+    .public-navbar .public-nav {
+        display: none;
+    }
+
+    .public-navbar .mobile-menu-button {
+        display: block;
+    }
+
+    body {
+        margin: 0;
+        padding: 0 14px 14px;
+    }
+
+    .public-navbar {
+        margin: 0 -14px 18px;
+    }
+}
+
+.login-box {
+    margin: 40px auto;
+}
+
+.box {
+    margin: 40px auto;
+}

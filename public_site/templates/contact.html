@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Contact Us | KNY-SP</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #F7F8FA;
+
+            color: #333;
+        }
+
+
+        /* =========================
+           NAVIGATION
+        ========================= */
+
+        .navbar {
+            background: #7562B5;
+
+            padding: 18px 50px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 100;
+        }
+
+
+        .logo {
+            color: white;
+
+            font-size: 22px;
+
+            font-weight: bold;
+
+            text-decoration: none;
+        }
+
+
+        .nav-links {
+            display: flex;
+
+            gap: 25px;
+        }
+
+
+        .nav-links a {
+            color: white;
+
+            text-decoration: none;
+
+            font-size: 14px;
+        }
+
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* =========================
+           PAGE HEADER
+        ========================= */
+
+        .page-header {
+            background: #7562B5;
+
+            color: white;
+
+            padding: 80px 20px;
+
+            text-align: center;
+        }
+
+
+        .page-header h1 {
+            margin: 0 0 15px;
+
+            font-size: 40px;
+        }
+
+
+        .page-header p {
+            max-width: 700px;
+
+            margin: auto;
+
+            line-height: 1.7;
+
+            opacity: 0.9;
+        }
+
+
+        /* =========================
+           CONTACT SECTION
+        ========================= */
+
+        .container {
+            max-width: 1050px;
+
+            margin: 60px auto;
+
+            padding: 0 25px;
+        }
+
+
+        .contact-wrapper {
+            display: grid;
+
+            grid-template-columns:
+                0.8fr 1.2fr;
+
+            gap: 30px;
+        }
+
+
+        /* =========================
+           CONTACT INFORMATION
+        ========================= */
+
+        .contact-info {
+            background: #7562B5;
+
+            color: white;
+
+            padding: 40px;
+
+            border-radius: 14px;
+        }
+
+
+        .contact-info h2 {
+            margin-top: 0;
+
+            font-size: 28px;
+        }
+
+
+        .contact-info p {
+            line-height: 1.7;
+
+            opacity: 0.9;
+        }
+
+
+        .contact-detail {
+            margin-top: 30px;
+        }
+
+
+        .contact-detail strong {
+            display: block;
+
+            margin-bottom: 5px;
+        }
+
+
+        .contact-detail span {
+            opacity: 0.9;
+
+            word-break: break-word;
+        }
+
+
+        /* =========================
+           FORM
+        ========================= */
+
+        .contact-form {
+            background: white;
+
+            padding: 40px;
+
+            border-radius: 14px;
+
+            box-shadow:
+                0 5px 18px rgba(0,0,0,0.08);
+        }
+
+
+        .contact-form h2 {
+            margin-top: 0;
+
+            color: #7562B5;
+
+            font-size: 28px;
+        }
+
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+
+        .form-group label {
+            display: block;
+
+            margin-bottom: 8px;
+
+            font-weight: bold;
+
+            color: #444;
+        }
+
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+
+            width: 100%;
+
+            padding: 13px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 7px;
+
+            font-family: inherit;
+
+            font-size: 14px;
+
+            outline: none;
+
+        }
+
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+
+            border-color: #7562B5;
+
+        }
+
+
+        .form-group textarea {
+
+            min-height: 180px;
+
+            resize: vertical;
+
+        }
+
+
+        .submit-button {
+
+            width: 100%;
+
+            padding: 14px;
+
+            border: none;
+
+            border-radius: 7px;
+
+            background: #7562B5;
+
+            color: white;
+
+            font-size: 15px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+        }
+
+
+        .submit-button:hover {
+
+            background: #5D4B9A;
+
+        }
+
+
+        /* =========================
+           NOTICE
+        ========================= */
+
+        .notice {
+
+            margin-top: 20px;
+
+            padding: 15px;
+
+            background: #E9E3F5;
+
+            border-left: 4px solid #7562B5;
+
+            color: #666;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        footer {
+
+            margin-top: 70px;
+
+            background: #7562B5;
+
+            color: white;
+
+            text-align: center;
+
+            padding: 30px 20px;
+
+        }
+
+
+        footer p {
+
+            margin: 5px;
+
+            font-size: 14px;
+
+        }
+
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 850px) {
+
+            .contact-wrapper {
+
+                grid-template-columns: 1fr;
+
+            }
+
+        }
+
+
+        @media (max-width: 800px) {
+
+            .navbar {
+
+                padding: 15px 20px;
+
+            }
+
+
+            .nav-links {
+
+                display: none;
+
+            }
+
+
+            .page-header h1 {
+
+                font-size: 32px;
+
+            }
+
+        }
+
+
+        @media (max-width: 500px) {
+
+            .contact-info,
+            .contact-form {
+
+                padding: 25px;
+
+            }
+
+        }
+
+    </style>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('public_static', filename='css/public.css') }}"
+    >
+
+</head>
+
+
+<body class="page-contact">
+
+
+<!-- =========================
+     NAVIGATION
+========================= -->
+
+{% include "site_header.html" %}
+
+
+
+
+
+
+<!-- =========================
+     PAGE HEADER
+========================= -->
+
+<header class="page-header">
+
+    <h1>
+        Contact Us
+    </h1>
+
+    <p>
+
+        Have a question, concern, suggestion,
+        or message for the organization?
+        Send us a message through the form below.
+
+    </p>
+
+</header>
+
+
+
+<!-- =========================
+     CONTACT CONTENT
+========================= -->
+
+<main class="container">
+
+
+    <div class="contact-wrapper">
+
+
+        <!-- =========================
+             CONTACT INFORMATION
+        ========================= -->
+
+        <section class="contact-info">
+
+            <h2>
+                Get in Touch
+            </h2>
+
+
+            <p>
+
+                [PLACEHOLDER: Add a short message
+                about how visitors can contact the
+                organization.]
+
+            </p>
+
+
+            <div class="contact-detail">
+
+                <strong>
+                    Email
+                </strong>
+
+                <span>
+                    [ORGANIZATION EMAIL]
+                </span>
+
+            </div>
+
+
+            <div class="contact-detail">
+
+                <strong>
+                    Facebook
+                </strong>
+
+                <span>
+                    [FACEBOOK PAGE / LINK]
+                </span>
+
+            </div>
+
+
+            <div class="contact-detail">
+
+                <strong>
+                    Address
+                </strong>
+
+                <span>
+                    [ORGANIZATION ADDRESS]
+                </span>
+
+            </div>
+
+
+            <div class="contact-detail">
+
+                <strong>
+                    Office Hours
+                </strong>
+
+                <span>
+                    [OFFICE HOURS]
+                </span>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             MESSAGE FORM
+        ========================= -->
+
+        <section class="contact-form">
+
+            <h2>
+                Send a Message
+            </h2>
+
+
+            <form
+                method="POST"
+                action="{{ url_for('public_contact') }}"
+            >
+
+
+                <!-- NAME -->
+
+                <div class="form-group">
+
+                    <label for="name">
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        placeholder="Enter your full name"
+                        required
+                    >
+
+                </div>
+
+
+
+                <!-- EMAIL -->
+
+                <div class="form-group">
+
+                    <label for="email">
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Enter your email address"
+                        required
+                    >
+
+                </div>
+
+
+
+                <!-- SUBJECT -->
+
+                <div class="form-group">
+
+                    <label for="subject">
+                        Subject
+                    </label>
+
+                    <input
+                        type="text"
+                        id="subject"
+                        name="subject"
+                        placeholder="Enter the subject"
+                        required
+                    >
+
+                </div>
+
+
+
+                <!-- MESSAGE -->
+
+                <div class="form-group">
+
+                    <label for="message">
+                        Message
+                    </label>
+
+                    <textarea
+                        id="message"
+                        name="message"
+                        placeholder="Write your message here..."
+                        required
+                    ></textarea>
+
+                </div>
+
+
+
+                <!-- SUBMIT -->
+
+                <button
+                    type="submit"
+                    class="submit-button"
+                >
+                    Send Message
+                </button>
+
+
+                <div class="notice">
+
+                    [PLACEHOLDER: Add a note about
+                    expected response time or any
+                    other instructions.]
+
+                </div>
+
+
+            </form>
+
+        </section>
+
+
+    </div>
+
+
+</main>
+
+
+
+<!-- =========================
+     FOOTER
+========================= -->
+
+<footer>
+
+    <p>
+        [ORGANIZATION NAME]
+    </p>
+
+    <p>
+        [PLACEHOLDER: Footer information]
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>

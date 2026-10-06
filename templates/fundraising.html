@@ -1,212 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Fundraising</title>
-
-    <style>
-        body {
-            font-family: Arial;
-            margin: 40px;
-            background: #f5f5f5;
-        }
-
-        h1 {
-            color: #800000;
-        }
-
-        .box {
-            background: white;
-            padding: 20px;
-            margin-bottom: 25px;
-            border-radius: 8px;
-        }
-
-        input, textarea, select {
-            padding: 8px;
-            margin: 5px;
-        }
-
-        button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 4px;
-            background: #800000;
-            color: white;
-            cursor: pointer;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-
-        th {
-            background: #800000;
-            color: white;
-        }
-
-        .delete {
-            background: #a00000;
-        }
-
-        .back {
-            display: inline-block;
-            margin-bottom: 20px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundraising - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
-
 <body>
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('financial_management') }}">← Back to Financial Management</a>
+        <header class="page-heading">
+            <h1>Fundraising</h1>
+            <p>Track funds raised through organizational fundraising activities.</p>
+        </header>
 
-<a class="back" href="{{ url_for('dashboard') }}">
-    ← Back to Dashboard
-</a>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
 
-<h1>Fundraising</h1>
+        <section class="card form-card">
+            <h2>Add Fundraising Record</h2>
+            <p>Enter the details of the funds collected.</p>
+            <form method="POST" action="{{ url_for('add_fundraising') }}">
+                <div class="form-grid record-form-grid">
+                    <div class="form-field">
+                        <label for="fundraising_date">Date</label>
+                        <input type="date" id="fundraising_date" name="fundraising_date" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" step="0.01" name="amount" placeholder="0.00" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="payment_method">Payment Method</label>
+                        <input type="text" id="payment_method" name="payment_method" placeholder="Payment method">
+                    </div>
+                    <div class="form-field">
+                        <label for="reference_no">Reference Number</label>
+                        <input type="text" id="reference_no" name="reference_no" placeholder="Optional reference">
+                    </div>
+                    <div class="form-field form-field-full">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" name="notes" placeholder="Additional details"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" type="submit">Add Record</button>
+                </div>
+            </form>
+        </section>
 
-<div class="box">
-
-    <h2>Add Fundraising Record</h2>
-
-    <form method="POST"
-          action="{{ url_for('add_fundraising') }}">
-
-        <input
-            type="date"
-            name="fundraising_date"
-            required
-        >
-
-        <input
-            type="number"
-            step="0.01"
-            name="amount"
-            placeholder="Amount"
-            required
-        >
-
-        <input
-            type="text"
-            name="payment_method"
-            placeholder="Payment Method"
-        >
-
-        <input
-            type="text"
-            name="reference_no"
-            placeholder="Reference No."
-        >
-
-        <textarea
-            name="notes"
-            placeholder="Notes"
-        ></textarea>
-
-        <button type="submit">
-            Add Record
-        </button>
-
-    </form>
-
-</div>
-
-<table>
-
-    <tr>
-        <th>Date</th>
-        <th>Amount</th>
-        <th>Payment Method</th>
-        <th>Reference No.</th>
-        <th>Notes</th>
-        <th>Actions</th>
-    </tr>
-
-    {% for record in records %}
-
-    <tr>
-
-        <form method="POST"
-              action="{{ url_for('edit_fundraising', id=record.id) }}">
-
-            <td>
-                <input
-                    type="date"
-                    name="fundraising_date"
-                    value="{{ record.fundraising_date }}"
-                    required
-                >
-            </td>
-
-            <td>
-                <input
-                    type="number"
-                    step="0.01"
-                    name="amount"
-                    value="{{ record.amount }}"
-                    required
-                >
-            </td>
-
-            <td>
-                <input
-                    type="text"
-                    name="payment_method"
-                    value="{{ record.payment_method or '' }}"
-                >
-            </td>
-
-            <td>
-                <input
-                    type="text"
-                    name="reference_no"
-                    value="{{ record.reference_no or '' }}"
-                >
-            </td>
-
-            <td>
-                <input
-                    type="text"
-                    name="notes"
-                    value="{{ record.notes or '' }}"
-                >
-            </td>
-
-            <td>
-
-                <button type="submit">
-                    Save
-                </button>
-
-        </form>
-
-                <form
-                    method="POST"
-                    action="{{ url_for('delete_fundraising', id=record.id) }}"
-                    style="display:inline;"
-                >
-
-                    <button
-                        type="submit"
-                        class="delete"
-                    >
-                        Delete
-                    </button>
-
-                </form>
-
-            </td>
-
-    </tr>
-
-    {% endfor %}
-
-</table>
-
+        <section class="card records-card">
+            <div class="card-heading table-card-header">
+                <div>
+                    <h2>Fundraising Records</h2>
+                    <p>Update existing records or remove entries that should no longer be listed.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Amount</th><th>Payment Method</th><th>Reference</th><th>Notes</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        {% set update_form_id = "edit-fundraising-" ~ record.id %}
+                        <tr>
+                            <td><input form="{{ update_form_id }}" type="date" name="fundraising_date" value="{{ record.fundraising_date }}" required></td>
+                            <td><input form="{{ update_form_id }}" type="number" step="0.01" name="amount" value="{{ record.amount }}" required></td>
+                            <td><input form="{{ update_form_id }}" type="text" name="payment_method" value="{{ record.payment_method or '' }}"></td>
+                            <td><input form="{{ update_form_id }}" type="text" name="reference_no" value="{{ record.reference_no or '' }}"></td>
+                            <td><input form="{{ update_form_id }}" type="text" name="notes" value="{{ record.notes or '' }}"></td>
+                            <td>
+                                <div class="table-actions">
+                                    <form id="{{ update_form_id }}" method="POST" action="{{ url_for('edit_fundraising', id=record.id) }}"></form>
+                                    <button class="btn btn-small btn-primary" type="submit" form="{{ update_form_id }}">Save</button>
+                                    <form method="POST" action="{{ url_for('delete_fundraising', id=record.id) }}">
+                                        <button class="btn btn-small btn-danger" type="submit">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6">No fundraising records yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 </body>
 </html>

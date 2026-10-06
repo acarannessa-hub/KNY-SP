@@ -1,0 +1,20 @@
+<header class="private-site-header">
+    <div class="private-site-header-inner">
+        <a class="private-brand" href="{{ url_for('dashboard') }}">
+            Kaya Natin! Youth
+        </a>
+
+        {% if current_user.is_authenticated %}
+        <nav class="private-nav" aria-label="Private navigation">
+            {% if current_user.role in ["admin", "encoder"] %}
+            <a href="{{ url_for('financial_management') }}">Manage Finances</a>
+            {% endif %}
+            {% if current_user.role == "admin" %}
+            <a href="{{ url_for('manage_users') }}">Users</a>
+            {% endif %}
+            <a href="{{ url_for('change_password') }}">Password</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+        {% endif %}
+    </div>
+</header>

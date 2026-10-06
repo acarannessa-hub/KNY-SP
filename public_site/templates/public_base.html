@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% block title %}
+        Kaya Natin! Youth
+        {% endblock %}
+    </title>
+
+    {% block page_styles %}{% endblock %}
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('public_static', filename='css/public.css') }}"
+    >
+
+</head>
+
+
+<body class="{% block body_class %}page-landing{% endblock %}">
+
+
+{% include "site_header.html" %}
+
+<!-- ================================================== -->
+<!-- MAIN CONTENT -->
+<!-- ================================================== -->
+
+<main>
+
+    {% block content %}
+
+    {% endblock %}
+
+</main>
+
+
+
+<!-- ================================================== -->
+<!-- FOOTER -->
+<!-- ================================================== -->
+
+<footer class="public-footer">
+
+    <div class="footer-container">
+
+
+        <div class="footer-column">
+
+            <h3>
+                Kaya Natin! Youth
+            </h3>
+
+            <p>
+                [Short organization description
+                will be placed here.]
+            </p>
+
+        </div>
+
+
+        <div class="footer-column">
+
+            <h4>
+                Quick Links
+            </h4>
+
+            <a
+                href="{{ url_for('public_introduction') }}"
+            >
+                About the Organization
+            </a>
+
+            <a
+                href="{{ url_for('public_advocacies') }}"
+            >
+                Thematic Advocacies
+            </a>
+
+            <a
+                href="{{ url_for('public_roster') }}"
+            >
+                Roster
+            </a>
+
+            <a
+                href="{{ url_for('public_events') }}"
+            >
+                Events & Announcements
+            </a>
+
+        </div>
+
+
+        <div class="footer-column">
+
+            <h4>
+                Contact
+            </h4>
+
+            <p>
+                [Organization Email]
+            </p>
+
+            <p>
+                [Organization Address]
+            </p>
+
+            <p>
+                [Social Media / Other Contact]
+            </p>
+
+        </div>
+
+
+    </div>
+
+
+    <div class="footer-bottom">
+
+        <p>
+            ©
+            <span id="currentYear"></span>
+            Kaya Natin! Youth.
+            All rights reserved.
+        </p>
+
+    </div>
+
+</footer>
+
+
+
+<!-- ================================================== -->
+<!-- JAVASCRIPT -->
+<!-- ================================================== -->
+
+{% block scripts %}
+
+{% endblock %}
+
+
+
+
+</body>
+
+</html>

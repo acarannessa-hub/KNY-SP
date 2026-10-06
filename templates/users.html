@@ -1,317 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - KNY-SP</title>
-
-    <style>
-
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-        }
-
-        header {
-            background: #800000;
-            color: white;
-            padding: 20px 30px;
-        }
-
-        header h1 {
-            margin: 0;
-        }
-
-        .container {
-            padding: 30px;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .button {
-            display: inline-block;
-            background: #800000;
-            color: white;
-            padding: 9px 14px;
-            text-decoration: none;
-            border-radius: 5px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .button:hover {
-            background: #600000;
-        }
-
-        .secondary {
-            background: #555;
-        }
-
-        .danger {
-            background: #b00020;
-        }
-
-        table {
-            width: 100%;
-            background: white;
-            border-collapse: collapse;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        th,
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: left;
-        }
-
-        th {
-            background: #eee;
-        }
-
-        .actions {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-
-        .active {
-            color: green;
-            font-weight: bold;
-        }
-
-        .inactive {
-            color: red;
-            font-weight: bold;
-        }
-
-        .message {
-            background: #d1e7dd;
-            color: #0f5132;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #842029;
-        }
-
-        form {
-            margin: 0;
-        }
-
-    </style>
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
-
 <body>
-
-<header>
-
-    <h1>KNY-SP</h1>
-
-    <p>
-        User Management
-    </p>
-
-</header>
-
-
-<div class="container">
-
-    <div class="top-bar">
-
-        <h2>Users</h2>
-
-        <div>
-
-            <a
-                href="{{ url_for('dashboard') }}"
-                class="button secondary"
-            >
-                Dashboard
-            </a>
-
-            <a
-                href="{{ url_for('add_user') }}"
-                class="button"
-            >
-                Add User
-            </a>
-
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <div class="page-heading-row">
+            <header class="page-heading">
+                <h1>User Management</h1>
+                <p>Manage KNY-SP user accounts, roles, and access status.</p>
+            </header>
+            <a class="btn btn-primary" href="#add-user-form">+ Add User</a>
         </div>
 
-    </div>
-
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-
-        {% for category, message in messages %}
-
-            <div
-                class="message {% if category == 'error' %}error{% endif %}"
-            >
-                {{ message }}
-            </div>
-
-        {% endfor %}
-
-    {% endwith %}
-
-
-    <table>
-
-        <thead>
-
-            <tr>
-
-                <th>ID</th>
-
-                <th>Full Name</th>
-
-                <th>Email</th>
-
-                <th>Role</th>
-
-                <th>Status</th>
-
-                <th>Created</th>
-
-                <th>Actions</th>
-
-            </tr>
-
-        </thead>
-
-
-        <tbody>
-
-            {% for user in users %}
-
-            <tr>
-
-                <td>
-                    {{ user.id }}
-                </td>
-
-                <td>
-                    {{ user.full_name }}
-                </td>
-
-                <td>
-                    {{ user.email }}
-                </td>
-
-                <td>
-                    {{ user.role }}
-                </td>
-
-                <td>
-
-                    {% if user.status == "active" %}
-
-                        <span class="active">
-                            Active
-                        </span>
-
-                    {% else %}
-
-                        <span class="inactive">
-                            Inactive
-                        </span>
-
-                    {% endif %}
-
-                </td>
-
-                <td>
-                    {{ user.created_at }}
-                </td>
-
-                <td>
-
-                    <div class="actions">
-
-                        <a
-                            href="{{ url_for('edit_user', user_id=user.id) }}"
-                            class="button"
-                        >
-                            Edit
-                        </a>
-
-
-                        {% if user.id != current_user.id %}
-
-                        <form
-                            action="{{ url_for('toggle_user', user_id=user.id) }}"
-                            method="POST"
-                        >
-
-                            <button
-                                type="submit"
-                                class="button secondary"
-                            >
-                                Toggle
-                            </button>
-
-                        </form>
-
-
-                        <form
-                            action="{{ url_for('delete_user', user_id=user.id) }}"
-                            method="POST"
-                            onsubmit="return confirm('Delete this user?');"
-                        >
-
-                            <button
-                                type="submit"
-                                class="button danger"
-                            >
-                                Delete
-                            </button>
-
-                        </form>
-
-                        {% endif %}
-
-                    </div>
-
-                </td>
-
-            </tr>
-
-            {% else %}
-
-            <tr>
-
-                <td colspan="7">
-                    No users found.
-                </td>
-
-            </tr>
-
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
             {% endfor %}
+        {% endwith %}
 
-        </tbody>
+        <section class="card add-user" id="add-user-form">
+            <h2>Add New User</h2>
+            <form method="POST" action="{{ url_for('add_user') }}">
+                <div class="form-grid record-form-grid">
+                    <div class="form-field">
+                        <label for="user_full_name">Full Name</label>
+                        <input type="text" id="user_full_name" name="full_name" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="user_email">Email</label>
+                        <input type="email" id="user_email" name="email" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="user_password">Temporary Password</label>
+                        <input type="password" id="user_password" name="password" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="user_role">Role</label>
+                        <select id="user_role" name="role">
+                            <option value="viewer">Viewer</option>
+                            <option value="member">Member</option>
+                            <option value="encoder">Encoder</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="user_status">Status</label>
+                        <select id="user_status" name="status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" type="submit">Create User</button>
+                </div>
+            </form>
+        </section>
 
-    </table>
-
-</div>
-
+        <section class="card records-card">
+            <div class="table-card-header">
+                <h2>Accounts</h2>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in users %}
+                        <tr>
+                            <td>{{ account.id }}</td>
+                            <td>{{ account.full_name }}</td>
+                            <td>{{ account.email }}</td>
+                            <td>{{ account.role }}</td>
+                            <td>
+                                {% if account.status == "active" %}
+                                <span class="status-badge">Active</span>
+                                {% else %}
+                                <span class="status-badge inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ account.created_at }}</td>
+                            <td>
+                                {% if account.id != current_user.id %}
+                                <div class="user-actions">
+                                    <details>
+                                        <summary><span class="btn btn-small btn-secondary">Edit Details</span></summary>
+                                        <div class="edit-form">
+                                            <h3>Edit {{ account.full_name }}</h3>
+                                            <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}">
+                                                <div class="edit-grid">
+                                                    <div class="form-field">
+                                                        <label for="edit_full_name_{{ account.id }}">Full Name</label>
+                                                        <input type="text" id="edit_full_name_{{ account.id }}" name="full_name" value="{{ account.full_name }}" required>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label for="edit_email_{{ account.id }}">Email</label>
+                                                        <input type="email" id="edit_email_{{ account.id }}" name="email" value="{{ account.email }}" required>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label for="edit_role_{{ account.id }}">Role</label>
+                                                        <select id="edit_role_{{ account.id }}" name="role">
+                                                            <option value="viewer" {% if account.role == "viewer" %}selected{% endif %}>Viewer</option>
+                                                            <option value="member" {% if account.role == "member" %}selected{% endif %}>Member</option>
+                                                            <option value="encoder" {% if account.role == "encoder" %}selected{% endif %}>Encoder</option>
+                                                            <option value="admin" {% if account.role == "admin" %}selected{% endif %}>Admin</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label for="edit_status_{{ account.id }}">Status</label>
+                                                        <select id="edit_status_{{ account.id }}" name="status">
+                                                            <option value="active" {% if account.status == "active" %}selected{% endif %}>Active</option>
+                                                            <option value="inactive" {% if account.status == "inactive" %}selected{% endif %}>Inactive</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-actions">
+                                                    <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </details>
+                                    <form method="POST" action="{{ url_for('toggle_user_status', user_id=account.id) }}">
+                                        <button class="btn btn-small {% if account.status == 'active' %}btn-secondary{% else %}btn-success{% endif %}" type="submit">
+                                            {% if account.status == "active" %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                Current Admin
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7">No users found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 </body>
-
 </html>

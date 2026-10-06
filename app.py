@@ -1,6 +1,16 @@
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    abort,
+    session,
+    send_from_directory
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
     LoginManager,
@@ -12,6 +22,7 @@ from flask_login import (
 from flask_bcrypt import Bcrypt
 from functools import wraps
 from dotenv import load_dotenv
+from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 
 from models import (
     db,
@@ -35,7 +46,27 @@ load_dotenv()
 # CREATE APPLICATION
 # ==================================================
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_SITE_DIR = os.path.join(BASE_DIR, "public_site")
+PUBLIC_TEMPLATE_DIR = os.path.join(PUBLIC_SITE_DIR, "templates")
+PUBLIC_STATIC_DIR = os.path.join(PUBLIC_SITE_DIR, "static")
+PRIVATE_STATIC_DIR = os.path.join(BASE_DIR, "templates", "static")
+
+app = Flask(
+    __name__,
+    static_folder=PRIVATE_STATIC_DIR
+)
+
+app.jinja_loader = ChoiceLoader(
+    [
+        app.jinja_loader,
+        PrefixLoader(
+            {"public": FileSystemLoader(PUBLIC_TEMPLATE_DIR)},
+            delimiter="/"
+        ),
+        FileSystemLoader(PUBLIC_TEMPLATE_DIR)
+    ]
+)
 
 
 # ==================================================
@@ -52,6 +83,123 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
 )
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# ==================================================
+# PUBLIC WEBSITE
+# ==================================================
+
+@app.route("/public-static/<path:filename>", endpoint="public_static")
+def public_static(filename):
+
+    return send_from_directory(
+        PUBLIC_STATIC_DIR,
+        filename
+    )
+
+
+@app.route("/")
+def public_home():
+
+    return render_template(
+        "public/landing.html"
+    )
+
+
+@app.route("/introduction")
+def public_introduction():
+
+    return render_template(
+        "public/introduction.html"
+    )
+
+
+@app.route("/advocacies")
+def public_advocacies():
+
+    return render_template(
+        "public/advocacies.html"
+    )
+
+
+@app.route("/constitution")
+def public_constitution():
+
+    return render_template(
+        "public/constitution.html"
+    )
+
+
+@app.route("/best-practices")
+def public_best_practices():
+
+    return render_template(
+        "public/best_practices.html"
+    )
+
+
+@app.route("/roster")
+def public_roster():
+
+    return render_template(
+        "public/roster.html"
+    )
+
+
+@app.route("/financial-dashboard")
+def public_financial_dashboard():
+
+    return render_template(
+        "public/financial_dashboard.html"
+    )
+
+
+@app.route("/events")
+def public_events():
+
+    return render_template(
+        "public/events.html"
+    )
+
+
+@app.route(
+    "/contact",
+    methods=["GET", "POST"]
+)
+def public_contact():
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name"
+        )
+
+        email = request.form.get(
+            "email"
+        )
+
+        subject = request.form.get(
+            "subject"
+        )
+
+        message = request.form.get(
+            "message"
+        )
+
+        # EMAIL FUNCTION WILL BE ADDED LATER
+
+        flash(
+            "Your message has been submitted successfully.",
+            "success"
+        )
+
+        return redirect(
+            url_for("public_contact")
+        )
+
+    return render_template(
+        "public/contact.html"
+    )
+    return render_template("public/contact.html")
 
 
 # ==================================================
@@ -111,7 +259,7 @@ def admin_required(f):
 # LOGIN
 # ==================================================
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
 
     if current_user.is_authenticated:
@@ -674,111 +822,7 @@ def reset_password(user_id):
         url_for("manage_users")
     )
 
-# ==================================================
-# FINANCIAL EXPORT REQUEST
-# ==================================================
 
-@app.route(
-    "/financial/export/request",
-    methods=["POST"]
-)
-@login_required
-def request_export():
-
-    table_name = request.form.get(
-        "table_name"
-    )
-
-    start_date = request.form.get(
-        "start_date"
-    )
-
-    end_date = request.form.get(
-        "end_date"
-    )
-
-    export_format = request.form.get(
-        "export_format"
-    )
-
-    allowed_tables = [
-        "fundraising",
-        "sponsorships",
-        "membership_fees",
-        "expenses",
-        "all"
-    ]
-
-    allowed_formats = [
-        "csv",
-        "pdf"
-    ]
-
-    if table_name not in allowed_tables:
-
-        flash(
-            "Invalid financial table selected.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("financial_management")
-        )
-
-    if export_format not in allowed_formats:
-
-        flash(
-            "Invalid export format selected.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("financial_management")
-        )
-
-    if start_date and end_date:
-
-        if start_date > end_date:
-
-            flash(
-                "Start date cannot be later than end date.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("financial_management")
-            )
-
-    export_request = ExportRequest(
-
-        user_id=current_user.id,
-
-        table_name=table_name,
-
-        start_date=start_date or None,
-
-        end_date=end_date or None,
-
-        export_format=export_format,
-
-        status="pending"
-    )
-
-    db.session.add(
-        export_request
-    )
-
-    db.session.commit()
-
-    flash(
-        "Export request submitted successfully. "
-        "Please wait for administrator approval.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
 # ==================================================
 # FINANCIAL MANAGEMENT
 # ==================================================
@@ -1371,6 +1415,332 @@ def delete_expense(id):
         url_for("financial_management")
     )
 
+# ==================================================
+# FINANCIAL EXPORT REQUESTS
+# ==================================================
+
+@app.route(
+    "/financial/export/request",
+    methods=["POST"]
+)
+@login_required
+def request_export():
+
+    table_name = request.form.get(
+        "table_name"
+    )
+
+    start_date = request.form.get(
+        "start_date"
+    )
+
+    end_date = request.form.get(
+        "end_date"
+    )
+
+    export_format = request.form.get(
+        "export_format"
+    )
+
+# ==================================================
+# ADMIN EXPORT CREDENTIAL VERIFICATION
+# ==================================================
+
+@app.route(
+    "/financial/export/verify",
+    methods=["GET", "POST"]
+)
+@login_required
+def verify_admin_export():
+
+    if current_user.role != "admin":
+
+        abort(403)
+
+
+    if request.method == "POST":
+
+        password = request.form.get(
+            "password"
+        )
+
+
+        if not password:
+
+            flash(
+                "Please enter your password.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("verify_admin_export")
+            )
+
+
+        if not bcrypt.check_password_hash(
+            current_user.password_hash,
+            password
+        ):
+
+            flash(
+                "Incorrect password.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("verify_admin_export")
+            )
+
+
+        from flask import session
+
+        export_data = session.get(
+            "admin_export_request"
+        )
+
+
+        if not export_data:
+
+            flash(
+                "Export request expired. "
+                "Please submit a new request.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("financial_management")
+            )
+
+
+        # ------------------------------------------
+        # Password verified
+        # ------------------------------------------
+
+        session["verified_admin_export"] = True
+
+
+        return redirect(
+            url_for("download_financial_export")
+        )
+
+
+    return render_template(
+        "verify_export.html"
+    )
+
+# ==================================================
+# FINANCIAL EXPORT DOWNLOAD
+# ==================================================
+
+@app.route(
+    "/financial/export/download"
+)
+@login_required
+def download_financial_export():
+
+    from flask import session
+
+    if current_user.role == "admin":
+
+        if not session.get(
+            "verified_admin_export"
+        ):
+
+            flash(
+                "Please verify your credentials first.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("financial_management")
+            )
+
+
+        export_data = session.get(
+            "admin_export_request"
+        )
+
+    else:
+
+        abort(403)
+
+
+    if not export_data:
+
+        flash(
+            "No export request found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("financial_management")
+        )
+
+
+    table_name = export_data["table_name"]
+
+    start_date = export_data["start_date"]
+
+    end_date = export_data["end_date"]
+
+    export_format = export_data["export_format"]
+
+
+    # Temporary response so we can test the workflow
+    # before implementing CSV/PDF generation.
+
+    flash(
+        f"Export verified successfully: "
+        f"{table_name} ({export_format})",
+        "success"
+    )
+
+
+    session.pop(
+        "admin_export_request",
+        None
+    )
+
+    session.pop(
+        "verified_admin_export",
+        None
+    )
+
+
+    return redirect(
+        url_for("financial_management")
+    )
+
+    # ----------------------------------------------
+    # VALIDATE TABLE
+    # ----------------------------------------------
+
+    allowed_tables = [
+        "fundraising",
+        "sponsorships",
+        "membership_fees",
+        "expenses",
+        "all"
+    ]
+
+    if table_name not in allowed_tables:
+
+        flash(
+            "Invalid financial table selected.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("financial_management")
+        )
+
+
+    # ----------------------------------------------
+    # VALIDATE FORMAT
+    # ----------------------------------------------
+
+    if export_format not in [
+        "csv",
+        "pdf"
+    ]:
+
+        flash(
+            "Invalid export format.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("financial_management")
+        )
+
+
+    # ----------------------------------------------
+    # VALIDATE DATE RANGE
+    # ----------------------------------------------
+
+    if start_date and end_date:
+
+        if start_date > end_date:
+
+            flash(
+                "Start date cannot be later than end date.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("financial_management")
+            )
+
+
+    # ----------------------------------------------
+    # ADMIN REQUEST
+    # ----------------------------------------------
+    #
+    # Admin requests will NOT require approval.
+    # They will go through credential verification
+    # before the actual download.
+    #
+
+    if current_user.role == "admin":
+
+        session_data = {
+            "table_name": table_name,
+            "start_date": start_date,
+            "end_date": end_date,
+            "export_format": export_format
+        }
+
+        # Store temporarily for credential verification
+        from flask import session
+
+        session["admin_export_request"] = session_data
+
+        return redirect(
+            url_for("verify_admin_export")
+        )
+
+
+    # ----------------------------------------------
+    # NON-ADMIN REQUEST
+    # ----------------------------------------------
+
+    export_request = ExportRequest(
+
+        requester_id=current_user.id,
+
+        table_name=table_name,
+
+        start_date=start_date
+        if start_date
+        else None,
+
+        end_date=end_date
+        if end_date
+        else None,
+
+        export_format=export_format,
+
+        status="pending"
+    )
+
+    db.session.add(
+        export_request
+    )
+
+    db.session.commit()
+
+
+    flash(
+        "Export request submitted. "
+        "An administrator must approve it before "
+        "you can download the file.",
+        "success"
+    )
+
+
+    return redirect(
+        url_for("financial_management")
+    )
 
 # ==================================================
 # RUN APPLICATION

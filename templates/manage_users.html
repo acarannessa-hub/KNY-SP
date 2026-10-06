@@ -1,580 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - KNY-SP</title>
-
-    <style>
-
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 30px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: auto;
-        }
-
-        .header {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-
-            box-shadow:
-                0 3px 12px rgba(0,0,0,0.08);
-        }
-
-        h1 {
-            color: #800000;
-            margin-top: 0;
-        }
-
-        .back {
-            color: #800000;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .message {
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            background: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .danger {
-            background: #f8d7da;
-            color: #842029;
-        }
-
-        .add-user {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-
-            box-shadow:
-                0 3px 12px rgba(0,0,0,0.08);
-        }
-
-        .add-user h2 {
-            color: #800000;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(180px, 1fr));
-
-            gap: 15px;
-        }
-
-        input,
-        select {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px;
-
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        button {
-            padding: 10px 15px;
-            background: #800000;
-            color: white;
-
-            border: none;
-            border-radius: 5px;
-
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #600000;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-
-            box-shadow:
-                0 3px 12px rgba(0,0,0,0.08);
-        }
-
-        th {
-            background: #800000;
-            color: white;
-            padding: 14px;
-            text-align: left;
-        }
-
-        td {
-            padding: 14px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .actions {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .small-input {
-            width: 180px;
-        }
-
-        .inactive {
-            color: red;
-            font-weight: bold;
-        }
-
-        .active {
-            color: green;
-            font-weight: bold;
-        }
-
-        .edit-form {
-            background: #f9f9f9;
-            padding: 15px;
-            margin-top: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
-
-        .edit-form h3 {
-            margin-top: 0;
-            color: #800000;
-        }
-
-        .edit-grid {
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(180px, 1fr));
-
-            gap: 10px;
-        }
-
-        .edit-actions {
-            margin-top: 10px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .cancel-button {
-            background: #666;
-        }
-
-        .cancel-button:hover {
-            background: #444;
-        }
-
-    </style>
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
-
 <body>
-
-<div class="container">
-
-    <div class="header">
-
-        <h1>
-            User Management
-        </h1>
-
-        <p>
-            Manage KNY-SP user accounts.
-        </p>
-
-        <a
-            class="back"
-            href="{{ url_for('dashboard') }}"
-        >
-            ← Back to Dashboard
-        </a>
-
-    </div>
-
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-
-        {% for category, message in messages %}
-
-            <div class="message
-                {% if category == 'danger' %}
-                danger
-                {% endif %}">
-
-                {{ message }}
-
-            </div>
-
-        {% endfor %}
-
-    {% endwith %}
-
-
-    <div class="add-user">
-
-        <h2>
-            Add New User
-        </h2>
-
-        <form
-            method="POST"
-            action="{{ url_for('add_user') }}"
-        >
-
-            <div class="form-grid">
-
-                <input
-                    type="text"
-                    name="full_name"
-                    placeholder="Full Name"
-                    required
-                >
-
-                <input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    required
-                >
-
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="Temporary Password"
-                    required
-                >
-
-                <select name="role">
-
-                    <option value="viewer">
-                        Viewer
-                    </option>
-
-                    <option value="member">
-                        Member
-                    </option>
-
-                    <option value="encoder">
-                        Encoder
-                    </option>
-
-                    <option value="admin">
-                        Admin
-                    </option>
-
-                </select>
-
-                <select name="status">
-
-                    <option value="active">
-                        Active
-                    </option>
-
-                    <option value="inactive">
-                        Inactive
-                    </option>
-
-                </select>
-
-                <button type="submit">
-                    Add User
-                </button>
-
-            </div>
-
-        </form>
-
-    </div>
-
-
-    <table>
-
-        <thead>
-
-            <tr>
-
-                <th>ID</th>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Actions</th>
-
-            </tr>
-
-        </thead>
-
-
-        <tbody>
-
-        {% for account in users %}
-
-            <tr>
-
-                <td>
-                    {{ account.id }}
-                </td>
-
-                <td>
-                    {{ account.full_name }}
-                </td>
-
-                <td>
-                    {{ account.email }}
-                </td>
-
-                <td>
-                    {{ account.role }}
-                </td>
-
-                <td>
-
-                    {% if account.status == "active" %}
-
-                        <span class="active">
-                            Active
-                        </span>
-
-                    {% else %}
-
-                        <span class="inactive">
-                            Inactive
-                        </span>
-
-                    {% endif %}
-
-                </td>
-
-                <td>
-                    {{ account.created_at }}
-                </td>
-
-                <td>
-
-                    {% if account.id != user.id %}
-
-                    <div class="actions">
-
-                        <!-- EDIT USER -->
-
-                        <details>
-
-                            <summary>
-                                <button type="button">
-                                    Edit User
-                                </button>
-                            </summary>
-
-                            <div class="edit-form">
-
-                                <h3>
-                                    Edit User
-                                </h3>
-
-                                <form
-                                    method="POST"
-                                    action="{{ url_for(
-                                        'edit_user',
-                                        user_id=account.id
-                                    ) }}"
-                                >
-
-                                    <div class="edit-grid">
-
-                                        <input
-                                            type="text"
-                                            name="full_name"
-                                            value="{{ account.full_name }}"
-                                            placeholder="Full Name"
-                                            required
-                                        >
-
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value="{{ account.email }}"
-                                            placeholder="Email"
-                                            required
-                                        >
-
-                                        <select name="role">
-
-                                            <option
-                                                value="viewer"
-                                                {% if account.role == "viewer" %}
-                                                selected
-                                                {% endif %}
-                                            >
-                                                Viewer
-                                            </option>
-
-                                            <option
-                                                value="member"
-                                                {% if account.role == "member" %}
-                                                selected
-                                                {% endif %}
-                                            >
-                                                Member
-                                            </option>
-
-                                            <option
-                                                value="encoder"
-                                                {% if account.role == "encoder" %}
-                                                selected
-                                                {% endif %}
-                                            >
-                                                Encoder
-                                            </option>
-
-                                            <option
-                                                value="admin"
-                                                {% if account.role == "admin" %}
-                                                selected
-                                                {% endif %}
-                                            >
-                                                Admin
-                                            </option>
-
-                                        </select>
-
-                                        <select name="status">
-
-                                            <option
-                                                value="active"
-                                                {% if account.status == "active" %}
-                                                selected
-                                                {% endif %}
-                                            >
-                                                Active
-                                            </option>
-
-                                            <option
-                                                value="inactive"
-                                                {% if account.status == "inactive" %}
-                                                selected
-                                                {% endif %}
-                                            >
-                                                Inactive
-                                            </option>
-
-                                        </select>
-
-                                    </div>
-
-                                    <div class="edit-actions">
-
-                                        <button type="submit">
-                                            Save Changes
-                                        </button>
-
-                                    </div>
-
-                                </form>
-
-                            </div>
-
-                        </details>
-
-
-                        <!-- ACTIVATE / DEACTIVATE -->
-
-                        <form
-                            method="POST"
-                            action="{{ url_for(
-                                'toggle_user_status',
-                                user_id=account.id
-                            ) }}"
-                        >
-
-                            <button type="submit">
-
-                                {% if account.status == "active" %}
-                                    Deactivate
-                                {% else %}
-                                    Activate
-                                {% endif %}
-
-                            </button>
-
-                        </form>
-
-
-                        <!-- RESET PASSWORD -->
-
-                        <form
-                            method="POST"
-                            action="{{ url_for(
-                                'reset_password',
-                                user_id=account.id
-                            ) }}"
-                        >
-
-                            <input
-                                class="small-input"
-                                type="password"
-                                name="new_password"
-                                placeholder="New password"
-                                minlength="8"
-                                required
-                            >
-
-                            <button type="submit">
-                                Reset Password
-                            </button>
-
-                        </form>
-
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+
+        <div class="page-heading-row">
+            <header class="page-heading">
+                <h1>User Management</h1>
+                <p>Manage KNY-SP user accounts, roles, and access status.</p>
+            </header>
+            <a class="btn btn-primary" href="#add-user-form">+ Add User</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="card add-user" id="add-user-form">
+            <h2>Add New User</h2>
+            <p>Create an account with the appropriate access role.</p>
+            <form method="POST" action="{{ url_for('add_user') }}">
+                <div class="form-grid record-form-grid">
+                    <div class="form-field">
+                        <label for="new_full_name">Full Name</label>
+                        <input type="text" id="new_full_name" name="full_name" placeholder="Full name" required>
                     </div>
+                    <div class="form-field">
+                        <label for="new_email">Email</label>
+                        <input type="email" id="new_email" name="email" placeholder="Email address" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="new_password">Temporary Password</label>
+                        <input type="password" id="new_password" name="password" placeholder="Temporary password" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="new_role">Role</label>
+                        <select id="new_role" name="role">
+                            <option value="viewer">Viewer</option>
+                            <option value="member">Member</option>
+                            <option value="encoder">Encoder</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="new_status">Status</label>
+                        <select id="new_status" name="status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" type="submit">Create User</button>
+                </div>
+            </form>
+        </section>
 
-                    {% else %}
+        <section class="card records-card">
+            <div class="card-heading table-card-header">
+                <div>
+                    <h2>Accounts</h2>
+                    <p>Review user details and manage account access.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in users %}
+                        <tr>
+                            <td>{{ account.id }}</td>
+                            <td>{{ account.full_name }}</td>
+                            <td>{{ account.email }}</td>
+                            <td>{{ account.role }}</td>
+                            <td>
+                                {% if account.status == "active" %}
+                                <span class="status-badge">Active</span>
+                                {% else %}
+                                <span class="status-badge inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ account.created_at }}</td>
+                            <td>
+                                {% if account.id != user.id %}
+                                <div class="user-actions">
+                                    <details>
+                                        <summary><span class="btn btn-small btn-secondary">Edit Details</span></summary>
+                                        <div class="edit-form">
+                                            <h3>Edit {{ account.full_name }}</h3>
+                                            <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}">
+                                                <div class="edit-grid">
+                                                    <div class="form-field">
+                                                        <label for="edit_name_{{ account.id }}">Full Name</label>
+                                                        <input type="text" id="edit_name_{{ account.id }}" name="full_name" value="{{ account.full_name }}" required>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label for="edit_email_{{ account.id }}">Email</label>
+                                                        <input type="email" id="edit_email_{{ account.id }}" name="email" value="{{ account.email }}" required>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label for="edit_role_{{ account.id }}">Role</label>
+                                                        <select id="edit_role_{{ account.id }}" name="role">
+                                                            <option value="viewer" {% if account.role == "viewer" %}selected{% endif %}>Viewer</option>
+                                                            <option value="member" {% if account.role == "member" %}selected{% endif %}>Member</option>
+                                                            <option value="encoder" {% if account.role == "encoder" %}selected{% endif %}>Encoder</option>
+                                                            <option value="admin" {% if account.role == "admin" %}selected{% endif %}>Admin</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-field">
+                                                        <label for="edit_status_{{ account.id }}">Status</label>
+                                                        <select id="edit_status_{{ account.id }}" name="status">
+                                                            <option value="active" {% if account.status == "active" %}selected{% endif %}>Active</option>
+                                                            <option value="inactive" {% if account.status == "inactive" %}selected{% endif %}>Inactive</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-actions">
+                                                    <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </details>
 
-                        Current Admin
+                                    <form method="POST" action="{{ url_for('toggle_user_status', user_id=account.id) }}">
+                                        <button class="btn btn-small {% if account.status == 'active' %}btn-secondary{% else %}btn-success{% endif %}" type="submit">
+                                            {% if account.status == "active" %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
 
-                    {% endif %}
-
-                </td>
-
-            </tr>
-
-        {% else %}
-
-            <tr>
-
-                <td
-                    colspan="7"
-                    style="text-align:center;"
-                >
-                    No users found.
-                </td>
-
-            </tr>
-
-        {% endfor %}
-
-        </tbody>
-
-    </table>
-
-</div>
-
+                                    <form method="POST" action="{{ url_for('reset_password', user_id=account.id) }}">
+                                        <input class="small-input" type="password" name="new_password" placeholder="New password" minlength="8" required>
+                                        <button class="btn btn-small btn-secondary" type="submit">Reset Password</button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                <span class="status-badge">Current Admin</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7">No users found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 </body>
-
 </html>

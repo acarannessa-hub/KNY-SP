@@ -1,0 +1,836 @@
+{% extends "public_base.html" %}
+
+{% block title %}Roster | KNY-SP{% endblock %}
+
+{% block body_class %}page-roster{% endblock %}
+
+{% block page_styles %}
+<style>
+* {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #F7F8FA;
+            color: #333;
+        }
+
+
+        /* =========================
+           NAVIGATION
+        ========================= */
+
+        .navbar {
+            background: #7562B5;
+
+            padding: 18px 50px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            position: sticky;
+            top: 0;
+
+            z-index: 100;
+        }
+
+        .logo {
+            color: white;
+
+            font-size: 22px;
+            font-weight: bold;
+
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+        }
+
+        .nav-links a {
+            color: white;
+
+            text-decoration: none;
+
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* =========================
+           PAGE HEADER
+        ========================= */
+
+        .page-header {
+            background: #7562B5;
+
+            color: white;
+
+            padding: 80px 20px;
+
+            text-align: center;
+        }
+
+        .page-header h1 {
+            margin: 0 0 15px;
+
+            font-size: 40px;
+        }
+
+        .page-header p {
+            max-width: 700px;
+
+            margin: auto;
+
+            line-height: 1.7;
+
+            opacity: 0.9;
+        }
+
+
+        /* =========================
+           MAIN CONTENT
+        ========================= */
+
+        .container {
+            max-width: 1100px;
+
+            margin: 60px auto;
+
+            padding: 0 25px;
+        }
+
+
+        /* =========================
+           INTRODUCTION
+        ========================= */
+
+        .intro {
+            text-align: center;
+
+            margin-bottom: 45px;
+        }
+
+        .intro h2 {
+            color: #7562B5;
+
+            margin-bottom: 12px;
+        }
+
+        .intro p {
+            max-width: 750px;
+
+            margin: auto;
+
+            color: #666;
+
+            line-height: 1.7;
+        }
+
+
+        /* =========================
+           SECTION
+        ========================= */
+
+        .roster-section {
+            margin-bottom: 50px;
+        }
+
+        .roster-section h2 {
+            color: #7562B5;
+
+            margin-bottom: 20px;
+        }
+
+
+        /* =========================
+           MEMBER GRID
+        ========================= */
+
+        .member-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 25px;
+        }
+
+
+        /* =========================
+           MEMBER CARD
+        ========================= */
+
+        .member-card {
+            background: white;
+
+            padding: 25px;
+
+            border-radius: 12px;
+
+            text-align: center;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        /* =========================
+           PHOTO PLACEHOLDER
+        ========================= */
+
+        .member-photo {
+            width: 110px;
+            height: 110px;
+
+            margin: 0 auto 20px;
+
+            border-radius: 50%;
+
+            background: #e5e5e5;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            color: #777;
+
+            font-size: 13px;
+        }
+
+
+        .member-card h3 {
+            margin: 0 0 8px;
+
+            color: #7562B5;
+
+            font-size: 20px;
+        }
+
+
+        .position {
+            color: #555;
+
+            font-weight: bold;
+
+            margin-bottom: 12px;
+        }
+
+
+        .member-description {
+            color: #777;
+
+            line-height: 1.6;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           GENERAL MEMBERS
+        ========================= */
+
+        .member-list {
+            background: white;
+
+            padding: 25px;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .member-row {
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            padding: 15px 0;
+
+            border-bottom: 1px solid #eee;
+        }
+
+        .member-row:last-child {
+            border-bottom: none;
+        }
+
+
+        .member-name {
+            font-weight: bold;
+
+            color: #444;
+        }
+
+
+        .member-role {
+            color: #777;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           COMMITTEE
+        ========================= */
+
+        .committee-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 20px;
+        }
+
+
+        .committee-card {
+            background: white;
+
+            padding: 25px;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .committee-card h3 {
+            color: #7562B5;
+
+            margin-top: 0;
+        }
+
+
+        .committee-card p {
+            color: #666;
+
+            line-height: 1.6;
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        footer {
+            margin-top: 70px;
+
+            background: #7562B5;
+
+            color: white;
+
+            text-align: center;
+
+            padding: 30px 20px;
+        }
+
+        footer p {
+            margin: 5px;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 900px) {
+
+            .member-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+        }
+
+
+        @media (max-width: 800px) {
+
+            .navbar {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .page-header h1 {
+                font-size: 32px;
+            }
+
+            .committee-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+
+        @media (max-width: 600px) {
+
+            .member-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .member-row {
+                display: block;
+            }
+
+            .member-role {
+                margin-top: 5px;
+            }
+
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<header class="page-header">
+    <h1>Organizational Roster</h1>
+    <p>
+        Meet the officers, members, and committees contributing to the organization's
+        programs and activities.
+    </p>
+</header>
+
+<!-- =========================
+     MAIN CONTENT
+========================= -->
+
+<main class="container">
+
+
+    <!-- INTRO -->
+
+    <section class="intro">
+
+        <h2>
+            Our People
+        </h2>
+
+        <p>
+
+            [PLACEHOLDER: Insert a short introduction
+            about the organization's members,
+            officers, and organizational structure.]
+
+        </p>
+
+    </section>
+
+
+
+    <!-- =========================
+         EXECUTIVE OFFICERS
+    ========================= -->
+
+    <section class="roster-section">
+
+        <h2>
+            Executive Officers
+        </h2>
+
+
+        <div class="member-grid">
+
+
+            <!-- OFFICER 1 -->
+
+            <article class="member-card">
+
+                <div class="member-photo">
+                    PHOTO
+                </div>
+
+                <h3>
+                    [NAME]
+                </h3>
+
+                <div class="position">
+                    [POSITION]
+                </div>
+
+                <p class="member-description">
+
+                    [PLACEHOLDER: Short description
+                    or responsibilities.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- OFFICER 2 -->
+
+            <article class="member-card">
+
+                <div class="member-photo">
+                    PHOTO
+                </div>
+
+                <h3>
+                    [NAME]
+                </h3>
+
+                <div class="position">
+                    [POSITION]
+                </div>
+
+                <p class="member-description">
+
+                    [PLACEHOLDER: Short description
+                    or responsibilities.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- OFFICER 3 -->
+
+            <article class="member-card">
+
+                <div class="member-photo">
+                    PHOTO
+                </div>
+
+                <h3>
+                    [NAME]
+                </h3>
+
+                <div class="position">
+                    [POSITION]
+                </div>
+
+                <p class="member-description">
+
+                    [PLACEHOLDER: Short description
+                    or responsibilities.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- OFFICER 4 -->
+
+            <article class="member-card">
+
+                <div class="member-photo">
+                    PHOTO
+                </div>
+
+                <h3>
+                    [NAME]
+                </h3>
+
+                <div class="position">
+                    [POSITION]
+                </div>
+
+                <p class="member-description">
+
+                    [PLACEHOLDER: Short description
+                    or responsibilities.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- OFFICER 5 -->
+
+            <article class="member-card">
+
+                <div class="member-photo">
+                    PHOTO
+                </div>
+
+                <h3>
+                    [NAME]
+                </h3>
+
+                <div class="position">
+                    [POSITION]
+                </div>
+
+                <p class="member-description">
+
+                    [PLACEHOLDER: Short description
+                    or responsibilities.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- OFFICER 6 -->
+
+            <article class="member-card">
+
+                <div class="member-photo">
+                    PHOTO
+                </div>
+
+                <h3>
+                    [NAME]
+                </h3>
+
+                <div class="position">
+                    [POSITION]
+                </div>
+
+                <p class="member-description">
+
+                    [PLACEHOLDER: Short description
+                    or responsibilities.]
+
+                </p>
+
+            </article>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         GENERAL MEMBERS
+    ========================= -->
+
+    <section class="roster-section">
+
+        <h2>
+            Members
+        </h2>
+
+
+        <div class="member-list">
+
+
+            <div class="member-row">
+
+                <span class="member-name">
+                    [MEMBER NAME]
+                </span>
+
+                <span class="member-role">
+                    [ROLE / COMMITTEE]
+                </span>
+
+            </div>
+
+
+            <div class="member-row">
+
+                <span class="member-name">
+                    [MEMBER NAME]
+                </span>
+
+                <span class="member-role">
+                    [ROLE / COMMITTEE]
+                </span>
+
+            </div>
+
+
+            <div class="member-row">
+
+                <span class="member-name">
+                    [MEMBER NAME]
+                </span>
+
+                <span class="member-role">
+                    [ROLE / COMMITTEE]
+                </span>
+
+            </div>
+
+
+            <div class="member-row">
+
+                <span class="member-name">
+                    [MEMBER NAME]
+                </span>
+
+                <span class="member-role">
+                    [ROLE / COMMITTEE]
+                </span>
+
+            </div>
+
+
+            <div class="member-row">
+
+                <span class="member-name">
+                    [MEMBER NAME]
+                </span>
+
+                <span class="member-role">
+                    [ROLE / COMMITTEE]
+                </span>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         COMMITTEES
+    ========================= -->
+
+    <section class="roster-section">
+
+        <h2>
+            Committees
+        </h2>
+
+
+        <div class="committee-grid">
+
+
+            <article class="committee-card">
+
+                <h3>
+                    [COMMITTEE NAME]
+                </h3>
+
+                <p>
+
+                    [PLACEHOLDER: Description of the
+                    committee and its responsibilities.]
+
+                </p>
+
+                <p>
+
+                    <strong>
+                        Chairperson:
+                    </strong>
+
+                    [NAME]
+
+                </p>
+
+            </article>
+
+
+
+            <article class="committee-card">
+
+                <h3>
+                    [COMMITTEE NAME]
+                </h3>
+
+                <p>
+
+                    [PLACEHOLDER: Description of the
+                    committee and its responsibilities.]
+
+                </p>
+
+                <p>
+
+                    <strong>
+                        Chairperson:
+                    </strong>
+
+                    [NAME]
+
+                </p>
+
+            </article>
+
+
+
+            <article class="committee-card">
+
+                <h3>
+                    [COMMITTEE NAME]
+                </h3>
+
+                <p>
+
+                    [PLACEHOLDER: Description of the
+                    committee and its responsibilities.]
+
+                </p>
+
+                <p>
+
+                    <strong>
+                        Chairperson:
+                    </strong>
+
+                    [NAME]
+
+                </p>
+
+            </article>
+
+
+
+            <article class="committee-card">
+
+                <h3>
+                    [COMMITTEE NAME]
+                </h3>
+
+                <p>
+
+                    [PLACEHOLDER: Description of the
+                    committee and its responsibilities.]
+
+                </p>
+
+                <p>
+
+                    <strong>
+                        Chairperson:
+                    </strong>
+
+                    [NAME]
+
+                </p>
+
+            </article>
+
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =========================
+     FOOTER
+========================= -->
+
+{% endblock %}

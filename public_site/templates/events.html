@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Announcements & Events | KNY-SP</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #F7F8FA;
+
+            color: #333;
+        }
+
+
+        /* =========================
+           NAVIGATION
+        ========================= */
+
+        .navbar {
+            background: #7562B5;
+
+            padding: 18px 50px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 100;
+        }
+
+
+        .logo {
+            color: white;
+
+            font-size: 22px;
+
+            font-weight: bold;
+
+            text-decoration: none;
+        }
+
+
+        .nav-links {
+            display: flex;
+
+            gap: 25px;
+        }
+
+
+        .nav-links a {
+            color: white;
+
+            text-decoration: none;
+
+            font-size: 14px;
+        }
+
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* =========================
+           PAGE HEADER
+        ========================= */
+
+        .page-header {
+            background: #7562B5;
+
+            color: white;
+
+            padding: 80px 20px;
+
+            text-align: center;
+        }
+
+
+        .page-header h1 {
+            margin: 0 0 15px;
+
+            font-size: 40px;
+        }
+
+
+        .page-header p {
+            max-width: 750px;
+
+            margin: auto;
+
+            line-height: 1.7;
+
+            opacity: 0.9;
+        }
+
+
+        /* =========================
+           MAIN CONTAINER
+        ========================= */
+
+        .container {
+            max-width: 1100px;
+
+            margin: 60px auto;
+
+            padding: 0 25px;
+        }
+
+
+        /* =========================
+           SECTION
+        ========================= */
+
+        .section {
+            margin-bottom: 60px;
+        }
+
+
+        .section-title {
+            color: #7562B5;
+
+            margin-bottom: 25px;
+
+            font-size: 28px;
+        }
+
+
+        /* =========================
+           FEATURED ANNOUNCEMENT
+        ========================= */
+
+        .featured-announcement {
+            background: white;
+
+            border-radius: 14px;
+
+            overflow: hidden;
+
+            box-shadow:
+                0 5px 18px rgba(0,0,0,0.08);
+
+            display: grid;
+
+            grid-template-columns: 1fr 1fr;
+
+            margin-bottom: 50px;
+        }
+
+
+        .featured-image {
+            min-height: 330px;
+
+            background: #ddd;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #777;
+
+            text-align: center;
+
+            padding: 30px;
+        }
+
+
+        .featured-content {
+            padding: 40px;
+        }
+
+
+        .featured-label {
+            display: inline-block;
+
+            background: #7562B5;
+
+            color: white;
+
+            padding: 7px 13px;
+
+            border-radius: 20px;
+
+            font-size: 12px;
+
+            margin-bottom: 15px;
+        }
+
+
+        .featured-content h2 {
+            color: #7562B5;
+
+            margin-top: 0;
+
+            margin-bottom: 15px;
+
+            font-size: 30px;
+        }
+
+
+        .featured-date {
+            color: #777;
+
+            font-size: 14px;
+
+            margin-bottom: 20px;
+        }
+
+
+        .featured-content p {
+            color: #666;
+
+            line-height: 1.7;
+        }
+
+
+        /* =========================
+           EVENT GRID
+        ========================= */
+
+        .event-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 25px;
+        }
+
+
+        /* =========================
+           EVENT CARD
+        ========================= */
+
+        .event-card {
+            background: white;
+
+            border-radius: 12px;
+
+            overflow: hidden;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.08);
+        }
+
+
+        .event-image {
+            height: 190px;
+
+            background: #ddd;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #777;
+
+            text-align: center;
+
+            padding: 20px;
+        }
+
+
+        .event-content {
+            padding: 25px;
+        }
+
+
+        .event-date {
+            color: #7562B5;
+
+            font-size: 13px;
+
+            font-weight: bold;
+
+            margin-bottom: 10px;
+        }
+
+
+        .event-content h3 {
+            margin: 0 0 12px;
+
+            color: #7562B5;
+
+            font-size: 20px;
+        }
+
+
+        .event-content p {
+            color: #666;
+
+            line-height: 1.6;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           ANNOUNCEMENT LIST
+        ========================= */
+
+        .announcement-list {
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 15px;
+        }
+
+
+        .announcement-item {
+            background: white;
+
+            padding: 25px 30px;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 3px 12px rgba(0,0,0,0.06);
+
+            border-left: 4px solid #7562B5;
+        }
+
+
+        .announcement-item h3 {
+            margin: 0 0 8px;
+
+            color: #7562B5;
+        }
+
+
+        .announcement-item .announcement-date {
+            color: #888;
+
+            font-size: 13px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .announcement-item p {
+            color: #666;
+
+            line-height: 1.6;
+
+            margin: 0;
+        }
+
+
+        /* =========================
+           EMPTY STATE
+        ========================= */
+
+        .empty-state {
+            background: white;
+
+            padding: 50px 25px;
+
+            border-radius: 12px;
+
+            text-align: center;
+
+            color: #777;
+
+            box-shadow:
+                0 4px 15px rgba(0,0,0,0.06);
+        }
+
+
+        .empty-state h3 {
+            color: #7562B5;
+
+            margin-top: 0;
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        footer {
+            margin-top: 70px;
+
+            background: #7562B5;
+
+            color: white;
+
+            text-align: center;
+
+            padding: 30px 20px;
+        }
+
+
+        footer p {
+            margin: 5px;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 900px) {
+
+            .event-grid {
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
+
+            .featured-announcement {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+
+        @media (max-width: 800px) {
+
+            .navbar {
+                padding: 15px 20px;
+            }
+
+
+            .nav-links {
+                display: none;
+            }
+
+
+            .page-header h1 {
+                font-size: 32px;
+            }
+
+        }
+
+
+        @media (max-width: 600px) {
+
+            .event-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+            .featured-content {
+                padding: 30px 25px;
+            }
+
+        }
+
+    </style>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('public_static', filename='css/public.css') }}"
+    >
+
+</head>
+
+
+<body class="page-events">
+
+
+<!-- =========================
+     NAVIGATION
+========================= -->
+
+{% include "site_header.html" %}
+
+
+
+
+
+
+<!-- =========================
+     PAGE HEADER
+========================= -->
+
+<header class="page-header">
+
+    <h1>
+        Announcements & Events
+    </h1>
+
+    <p>
+
+        Stay updated with the organization's
+        latest announcements, activities,
+        and upcoming events.
+
+    </p>
+
+</header>
+
+
+
+<!-- =========================
+     MAIN CONTENT
+========================= -->
+
+<main class="container">
+
+
+    <!-- =========================
+         FEATURED ANNOUNCEMENT
+    ========================= -->
+
+    <section class="section">
+
+        <h2 class="section-title">
+            Featured Announcement
+        </h2>
+
+
+        <div class="featured-announcement">
+
+
+            <div class="featured-image">
+
+                [PLACEHOLDER]
+
+                <br>
+
+                Announcement / Event Image
+
+            </div>
+
+
+            <div class="featured-content">
+
+                <span class="featured-label">
+                    FEATURED
+                </span>
+
+
+                <h2>
+                    [SPECIAL ANNOUNCEMENT / EVENT TITLE]
+                </h2>
+
+
+                <div class="featured-date">
+
+                    [DATE]
+
+                    |
+
+                    [TIME]
+
+                    |
+
+                    [LOCATION]
+
+                </div>
+
+
+                <p>
+
+                    [PLACEHOLDER: Write a short
+                    description of the featured
+                    announcement or event.]
+
+                </p>
+
+
+                <p>
+
+                    [PLACEHOLDER: Add additional
+                    information, instructions,
+                    registration details, or reminders.]
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         UPCOMING EVENTS
+    ========================= -->
+
+    <section class="section">
+
+        <h2 class="section-title">
+            Upcoming Events
+        </h2>
+
+
+        <div class="event-grid">
+
+
+            <!-- EVENT 1 -->
+
+            <article class="event-card">
+
+                <div class="event-image">
+
+                    [EVENT IMAGE]
+
+                </div>
+
+
+                <div class="event-content">
+
+                    <div class="event-date">
+
+                        [DATE]
+
+                        |
+
+                        [TIME]
+
+                    </div>
+
+
+                    <h3>
+                        [EVENT TITLE]
+                    </h3>
+
+
+                    <p>
+
+                        [PLACEHOLDER: Short event
+                        description.]
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>
+                            Location:
+                        </strong>
+
+                        [LOCATION]
+
+                    </p>
+
+                </div>
+
+            </article>
+
+
+
+            <!-- EVENT 2 -->
+
+            <article class="event-card">
+
+                <div class="event-image">
+
+                    [EVENT IMAGE]
+
+                </div>
+
+
+                <div class="event-content">
+
+                    <div class="event-date">
+
+                        [DATE]
+
+                        |
+
+                        [TIME]
+
+                    </div>
+
+
+                    <h3>
+                        [EVENT TITLE]
+                    </h3>
+
+
+                    <p>
+
+                        [PLACEHOLDER: Short event
+                        description.]
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>
+                            Location:
+                        </strong>
+
+                        [LOCATION]
+
+                    </p>
+
+                </div>
+
+            </article>
+
+
+
+            <!-- EVENT 3 -->
+
+            <article class="event-card">
+
+                <div class="event-image">
+
+                    [EVENT IMAGE]
+
+                </div>
+
+
+                <div class="event-content">
+
+                    <div class="event-date">
+
+                        [DATE]
+
+                        |
+
+                        [TIME]
+
+                    </div>
+
+
+                    <h3>
+                        [EVENT TITLE]
+                    </h3>
+
+
+                    <p>
+
+                        [PLACEHOLDER: Short event
+                        description.]
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>
+                            Location:
+                        </strong>
+
+                        [LOCATION]
+
+                    </p>
+
+                </div>
+
+            </article>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         SPECIAL ANNOUNCEMENTS
+    ========================= -->
+
+    <section class="section">
+
+        <h2 class="section-title">
+            Special Announcements
+        </h2>
+
+
+        <div class="announcement-list">
+
+
+            <!-- ANNOUNCEMENT 1 -->
+
+            <article class="announcement-item">
+
+                <h3>
+                    [ANNOUNCEMENT TITLE]
+                </h3>
+
+
+                <div class="announcement-date">
+
+                    [DATE POSTED]
+
+                </div>
+
+
+                <p>
+
+                    [PLACEHOLDER: Announcement
+                    content.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- ANNOUNCEMENT 2 -->
+
+            <article class="announcement-item">
+
+                <h3>
+                    [ANNOUNCEMENT TITLE]
+                </h3>
+
+
+                <div class="announcement-date">
+
+                    [DATE POSTED]
+
+                </div>
+
+
+                <p>
+
+                    [PLACEHOLDER: Announcement
+                    content.]
+
+                </p>
+
+            </article>
+
+
+
+            <!-- ANNOUNCEMENT 3 -->
+
+            <article class="announcement-item">
+
+                <h3>
+                    [ANNOUNCEMENT TITLE]
+                </h3>
+
+
+                <div class="announcement-date">
+
+                    [DATE POSTED]
+
+                </div>
+
+
+                <p>
+
+                    [PLACEHOLDER: Announcement
+                    content.]
+
+                </p>
+
+            </article>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         WHEN THERE ARE NO EVENTS
+    ========================= -->
+
+    <!--
+
+    Use this section instead of the event cards
+    when there are currently no upcoming events.
+
+    -->
+
+    <section class="section">
+
+        <div class="empty-state">
+
+            <h3>
+                No Upcoming Events
+            </h3>
+
+            <p>
+
+                [PLACEHOLDER: Message to display
+                when there are currently no
+                scheduled events.]
+
+            </p>
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =========================
+     FOOTER
+========================= -->
+
+<footer>
+
+    <p>
+        [ORGANIZATION NAME]
+    </p>
+
+    <p>
+        [PLACEHOLDER: Footer information]
+    </p>
+
+</footer>
+
+
+</body>
+
+</html>

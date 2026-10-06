@@ -3,153 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Login - KNY-SP</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .login-box {
-            width: 380px;
-            background: white;
-            padding: 35px;
-            border-radius: 10px;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
-        }
-
-        h1 {
-            color: #800000;
-            margin-bottom: 5px;
-        }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 25px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 7px;
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 11px;
-            margin-bottom: 18px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #800000;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 15px;
-        }
-
-        button:hover {
-            background: #600000;
-        }
-
-        .message {
-            padding: 10px;
-            margin-bottom: 15px;
-            background: #f8d7da;
-            color: #842029;
-            border-radius: 5px;
-        }
-
-        .forgot-password {
-            display: block;
-            text-align: center;
-            margin-top: 15px;
-            color: #800000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .forgot-password:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
-
 <body>
-
-<div class="login-box">
-
-    <h1>KNY-SP</h1>
-
-    <p class="subtitle">
-        Transparency and Financial Monitoring System
-    </p>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-
-        {% for category, message in messages %}
-
-            <div class="message">
-                {{ message }}
+    <main class="auth-page">
+        <section class="auth-box">
+            <div class="auth-brand">
+                <span class="auth-brand-mark">KNY</span>
+                <span>Kaya Natin! Youth</span>
             </div>
+            <h1>Welcome back</h1>
+            <p class="subtitle">Sign in to the KNY-SP Transparency and Financial Monitoring System.</p>
 
-        {% endfor %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
 
-    {% endwith %}
+            <form method="POST">
+                <div class="form-field">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" autocomplete="username" required>
+                </div>
+                <div class="form-field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+                <button class="btn btn-primary" type="submit">Login</button>
+            </form>
 
-    <form method="POST">
-
-        <label for="email">
-            Email
-        </label>
-
-        <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="Enter your email"
-            required
-        >
-
-        <label for="password">
-            Password
-        </label>
-
-        <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Enter your password"
-            required
-        >
-
-        <button type="submit">
-            Login
-        </button>
-
-    </form>
-
-    <a
-        href="{{ url_for('forgot_password') }}"
-        class="forgot-password"
-    >
-        Forgot Password?
-    </a>
-
-</div>
-
+            <a href="{{ url_for('forgot_password') }}" class="forgot-password">Forgot Password?</a>
+        </section>
+    </main>
 </body>
 </html>
