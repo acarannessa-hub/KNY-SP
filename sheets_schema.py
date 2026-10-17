@@ -2,8 +2,10 @@
 Shared definition of the Google Sheets layout for KNY-SP financial records.
 
 Used by:
-  * migrate_financial_to_csv.py (one-time RDS -> sheet-ready CSV migration)
-  * later, the Flask app (manual entry, CSV import, duplicate detection)
+  * google_sheets.py (reading/writing the private Google Sheet)
+  * the Flask app (manual entry, CSV import, duplicate detection)
+  * migrate_financial_to_csv.py (optional one-time migration; not needed for
+    a fresh start)
 
 Keeping this in one module guarantees that migrated rows and newly entered
 rows produce the SAME import_key for the same underlying payment, so
@@ -15,7 +17,7 @@ No Flask, no database, and no Google imports here on purpose.
 import hashlib
 import re
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 # --------------------------------------------------
@@ -180,3 +182,51 @@ def format_timestamp(value):
     if isinstance(value, datetime):
         return value.isoformat(sep=" ", timespec="seconds")
     return str(value).strip()[:19]
+
+
+# --------------------------------------------------
+# Building a sheet row (used when the app saves a new record)
+# --------------------------------------------------
+def utc_now_text():
+    """Current time in UTC as 'YYYY-MM-DD HH:MM:SS' (what the sheet stores)."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def is_deleted(record):
+    """A row counts as deleted ONLY when status says so. A row someone typed
+    by hand with no status is kept, so money is never silently hidden."""
+    return str(record.get("status", "")).strip().lower() == "deleted"
+
+
+def build_row(tab, record, created_by="", created_at=None, legacy_id=""):
+    """
+    Turn form/CSV values into one complete sheet row (a dict keyed by header).
+
+    * Amounts become '1500.00', dates become 'YYYY-MM-DD', text is trimmed.
+    * record_id, import_key, status and the audit columns are filled in.
+    * This does NOT validate (that happens in the route, before saving);
+      unusable amounts/dates simply become '' so they are easy to spot.
+    """
+    spec = TABS[tab]
+    stamp = created_at or utc_now_text()
+    row = {"record_id": new_record_id()}
+
+    for field in spec["fields"]:
+        value = record.get(field)
+        if field == "amount":
+            row[field] = normalize_amount(value)
+        elif field.endswith("_date"):
+            row[field] = normalize_date(value)
+        elif field == "quarter":
+            row[field] = "" if value is None else str(value).strip().upper()
+        else:
+            row[field] = "" if value is None else str(value).strip()
+
+    row["import_key"] = make_import_key(tab, row)
+    row["status"] = "active"
+    row["created_at"] = stamp
+    row["created_by"] = str(created_by or "")
+    row["updated_at"] = stamp
+    row["updated_by"] = str(created_by or "")
+    row["legacy_id"] = str(legacy_id or "")
+    return row
