@@ -1,0 +1,2 @@
+record_id,fundraising_date,amount,payment_method,reference_no,notes,import_key,status,created_at,created_by,updated_at,updated_by,legacy_id
+0188d167-6156-4784-a319-0c44167b6610,2026-10-07,7.00,Cash,,,67da2912daba4735ec2b86740282e3a9,active,2026-10-06 17:48:21,legacy-migration,2026-10-06 17:48:21,legacy-migration,2

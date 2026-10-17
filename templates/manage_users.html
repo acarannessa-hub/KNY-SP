@@ -10,13 +10,12 @@
     {% include "private_header.html" %}
     <main class="private-container">
         <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
-
         <div class="page-heading-row">
             <header class="page-heading">
                 <h1>User Management</h1>
-                <p>Manage KNY-SP user accounts, roles, and access status.</p>
+                <p>Manage portal accounts and assign system permissions independently of organization roles.</p>
             </header>
-            <a class="btn btn-primary" href="#add-user-form">+ Add User</a>
+            <a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Manage Members</a>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -27,12 +26,17 @@
 
         <section class="card add-user" id="add-user-form">
             <h2>Add New User</h2>
-            <p>Create an account with the appropriate access role.</p>
+            <p>Select an existing member; their name and organization role remain in the member directory.</p>
             <form method="POST" action="{{ url_for('add_user') }}">
                 <div class="form-grid record-form-grid">
-                    <div class="form-field">
-                        <label for="new_full_name">Full Name</label>
-                        <input type="text" id="new_full_name" name="full_name" placeholder="Full name" required>
+                    <div class="form-field form-field-full">
+                        <label for="new_membership_id">Member</label>
+                        <select id="new_membership_id" name="membership_id" required>
+                            <option value="">Select an active member</option>
+                            {% for member in members if member.status == "active" %}
+                            <option value="{{ member.membership_id }}">{{ member.membership_id }} — {{ member.full_name }} ({{ member.org_role }})</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="form-field">
                         <label for="new_email">Email</label>
@@ -40,21 +44,21 @@
                     </div>
                     <div class="form-field">
                         <label for="new_password">Temporary Password</label>
-                        <input type="password" id="new_password" name="password" placeholder="Temporary password" required>
+                        <input type="password" id="new_password" name="password" minlength="8" required>
                     </div>
                     <div class="form-field">
-                        <label for="new_role">Role</label>
-                        <select id="new_role" name="role">
+                        <label for="new_role">System Role</label>
+                        <select id="new_role" name="role" required>
+                            <option value="" selected disabled>Select a system role</option>
                             <option value="viewer">Viewer</option>
-                            <option value="member">Member</option>
                             <option value="encoder">Encoder</option>
                             <option value="admin">Admin</option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label for="new_status">Status</label>
-                        <select id="new_status" name="status">
-                            <option value="active">Active</option>
+                        <select id="new_status" name="status" required>
+                            <option value="active" selected>Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
@@ -65,27 +69,70 @@
             </form>
         </section>
 
+        <section class="card user-filters-card" aria-labelledby="user-filters-heading">
+            <h2 id="user-filters-heading">Search and Filter Users</h2>
+            <form method="GET" action="{{ url_for('manage_users') }}">
+                <div class="user-filter-grid">
+                    <div class="form-field">
+                        <label for="search">Search</label>
+                        <input type="search" id="search" name="search" value="{{ search }}" placeholder="Search users...">
+                    </div>
+                    <div class="form-field">
+                        <label for="org_role">Organization Role</label>
+                        <select id="org_role" name="org_role">
+                            <option value="">All Roles</option>
+                            {% for role in org_roles %}
+                            <option value="{{ role }}" {% if selected_org_role == role %}selected{% endif %}>{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="system_role">System Role</label>
+                        <select id="system_role" name="system_role">
+                            <option value="">All System Roles</option>
+                            <option value="admin" {% if selected_system_role == "admin" %}selected{% endif %}>Admin</option>
+                            <option value="encoder" {% if selected_system_role == "encoder" %}selected{% endif %}>Encoder</option>
+                            <option value="viewer" {% if selected_system_role == "viewer" %}selected{% endif %}>Viewer</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="">All Statuses</option>
+                            <option value="active" {% if selected_status == "active" %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if selected_status == "inactive" %}selected{% endif %}>Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="user-filter-actions">
+                    <button class="btn btn-primary" type="submit">Search</button>
+                    <a class="btn btn-secondary" href="{{ url_for('manage_users') }}">Clear</a>
+                </div>
+            </form>
+        </section>
+
         <section class="card records-card">
             <div class="card-heading table-card-header">
                 <div>
-                    <h2>Accounts</h2>
-                    <p>Review user details and manage account access.</p>
+                    <h2>Portal Accounts</h2>
+                    <p>System Role controls portal access; Org Role describes the person's organization position.</p>
                 </div>
             </div>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th>
+                            <th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Email</th><th>System Role</th><th>Status</th><th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for account in users %}
                         <tr>
-                            <td>{{ account.id }}</td>
-                            <td>{{ account.full_name }}</td>
+                            <td>{{ account.member.membership_id }}</td>
+                            <td>{{ account.member.full_name }}</td>
+                            <td>{{ account.member.org_role }}</td>
                             <td>{{ account.email }}</td>
-                            <td>{{ account.role }}</td>
+                            <td>{{ account.role|capitalize }}</td>
                             <td>
                                 {% if account.status == "active" %}
                                 <span class="status-badge">Active</span>
@@ -93,61 +140,57 @@
                                 <span class="status-badge inactive">Inactive</span>
                                 {% endif %}
                             </td>
-                            <td>{{ account.created_at }}</td>
                             <td>
                                 {% if account.id != user.id %}
                                 <div class="user-actions">
                                     <details>
                                         <summary><span class="btn btn-small btn-secondary">Edit Details</span></summary>
-                                        <div class="edit-form">
-                                            <h3>Edit {{ account.full_name }}</h3>
-                                            <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}">
-                                                <div class="edit-grid">
-                                                    <div class="form-field">
-                                                        <label for="edit_name_{{ account.id }}">Full Name</label>
-                                                        <input type="text" id="edit_name_{{ account.id }}" name="full_name" value="{{ account.full_name }}" required>
-                                                    </div>
-                                                    <div class="form-field">
-                                                        <label for="edit_email_{{ account.id }}">Email</label>
-                                                        <input type="email" id="edit_email_{{ account.id }}" name="email" value="{{ account.email }}" required>
-                                                    </div>
-                                                    <div class="form-field">
-                                                        <label for="edit_role_{{ account.id }}">Role</label>
-                                                        <select id="edit_role_{{ account.id }}" name="role">
-                                                            <option value="viewer" {% if account.role == "viewer" %}selected{% endif %}>Viewer</option>
-                                                            <option value="member" {% if account.role == "member" %}selected{% endif %}>Member</option>
-                                                            <option value="encoder" {% if account.role == "encoder" %}selected{% endif %}>Encoder</option>
-                                                            <option value="admin" {% if account.role == "admin" %}selected{% endif %}>Admin</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="form-field">
-                                                        <label for="edit_status_{{ account.id }}">Status</label>
-                                                        <select id="edit_status_{{ account.id }}" name="status">
-                                                            <option value="active" {% if account.status == "active" %}selected{% endif %}>Active</option>
-                                                            <option value="inactive" {% if account.status == "inactive" %}selected{% endif %}>Inactive</option>
-                                                        </select>
-                                                    </div>
+                                        <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}" class="edit-form">
+                                            <div class="edit-grid">
+                                                <div class="form-field">
+                                                    <label for="edit_member_{{ account.id }}">Member</label>
+                                                    <select id="edit_member_{{ account.id }}" name="membership_id" required>
+                                                        {% for member in members %}
+                                                        <option value="{{ member.membership_id }}" {% if account.membership_id == member.membership_id %}selected{% endif %}>
+                                                            {{ member.membership_id }} — {{ member.full_name }} ({{ member.org_role }})
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
                                                 </div>
-                                                <div class="form-actions">
-                                                    <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
+                                                <div class="form-field">
+                                                    <label for="edit_email_{{ account.id }}">Email</label>
+                                                    <input type="email" id="edit_email_{{ account.id }}" name="email" value="{{ account.email }}" required>
                                                 </div>
-                                            </form>
-                                        </div>
+                                                <div class="form-field">
+                                                    <label for="edit_role_{{ account.id }}">System Role</label>
+                                                    <select id="edit_role_{{ account.id }}" name="role" required>
+                                                        <option value="viewer" {% if account.role == "viewer" %}selected{% endif %}>Viewer</option>
+                                                        <option value="encoder" {% if account.role == "encoder" %}selected{% endif %}>Encoder</option>
+                                                        <option value="admin" {% if account.role == "admin" %}selected{% endif %}>Admin</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-field">
+                                                    <label for="edit_status_{{ account.id }}">Status</label>
+                                                    <select id="edit_status_{{ account.id }}" name="status" required>
+                                                        <option value="active" {% if account.status == "active" %}selected{% endif %}>Active</option>
+                                                        <option value="inactive" {% if account.status == "inactive" %}selected{% endif %}>Inactive</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
+                                        </form>
                                     </details>
-
                                     <form method="POST" action="{{ url_for('toggle_user_status', user_id=account.id) }}">
-                                        <button class="btn btn-small {% if account.status == 'active' %}btn-secondary{% else %}btn-success{% endif %}" type="submit">
-                                            {% if account.status == "active" %}Deactivate{% else %}Activate{% endif %}
+                                        <button class="btn btn-small btn-secondary" type="submit">
+                                            {{ "Deactivate" if account.status == "active" else "Activate" }}
                                         </button>
                                     </form>
-
                                     <form method="POST" action="{{ url_for('reset_password', user_id=account.id) }}">
-                                        <input class="small-input" type="password" name="new_password" placeholder="New password" minlength="8" required>
                                         <button class="btn btn-small btn-secondary" type="submit">Reset Password</button>
                                     </form>
                                 </div>
                                 {% else %}
-                                <span class="status-badge">Current Admin</span>
+                                <span>Current account</span>
                                 {% endif %}
                             </td>
                         </tr>

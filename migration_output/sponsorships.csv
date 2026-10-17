@@ -1,0 +1,2 @@
+record_id,sponsorship_date,sponsor_name,amount,payment_method,reference_no,notes,import_key,status,created_at,created_by,updated_at,updated_by,legacy_id
+190cb707-2b25-4dd4-a655-3d8201af2b5e,2026-09-10,aa,1.00,1,1,,d116f8a52f0d5b114d49dd7299881f37,active,2026-10-05 02:50:54,legacy-migration,2026-10-05 02:50:54,legacy-migration,1

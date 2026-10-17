@@ -44,12 +44,22 @@
                 </div>
             </section>
 
+            <section class="card dashboard-card">
+                <h2>Attendance</h2>
+                <p>Record daily member attendance and review current and historical attendance reports.</p>
+                <div class="card-actions">
+                    <a class="btn btn-primary" href="{{ url_for('attendance_management') }}">Attendance Management</a>
+                    <a class="btn btn-secondary" href="{{ url_for('attendance_history') }}">Attendance History</a>
+                </div>
+            </section>
+
             {% if user.role == "admin" %}
             <section class="card dashboard-card">
                 <h2>User Management</h2>
-                <p>Add and manage KNY-SP user accounts and access.</p>
+                <p>Manage member-linked portal accounts and system access.</p>
                 <div class="card-actions">
                     <a class="btn btn-primary" href="{{ url_for('manage_users') }}">Manage Users</a>
+                    <a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Manage Members</a>
                 </div>
             </section>
             {% endif %}

@@ -1,0 +1,1 @@
+record_id,expense_date,category,description,amount,payment_method,reference_no,notes,import_key,status,created_at,created_by,updated_at,updated_by,legacy_id

@@ -17,6 +17,12 @@
             <p>Manage and monitor the organization's financial records.</p>
         </header>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
         <section class="summary-grid" aria-label="Financial summary">
             <article class="summary-card">
                 <h3>Fundraising</h3>
@@ -81,7 +87,56 @@
         <section class="export-section">
             <h2>Financial Records Export</h2>
             <p>Request a CSV or PDF export for a selected financial table and date range.</p>
+            {% if current_user.role == "admin" %}
+            <p><a href="{{ url_for('manage_export_requests') }}">Review non-admin export requests</a></p>
+            {% else %}
+            <p>Requests are sent to an administrator for approval before download.</p>
+            {% endif %}
             <button class="btn btn-secondary" type="button" onclick="openExportModal()">Request Export</button>
+        </section>
+
+        <section class="card records-card export-history-card">
+            <div class="card-heading table-card-header">
+                <div>
+                    <h2>My Export Requests</h2>
+                    <p>Only your export requests are shown here.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Requested</th><th>Table</th><th>Date Range</th><th>Format</th><th>Status</th><th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for export_request in export_requests %}
+                        <tr>
+                            <td>{{ export_request.requested_at.strftime("%Y-%m-%d %H:%M") if export_request.requested_at else "—" }}</td>
+                            <td>{{ "All Financial Records" if export_request.table_name == "all" else export_request.table_name|replace("_", " ")|title }}</td>
+                            <td>{{ export_request.start_date.isoformat() if export_request.start_date else "Beginning" }} – {{ export_request.end_date.isoformat() if export_request.end_date else "Present" }}</td>
+                            <td>{{ export_request.export_format|upper }}</td>
+                            <td>
+                                <span class="status-badge{% if export_request.status != 'approved' %} inactive{% endif %}">
+                                    {{ export_request.status|capitalize }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if export_request.status == "approved" %}
+                                <a class="btn btn-small btn-primary" href="{{ url_for('download_approved_export', request_id=export_request.id) }}">Download</a>
+                                {% elif export_request.status == "pending" %}
+                                <span>Awaiting approval</span>
+                                {% else %}
+                                <span>Not available</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6">You have not submitted any export requests.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
     </main>
 

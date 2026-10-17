@@ -18,8 +18,14 @@
         <section class="card user-form-card">
             <form method="POST">
                 <div class="form-field">
-                    <label for="full_name">Full Name</label>
-                    <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}" required>
+                    <label for="membership_id">Member</label>
+                    <select id="membership_id" name="membership_id" required>
+                        {% for member in members %}
+                        <option value="{{ member.membership_id }}" {% if member.membership_id == user.membership_id %}selected{% endif %}>
+                            {{ member.membership_id }} — {{ member.full_name }} ({{ member.org_role }})
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-field">
                     <label for="email">Email</label>
@@ -27,11 +33,10 @@
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
-                        <label for="role">Role</label>
-                        <select id="role" name="role">
+                        <label for="role">System Role</label>
+                        <select id="role" name="role" required>
                             <option value="admin" {% if user.role == "admin" %}selected{% endif %}>Admin</option>
                             <option value="encoder" {% if user.role == "encoder" %}selected{% endif %}>Encoder</option>
-                            <option value="member" {% if user.role == "member" %}selected{% endif %}>Member</option>
                             <option value="viewer" {% if user.role == "viewer" %}selected{% endif %}>Viewer</option>
                         </select>
                     </div>

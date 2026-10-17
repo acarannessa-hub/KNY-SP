@@ -12,7 +12,7 @@
         <a class="back" href="{{ url_for('manage_users') }}">← Back to User Management</a>
         <header class="page-heading">
             <h1>Add User</h1>
-            <p>Create an account and assign its KNY-SP access level.</p>
+            <p>Link an account to an existing organization member and assign portal access.</p>
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -24,8 +24,13 @@
         <section class="card user-form-card">
             <form method="POST">
                 <div class="form-field">
-                    <label for="full_name">Full Name</label>
-                    <input type="text" id="full_name" name="full_name" required>
+                    <label for="membership_id">Member</label>
+                    <select id="membership_id" name="membership_id" required>
+                        <option value="">Select a member</option>
+                        {% for member in members %}
+                        <option value="{{ member.membership_id }}">{{ member.membership_id }} — {{ member.full_name }} ({{ member.org_role }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-field">
                     <label for="email">Email</label>
@@ -37,12 +42,12 @@
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
-                        <label for="role">Role</label>
-                        <select id="role" name="role">
+                        <label for="role">System Role</label>
+                        <select id="role" name="role" required>
+                            <option value="" selected disabled>Select a system role</option>
                             <option value="admin">Admin</option>
                             <option value="encoder">Encoder</option>
-                            <option value="member">Member</option>
-                            <option value="viewer" selected>Viewer</option>
+                            <option value="viewer">Viewer</option>
                         </select>
                     </div>
                     <div class="form-field">

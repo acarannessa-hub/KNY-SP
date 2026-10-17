@@ -1,0 +1,28 @@
+KNY-SP financial migration report
+========================================
+
+[fundraising]
+  rows in database : 1
+  rows in CSV      : 1  OK
+  total (database) : 7.00
+  total (CSV)      : 7.00  OK
+
+[sponsorships]
+  rows in database : 1
+  rows in CSV      : 1  OK
+  total (database) : 1.00
+  total (CSV)      : 1.00  OK
+
+[membership_fees]
+  rows in database : 0
+  rows in CSV      : 0  OK
+  total (database) : 0.00
+  total (CSV)      : 0.00  OK
+
+[expenses]
+  rows in database : 0
+  rows in CSV      : 0  OK
+  total (database) : 0.00
+  total (CSV)      : 0.00  OK
+
+RESULT: all row counts and totals match.

@@ -859,6 +859,88 @@ td select {
     gap: 15px;
 }
 
+.user-filters-card {
+    margin-bottom: 24px;
+    padding: 22px 26px;
+}
+
+.user-filters-card h2 {
+    margin: 0 0 14px;
+    color: var(--private-purple-dark);
+}
+
+.user-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(150px, 1fr));
+    gap: 14px;
+}
+
+.user-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.attendance-entry-card {
+    margin-bottom: 24px;
+    padding: 24px 26px;
+}
+
+.attendance-entry-card h2 {
+    margin: 0 0 8px;
+    color: var(--private-purple-dark);
+}
+
+.attendance-entry-card > p {
+    margin: 0 0 18px;
+    color: var(--private-gray);
+}
+
+.attendance-date-form,
+.attendance-import-form {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.attendance-date-form .form-field {
+    width: min(100%, 260px);
+}
+
+.attendance-filter-grid,
+.attendance-history-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: end;
+    gap: 14px;
+    margin: 18px 26px;
+}
+
+.attendance-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.attendance-history-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+}
+
+.attendance-edit-form {
+    display: grid;
+    gap: 9px;
+    min-width: 190px;
+    margin: 10px 0;
+}
+
+.attendance-table-wrap {
+    margin-top: 16px;
+}
+
 .user-form-actions {
     display: flex;
     justify-content: flex-end;
@@ -983,6 +1065,15 @@ td select {
         width: 100%;
     }
 
+    .user-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .attendance-filter-grid,
+    .attendance-history-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .table-actions,
     .actions {
         align-items: stretch;
@@ -1013,8 +1104,21 @@ td select {
 
     .record-form-grid,
     .form-grid,
-    .edit-grid {
+    .edit-grid,
+    .user-filter-grid,
+    .attendance-filter-grid,
+    .attendance-history-filter-grid {
         grid-template-columns: 1fr;
+    }
+
+    .user-filter-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .attendance-filter-actions {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .form-field-full {

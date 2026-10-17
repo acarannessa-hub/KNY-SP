@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Requests - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('financial_management') }}">← Back to Financial Management</a>
+        <header class="page-heading">
+            <h1>Financial Export Requests</h1>
+            <p>Review and process export requests submitted by other portal users.</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="card records-card">
+            <div class="card-heading table-card-header">
+                <div>
+                    <h2>All Requests</h2>
+                    <p>Approved requests can be downloaded by their requester or an administrator.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Requesting User</th><th>Email</th><th>Membership ID</th><th>Table</th><th>Date Range</th><th>Format</th><th>Status</th><th>Requested</th><th>Processed</th><th>Admin</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for export_request in export_requests %}
+                        <tr>
+                            <td>{{ export_request.id }}</td>
+                            <td>{{ export_request.requester.member.full_name }}</td>
+                            <td>{{ export_request.requester.email }}</td>
+                            <td>{{ export_request.requester.member.membership_id }}</td>
+                            <td>{{ "All Financial Records" if export_request.table_name == "all" else export_request.table_name|replace("_", " ")|title }}</td>
+                            <td>{{ export_request.start_date.isoformat() if export_request.start_date else "Beginning" }} – {{ export_request.end_date.isoformat() if export_request.end_date else "Present" }}</td>
+                            <td>{{ export_request.export_format|upper }}</td>
+                            <td>
+                                <span class="status-badge{% if export_request.status != 'approved' %} inactive{% endif %}">
+                                    {{ export_request.status|capitalize }}
+                                </span>
+                            </td>
+                            <td>{{ export_request.requested_at.strftime("%Y-%m-%d %H:%M") if export_request.requested_at else "—" }}</td>
+                            <td>
+                                {% if export_request.approved_at %}
+                                {{ export_request.approved_at.strftime("%Y-%m-%d %H:%M") }}
+                                {% elif export_request.rejected_at %}
+                                {{ export_request.rejected_at.strftime("%Y-%m-%d %H:%M") }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td>{{ export_request.processed_by.member.full_name if export_request.processed_by else "—" }}</td>
+                            <td>
+                                {% if export_request.status == "pending" %}
+                                <div class="table-actions">
+                                    <form method="POST" action="{{ url_for('approve_export_request', request_id=export_request.id) }}">
+                                        <button class="btn btn-small btn-primary" type="submit">Approve</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('reject_export_request', request_id=export_request.id) }}">
+                                        <button class="btn btn-small btn-danger" type="submit">Reject</button>
+                                    </form>
+                                </div>
+                                {% elif export_request.status == "approved" %}
+                                <a class="btn btn-small btn-secondary" href="{{ url_for('download_approved_export', request_id=export_request.id) }}">Download</a>
+                                {% else %}
+                                <span>Processed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="12">No export requests have been submitted.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

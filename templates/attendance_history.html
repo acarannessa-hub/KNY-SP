@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance History - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('attendance_management') }}">← Back to Attendance Management</a>
+        <div class="page-heading-row">
+            <header class="page-heading">
+                <h1>Attendance History</h1>
+                <p>Search all attendance records, including records older than the recent three-day view.</p>
+            </header>
+            {% if current_user.role in ["admin", "encoder"] %}
+            <div class="card-actions">
+                <a class="btn btn-secondary" href="{{ url_for('export_attendance_csv', **filters) }}">Export CSV</a>
+                <a class="btn btn-primary" href="{{ url_for('export_attendance_pdf', **filters) }}">Export PDF</a>
+            </div>
+            {% endif %}
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="card user-filters-card">
+            <h2>Search and Filter Attendance</h2>
+            <form method="GET" action="{{ url_for('attendance_history') }}">
+                <div class="attendance-history-filter-grid">
+                    <div class="form-field">
+                        <label for="attendance_date">Specific Date</label>
+                        <input type="date" id="attendance_date" name="attendance_date" value="{{ filters.attendance_date }}">
+                    </div>
+                    <div class="form-field">
+                        <label for="start_date">From</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ filters.start_date }}">
+                    </div>
+                    <div class="form-field">
+                        <label for="end_date">To</label>
+                        <input type="date" id="end_date" name="end_date" value="{{ filters.end_date }}">
+                    </div>
+                    <div class="form-field">
+                        <label for="search">Member name or ID</label>
+                        <input type="search" id="search" name="search" value="{{ filters.search }}" placeholder="Search member">
+                    </div>
+                    <div class="form-field">
+                        <label for="membership_id">Specific Member</label>
+                        <select id="membership_id" name="membership_id">
+                            <option value="">All members</option>
+                            {% for member in members %}
+                            <option value="{{ member.membership_id }}" {% if filters.membership_id == member.membership_id %}selected{% endif %}>
+                                {{ member.membership_id }} — {{ member.full_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="status">Attendance Status</label>
+                        <select id="status" name="status">
+                            <option value="">All statuses</option>
+                            {% for status in attendance_statuses %}
+                            <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="user-filter-actions">
+                    <button class="btn btn-primary" type="submit">Search</button>
+                    <a class="btn btn-secondary" href="{{ url_for('attendance_history') }}">Clear Filters</a>
+                </div>
+            </form>
+        </section>
+
+        <section class="card records-card">
+            <div class="card-heading table-card-header">
+                <div>
+                    <h2>Attendance Records</h2>
+                    <p>{{ records|length }} matching record(s). Member details are read from the organization member directory.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Membership ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Org Role</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Remarks</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ record.attendance_date.isoformat() }}</td>
+                            <td>{{ record.member.membership_id }}</td>
+                            <td>{{ record.member.last_name }}</td>
+                            <td>{{ record.member.first_name }}</td>
+                            <td>{{ record.member.middle_name or '—' }}</td>
+                            <td>{{ record.member.org_role }}</td>
+                            <td>{{ record.attendance_status }}</td>
+                            <td>{{ record.time_in.strftime('%H:%M') if record.time_in else '—' }}</td>
+                            <td>{{ record.time_out.strftime('%H:%M') if record.time_out else '—' }}</td>
+                            <td>{{ record.remarks or '—' }}</td>
+                            <td>
+                                {% if current_user.role in ["admin", "encoder"] %}
+                                <details>
+                                    <summary><span class="btn btn-small btn-secondary">Edit</span></summary>
+                                    <form method="POST" action="{{ url_for('edit_attendance', attendance_id=record.id) }}" class="attendance-edit-form">
+                                        <div class="form-field">
+                                            <label for="status_{{ record.id }}">Status</label>
+                                            <select id="status_{{ record.id }}" name="attendance_status" required>
+                                                {% for status in attendance_statuses %}
+                                                <option value="{{ status }}" {% if record.attendance_status == status %}selected{% endif %}>{{ status }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="time_in_{{ record.id }}">Time In</label>
+                                            <input id="time_in_{{ record.id }}" type="time" name="time_in" value="{{ record.time_in.strftime('%H:%M') if record.time_in else '' }}">
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="time_out_{{ record.id }}">Time Out</label>
+                                            <input id="time_out_{{ record.id }}" type="time" name="time_out" value="{{ record.time_out.strftime('%H:%M') if record.time_out else '' }}">
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="remarks_{{ record.id }}">Remarks</label>
+                                            <input id="remarks_{{ record.id }}" name="remarks" value="{{ record.remarks or '' }}" maxlength="500">
+                                        </div>
+                                        <button class="btn btn-small btn-primary" type="submit">Save</button>
+                                    </form>
+                                </details>
+                                {% endif %}
+                                {% if current_user.role == "admin" %}
+                                <form method="POST" action="{{ url_for('delete_attendance', attendance_id=record.id) }}" onsubmit="return confirm('Delete this attendance record?');">
+                                    <button class="btn btn-small btn-danger" type="submit">Delete</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="11">No attendance records match these filters.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

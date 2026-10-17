@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Management - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <header class="page-heading">
+            <h1>Member Management</h1>
+            <p>Maintain the organization member directory used by fee records and portal accounts.</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="card form-card">
+            <h2>Add Organization Member</h2>
+            <form method="POST" action="{{ url_for('add_member') }}">
+                <div class="form-grid record-form-grid">
+                    <div class="form-field">
+                        <label for="membership_id">Membership ID</label>
+                        <input id="membership_id" name="membership_id" maxlength="64" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="first_name">First Name</label>
+                        <input id="first_name" name="first_name" maxlength="150" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="middle_name">Middle Name</label>
+                        <input id="middle_name" name="middle_name" maxlength="150">
+                    </div>
+                    <div class="form-field">
+                        <label for="last_name">Last Name</label>
+                        <input id="last_name" name="last_name" maxlength="150" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="org_role">Organization Role</label>
+                        <input id="org_role" name="org_role" value="Member" maxlength="100" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" type="submit">Add Member</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card records-card">
+            <div class="card-heading table-card-header">
+                <div>
+                    <h2>Organization Members</h2>
+                    <p>Members with linked accounts or fee history can be deactivated, not deleted.</p>
+                </div>
+            </div>
+            <form method="GET" action="{{ url_for('manage_members') }}" class="form-actions">
+                <label for="member_search">Search members</label>
+                <input id="member_search" type="search" name="q" value="{{ search }}" placeholder="Membership ID, name, or org role">
+                <button class="btn btn-secondary" type="submit">Search</button>
+                {% if search %}<a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Clear</a>{% endif %}
+            </form>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Status</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in members %}
+                        <tr>
+                            <td>{{ member.membership_id }}</td>
+                            <td>{{ member.full_name }}</td>
+                            <td>{{ member.org_role }}</td>
+                            <td>{{ member.status|capitalize }}</td>
+                            <td>
+                                <details>
+                                    <summary><span class="btn btn-small btn-secondary">Edit Member</span></summary>
+                                    <form method="POST" action="{{ url_for('edit_member', member_id=member.id) }}" class="edit-form">
+                                        <div class="edit-grid">
+                                            <div class="form-field">
+                                                <label for="membership_id_{{ member.id }}">Membership ID</label>
+                                                <input id="membership_id_{{ member.id }}" name="membership_id" value="{{ member.membership_id }}" maxlength="64" required>
+                                            </div>
+                                            <div class="form-field">
+                                                <label for="first_name_{{ member.id }}">First Name</label>
+                                                <input id="first_name_{{ member.id }}" name="first_name" value="{{ member.first_name }}" maxlength="150" required>
+                                            </div>
+                                            <div class="form-field">
+                                                <label for="middle_name_{{ member.id }}">Middle Name</label>
+                                                <input id="middle_name_{{ member.id }}" name="middle_name" value="{{ member.middle_name or '' }}" maxlength="150">
+                                            </div>
+                                            <div class="form-field">
+                                                <label for="last_name_{{ member.id }}">Last Name</label>
+                                                <input id="last_name_{{ member.id }}" name="last_name" value="{{ member.last_name }}" maxlength="150" required>
+                                            </div>
+                                            <div class="form-field">
+                                                <label for="org_role_{{ member.id }}">Org Role</label>
+                                                <input id="org_role_{{ member.id }}" name="org_role" value="{{ member.org_role }}" maxlength="100" required>
+                                            </div>
+                                            <div class="form-field">
+                                                <label for="status_{{ member.id }}">Status</label>
+                                                <select id="status_{{ member.id }}" name="status" required>
+                                                    <option value="active" {% if member.status == "active" %}selected{% endif %}>Active</option>
+                                                    <option value="inactive" {% if member.status == "inactive" %}selected{% endif %}>Inactive / Archived</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
+                                    </form>
+                                </details>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5">No organization members found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

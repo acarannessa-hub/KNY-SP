@@ -9,8 +9,12 @@
             {% if current_user.role in ["admin", "encoder"] %}
             <a href="{{ url_for('financial_management') }}">Manage Finances</a>
             {% endif %}
+            <a href="{{ url_for('attendance_management') }}">Attendance</a>
+            <a href="{{ url_for('attendance_history') }}">Attendance History</a>
             {% if current_user.role == "admin" %}
+            <a href="{{ url_for('manage_members') }}">Members</a>
             <a href="{{ url_for('manage_users') }}">Users</a>
+            <a href="{{ url_for('manage_export_requests') }}">Export Requests</a>
             {% endif %}
             <a href="{{ url_for('change_password') }}">Password</a>
             <a href="{{ url_for('logout') }}">Logout</a>

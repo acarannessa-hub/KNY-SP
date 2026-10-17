@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Management - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <div class="page-heading-row">
+            <header class="page-heading">
+                <h1>Attendance Management</h1>
+                <p>Record attendance by date. Member identity and organization role come from the member directory.</p>
+            </header>
+            <a class="btn btn-secondary" href="{{ url_for('attendance_history') }}">View Attendance History</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        {% if current_user.role in ["admin", "encoder"] %}
+        <section class="card attendance-entry-card">
+            <h2>Enter Attendance</h2>
+            <form method="GET" action="{{ url_for('attendance_management') }}" class="attendance-date-form">
+                <div class="form-field">
+                    <label for="attendance_date">Attendance Date</label>
+                    <input type="date" id="attendance_date" name="attendance_date" value="{{ selected_date.isoformat() }}" required>
+                </div>
+                <button class="btn btn-secondary" type="submit">Load Date</button>
+            </form>
+            <form method="POST" action="{{ url_for('save_attendance') }}">
+                <input type="hidden" name="attendance_date" value="{{ selected_date.isoformat() }}">
+                <div class="table-responsive attendance-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Attendance Status</th><th>Time In</th><th>Time Out</th><th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in members %}
+                            {% set record = attendance_by_member.get(member.membership_id) %}
+                            <tr>
+                                <td>{{ member.membership_id }}</td>
+                                <td>{{ member.full_name }}</td>
+                                <td>{{ member.org_role }}</td>
+                                <td>
+                                    <select name="status_{{ member.membership_id }}">
+                                        <option value="">Not recorded</option>
+                                        {% for status in attendance_statuses %}
+                                        <option value="{{ status }}" {% if record and record.attendance_status == status %}selected{% endif %}>{{ status }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td><input type="time" name="time_in_{{ member.membership_id }}" value="{{ record.time_in.strftime('%H:%M') if record and record.time_in else '' }}"></td>
+                                <td><input type="time" name="time_out_{{ member.membership_id }}" value="{{ record.time_out.strftime('%H:%M') if record and record.time_out else '' }}"></td>
+                                <td><input type="text" name="remarks_{{ member.membership_id }}" value="{{ record.remarks if record and record.remarks else '' }}" maxlength="500"></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7">No active members are available for attendance entry.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if members %}
+                <div class="form-actions">
+                    <button class="btn btn-primary" type="submit">Save Attendance</button>
+                </div>
+                {% endif %}
+            </form>
+        </section>
+
+        <section class="card attendance-entry-card">
+            <h2>Import Attendance from CSV</h2>
+            <p>Required columns: Membership_ID, Attendance_Date, Attendance_Status. Time_In, Time_Out, and Remarks are optional.</p>
+            <form method="POST" action="{{ url_for('import_attendance') }}" enctype="multipart/form-data" class="attendance-import-form">
+                <div class="form-field">
+                    <label for="attendance_csv">CSV file</label>
+                    <input type="file" id="attendance_csv" name="file" accept=".csv,text/csv" required>
+                </div>
+                <button class="btn btn-secondary" type="submit">Import CSV</button>
+            </form>
+        </section>
+        {% endif %}
+
+        <section class="card attendance-entry-card">
+            <div class="card-heading">
+                <div>
+                    <h2>Recent Attendance</h2>
+                    <p>Showing records from the last three calendar days. Older records remain available in history.</p>
+                </div>
+                <a class="btn btn-secondary" href="{{ url_for('attendance_history') }}">Full History and Reports</a>
+            </div>
+            <form method="GET" action="{{ url_for('attendance_management') }}" class="attendance-filter-grid">
+                <input type="hidden" name="attendance_date" value="{{ selected_date.isoformat() }}">
+                <div class="form-field">
+                    <label for="recent_search">Member name or ID</label>
+                    <input type="search" id="recent_search" name="search" value="{{ member_search }}" placeholder="Search members">
+                </div>
+                <div class="form-field">
+                    <label for="recent_membership_id">Member</label>
+                    <select id="recent_membership_id" name="membership_id">
+                        <option value="">All members</option>
+                        {% for member in members %}
+                        <option value="{{ member.membership_id }}" {% if selected_membership_id == member.membership_id %}selected{% endif %}>{{ member.membership_id }} — {{ member.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="recent_status">Status</label>
+                    <select id="recent_status" name="status">
+                        <option value="">All statuses</option>
+                        {% for status in attendance_statuses %}
+                        <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="attendance-filter-actions">
+                    <button class="btn btn-primary" type="submit">Filter</button>
+                    <a class="btn btn-secondary" href="{{ url_for('attendance_management', attendance_date=selected_date.isoformat()) }}">Clear</a>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Status</th><th>Time In</th><th>Time Out</th><th>Remarks</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in recent_records %}
+                        <tr>
+                            <td>{{ record.attendance_date.isoformat() }}</td>
+                            <td>{{ record.member.membership_id }}</td>
+                            <td>{{ record.member.full_name }}</td>
+                            <td>{{ record.member.org_role }}</td>
+                            <td>{{ record.attendance_status }}</td>
+                            <td>{{ record.time_in.strftime('%H:%M') if record.time_in else '—' }}</td>
+                            <td>{{ record.time_out.strftime('%H:%M') if record.time_out else '—' }}</td>
+                            <td>{{ record.remarks or '—' }}</td>
+                            <td>
+                                {% if current_user.role == "admin" %}
+                                <form method="POST" action="{{ url_for('delete_attendance', attendance_id=record.id) }}" onsubmit="return confirm('Delete this attendance record?');">
+                                    <button class="btn btn-small btn-danger" type="submit">Delete</button>
+                                </form>
+                                {% else %}
+                                <a class="btn btn-small btn-secondary" href="{{ url_for('attendance_management', attendance_date=record.attendance_date.isoformat()) }}">Edit date</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="9">No attendance records in the recent three-day period.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
