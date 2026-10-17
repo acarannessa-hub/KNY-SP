@@ -198,29 +198,41 @@ def is_deleted(record):
     return str(record.get("status", "")).strip().lower() == "deleted"
 
 
+def _normalize_value(field, value):
+    """Canonical text for one field as stored in the sheet."""
+    if field == "amount":
+        return normalize_amount(value)
+    if field.endswith("_date"):
+        return normalize_date(value)
+    if field == "quarter":
+        return "" if value is None else str(value).strip().upper()
+    return "" if value is None else str(value).strip()
+
+
+def normalize_fields(tab, record):
+    """Normalize only the tab fields present in `record` (used for edits)."""
+    return {
+        field: _normalize_value(field, record.get(field))
+        for field in TABS[tab]["fields"]
+        if field in record
+    }
+
+
 def build_row(tab, record, created_by="", created_at=None, legacy_id=""):
     """
     Turn form/CSV values into one complete sheet row (a dict keyed by header).
 
     * Amounts become '1500.00', dates become 'YYYY-MM-DD', text is trimmed.
     * record_id, import_key, status and the audit columns are filled in.
-    * This does NOT validate (that happens in the route, before saving);
-      unusable amounts/dates simply become '' so they are easy to spot.
+    * This does NOT validate (that happens before saving); unusable
+      amounts/dates simply become '' so they are easy to spot.
     """
     spec = TABS[tab]
     stamp = created_at or utc_now_text()
     row = {"record_id": new_record_id()}
 
     for field in spec["fields"]:
-        value = record.get(field)
-        if field == "amount":
-            row[field] = normalize_amount(value)
-        elif field.endswith("_date"):
-            row[field] = normalize_date(value)
-        elif field == "quarter":
-            row[field] = "" if value is None else str(value).strip().upper()
-        else:
-            row[field] = "" if value is None else str(value).strip()
+        row[field] = _normalize_value(field, record.get(field))
 
     row["import_key"] = make_import_key(tab, row)
     row["status"] = "active"

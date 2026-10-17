@@ -5,15 +5,16 @@ Never prints your key. Read-only unless you pass a flag.
 
   python check_sheets.py                 check only (changes nothing)
   python check_sheets.py --setup         ALSO write the header row on EMPTY tabs
-  python check_sheets.py --write-test    ALSO add one hidden test row, read it
-                                         back to prove text/leading zeros are
-                                         preserved, then delete it
+  python check_sheets.py --write-test    ALSO add, edit and batch-add hidden test
+                                         rows, read them back to prove text and
+                                         leading zeros are preserved, then
+                                         delete them
 
 Checks:
   1. Credentials in .env are valid (shows the robot email to share the sheet with)
   2. The sheet can be opened
   3. The 4 tabs exist and have the right header row
-  4. (--write-test) writing and reading back works correctly
+  4. (--write-test) adding, editing and batch-adding rows works correctly
 
 Settings come from .env:
   GOOGLE_SERVICE_ACCOUNT_B64, GOOGLE_SHEET_ID
@@ -93,62 +94,104 @@ def check_tabs(setup):
 
 
 def write_test():
-    """Append one hidden row, read it back, verify, delete it."""
+    """
+    Exercise every kind of write the app uses, on hidden TEST rows, verify
+    what came back, then delete the rows:
+      1. add one row            (append_row)
+      2. edit it in place       (batch_update)  -> leading zeros survive edits
+      3. add two rows at once   (append_rows)
+    """
     tab = "membership_fees"
-    test_id = "TEST-" + uuid.uuid4().hex[:12]
-    row = schema.build_row(
-        tab,
-        {
-            "membership_id": "007",          # leading zeros must survive
-            "quarter": "q1",
-            "payment_date": "2026-01-15",
-            "amount": "123.45",
-            "payment_method": "Cash",
-            "reference_no": "T-1",
-            "notes": "=1+1",                  # must stay text, never a formula
-        },
-        created_by="check_sheets",
-    )
-    row["record_id"] = test_id
-    row["status"] = "deleted"                 # hidden even if cleanup fails
+    suffix = uuid.uuid4().hex[:10]
+    ids = [f"TEST-{suffix}-{n}" for n in (1, 2, 3)]
+
+    def make(record_id, membership_id, notes):
+        row = schema.build_row(
+            tab,
+            {
+                "membership_id": membership_id,   # leading zeros must survive
+                "quarter": "q1",
+                "payment_date": "2026-01-15",
+                "amount": "123.45",
+                "payment_method": "Cash",
+                "reference_no": "T-" + record_id[-1],
+                "notes": notes,                    # must stay text, never a formula
+            },
+            created_by="check_sheets",
+        )
+        row["record_id"] = record_id
+        row["status"] = "deleted"                  # hidden even if cleanup fails
+        return row
+
+    def fetch(record_id):
+        found = [r for r in gs.read_rows(tab, include_deleted=True)
+                 if r["record_id"] == record_id]
+        return found[0] if len(found) == 1 else None
+
+    def wrong(got, expected):
+        return [name for name, want in expected.items() if got.get(name) != want]
 
     ok = True
     try:
-        gs._append_row(tab, row)
-        say(True, "Write test row", f"added {test_id} (status=deleted)")
+        # 1. single add -------------------------------------------------
+        gs._append_row(tab, make(ids[0], "007", "=1+1"))
+        say(True, "Write test row", f"added {ids[0]} (status=deleted)")
+        got = fetch(ids[0])
+        problems = ["row missing"] if got is None else wrong(got, {
+            "membership_id": "007", "quarter": "Q1", "amount": "123.45",
+            "notes": "=1+1", "payment_date": "2026-01-15"})
+        if problems:
+            say(False, "Read back", "values changed in the sheet: " + ", ".join(problems))
+            return False
+        say(True, "Read back",
+            "'007', '=1+1' and amounts came back exactly as written")
 
-        found = [r for r in gs.read_rows(tab, include_deleted=True)
-                 if r["record_id"] == test_id]
-        if len(found) != 1:
-            say(False, "Read back", f"expected 1 row, found {len(found)}")
-            ok = False
-        else:
-            got = found[0]
-            problems = [name for name, want in (
-                ("membership_id", "007"), ("quarter", "Q1"),
-                ("amount", "123.45"), ("notes", "=1+1"),
-                ("payment_date", "2026-01-15"),
-            ) if got.get(name) != want]
-            if problems:
-                say(False, "Read back",
-                    "values changed in the sheet: " + ", ".join(problems))
-                ok = False
-            else:
-                say(True, "Read back",
-                    "'007', '=1+1' and amounts came back exactly as written")
+        # 2. edit in place ---------------------------------------------
+        gs.update_row(tab, ids[0],
+                      {"notes": "=2+2", "amount": "5.00", "payment_method": "GCash"},
+                      user_id="check_sheets", allow_deleted=True)
+        got = fetch(ids[0])
+        problems = ["row missing"] if got is None else wrong(got, {
+            "membership_id": "007", "notes": "=2+2", "amount": "5.00",
+            "payment_method": "GCash", "created_by": "check_sheets",
+            "updated_by": "check_sheets", "record_id": ids[0],
+            "import_key": schema.make_import_key(tab, got) if got else ""})
+        if problems:
+            say(False, "Edit row", "values wrong after editing: " + ", ".join(problems))
+            return False
+        say(True, "Edit row",
+            "edited in place; '007' and '=2+2' still plain text; key recomputed")
+
+        # 3. batch add --------------------------------------------------
+        gs._append_rows(tab, [make(ids[1], "008", "batch one"),
+                              make(ids[2], "009", "batch two")])
+        a, b = fetch(ids[1]), fetch(ids[2])
+        if not (a and b and a["membership_id"] == "008" and b["membership_id"] == "009"
+                and a["notes"] == "batch one" and b["notes"] == "batch two"):
+            say(False, "Batch add", "the two rows did not come back as written")
+            return False
+        say(True, "Batch add", "two rows saved in one call and read back correctly")
+
     except gs.SheetsError as error:
         fail("Write test", error)
         ok = False
     finally:
-        try:
-            removed = gs.delete_test_row(tab, test_id)
-            say(True if removed else None, "Cleanup",
-                "test row removed" if removed else "no test row to remove")
-        except gs.SheetsError as error:
+        removed = left = 0
+        for record_id in ids:
+            try:
+                if gs.delete_test_row(tab, record_id):
+                    removed += 1
+            except gs.SheetsError:
+                left += 1
+        if left:
             say(False, "Cleanup",
-                f"could not remove {test_id}; it is hidden (status=deleted) "
-                "and harmless, delete that row by hand")
+                f"could not remove {left} test row(s) (their ids start with "
+                "TEST- and status is 'deleted': hidden and harmless; delete "
+                "those rows by hand)")
             ok = False
+        else:
+            say(True if removed else None, "Cleanup",
+                f"{removed} test row(s) removed")
     return ok
 
 

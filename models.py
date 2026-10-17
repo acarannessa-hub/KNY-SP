@@ -62,10 +62,7 @@ class Member(db.Model):
         back_populates="member"
     )
 
-    membership_fees = db.relationship(
-        "MembershipFee",
-        back_populates="member"
-    )
+
 
     attendance_records = db.relationship(
         "Attendance",
@@ -147,151 +144,10 @@ class Profile(db.Model, UserMixin):
 
 
 # ==================================================
-# FUNDRAISING
+# NOTE: fundraising, sponsorships, membership fees and expenses are NOT
+# database tables any more. They live in the private Google Sheet and are
+# handled by financial_store.py / google_sheets.py.
 # ==================================================
-
-class Fundraising(db.Model):
-
-    __tablename__ = "fundraising"
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
-
-    fundraising_date = db.Column(
-        db.Date,
-        nullable=False
-    )
-
-    amount = db.Column(
-        db.Numeric(12, 2),
-        nullable=False
-    )
-
-    payment_method = db.Column(
-        db.String(50)
-    )
-
-    reference_no = db.Column(
-        db.String(100)
-    )
-
-    notes = db.Column(
-        db.Text
-    )
-
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        server_default=db.func.current_timestamp()
-    )
-
-
-# ==================================================
-# SPONSORSHIPS
-# ==================================================
-
-class Sponsorship(db.Model):
-
-    __tablename__ = "sponsorships"
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
-
-    sponsorship_date = db.Column(
-        db.Date,
-        nullable=False
-    )
-
-    sponsor_name = db.Column(
-        db.String(150),
-        nullable=False
-    )
-
-    amount = db.Column(
-        db.Numeric(12, 2),
-        nullable=False
-    )
-
-    payment_method = db.Column(
-        db.String(50)
-    )
-
-    reference_no = db.Column(
-        db.String(100)
-    )
-
-    notes = db.Column(
-        db.Text
-    )
-
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        server_default=db.func.current_timestamp()
-    )
-
-
-# ==================================================
-# MEMBERSHIP FEES
-# ==================================================
-
-class MembershipFee(db.Model):
-
-    __tablename__ = "membership_fees"
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
-
-    membership_id = db.Column(
-        db.String(64),
-        db.ForeignKey(
-            "members.membership_id",
-            ondelete="RESTRICT",
-            onupdate="CASCADE"
-        ),
-        nullable=False
-    )
-
-    quarter = db.Column(
-        db.String(2),
-        nullable=False
-    )
-
-    payment_date = db.Column(
-        db.Date,
-        nullable=False
-    )
-
-    amount = db.Column(
-        db.Numeric(12, 2),
-        nullable=False
-    )
-
-    payment_method = db.Column(
-        db.String(50)
-    )
-
-    reference_no = db.Column(
-        db.String(100)
-    )
-
-    notes = db.Column(
-        db.Text
-    )
-
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        server_default=db.func.current_timestamp()
-    )
-
-    member = db.relationship(
-        "Member",
-        back_populates="membership_fees"
-    )
 
 
 # ==================================================
@@ -364,55 +220,6 @@ class Attendance(db.Model):
         back_populates="attendance_records"
     )
 
-
-# ==================================================
-# EXPENSES
-# ==================================================
-
-class Expense(db.Model):
-
-    __tablename__ = "expenses"
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
-
-    expense_date = db.Column(
-        db.Date,
-        nullable=False
-    )
-
-    category = db.Column(
-        db.String(100),
-        nullable=False
-    )
-
-    description = db.Column(
-        db.Text
-    )
-
-    amount = db.Column(
-        db.Numeric(12, 2),
-        nullable=False
-    )
-
-    payment_method = db.Column(
-        db.String(50)
-    )
-
-    reference_no = db.Column(
-        db.String(100)
-    )
-
-    notes = db.Column(
-        db.Text
-    )
-
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        server_default=db.func.current_timestamp()
-    )
 
 class ExportRequest(db.Model):
     __tablename__ = "export_requests"

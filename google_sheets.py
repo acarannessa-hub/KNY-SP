@@ -352,11 +352,12 @@ def _checked_worksheet(tab):
 # --------------------------------------------------
 # Reading
 # --------------------------------------------------
-def read_rows(tab, include_deleted=False):
+def read_rows(tab, include_deleted=False, with_row_numbers=False):
     """
     All rows of a tab as a list of dicts (every value is a string, exactly
     as shown in the sheet). Rows marked status='deleted' are skipped unless
-    include_deleted=True. Blank lines are skipped.
+    include_deleted=True. Blank lines are skipped. With with_row_numbers=True
+    each dict also has "_row": the row number as shown in the sheet.
     """
     worksheet = _worksheet(tab)
     expected = schema.headers(tab)
@@ -369,13 +370,15 @@ def read_rows(tab, include_deleted=False):
         )
 
     rows = []
-    for raw in values[1:]:
+    for number, raw in enumerate(values[1:], start=2):
         if not any(str(cell).strip() for cell in raw):
             continue
         padded = [str(cell) for cell in raw] + [""] * (len(expected) - len(raw))
         record = dict(zip(expected, padded[:len(expected)]))
         if not include_deleted and schema.is_deleted(record):
             continue
+        if with_row_numbers:
+            record["_row"] = number
         rows.append(record)
     return rows
 
@@ -405,6 +408,129 @@ def append_record(tab, record, user_id=""):
     row = schema.build_row(tab, record, created_by=user_id)
     _append_row(tab, row)
     return row
+
+
+MAX_BATCH_ROWS = 500   # one atomic API call: all rows are saved or none are
+
+
+def append_records(tab, records, user_id=""):
+    """
+    Add several NEW records in ONE call (all saved, or none). Returns the
+    complete rows that were saved. The caller validates and removes
+    duplicates first. At most MAX_BATCH_ROWS rows.
+    """
+    _require_tab(tab)
+    if not records:
+        return []
+    if len(records) > MAX_BATCH_ROWS:
+        raise ValueError(f"At most {MAX_BATCH_ROWS} rows per batch.")
+
+    rows = [schema.build_row(tab, r, created_by=user_id) for r in records]
+    _append_rows(tab, rows)
+    return rows
+
+
+def _append_rows(tab, rows):
+    """Write complete, already-built rows in ONE call."""
+    headers = schema.headers(tab)
+    values = [[row.get(h, "") for h in headers] for row in rows]
+    worksheet = _checked_worksheet(tab)
+    _call(lambda: worksheet.append_rows(
+        values,
+        value_input_option="RAW",
+        insert_data_option="INSERT_ROWS",
+        table_range="A1",
+    ))
+
+
+def _find_row_index(worksheet, record_id):
+    """Sheet row number (1-based) holding this record_id, or None."""
+    wanted = str(record_id).strip().lower()
+    ids = _call(lambda: worksheet.col_values(1))
+    matches = [
+        number for number, value in enumerate(ids, start=1)
+        if number > 1 and str(value).strip().lower() == wanted
+    ]
+    if not matches:
+        return None
+    if len(matches) > 1:
+        raise _config_error(
+            f"record_id {record_id} appears {len(matches)} times in the "
+            "sheet. Each record_id must be unique; delete the copy."
+        )
+    return matches[0]
+
+
+def _modify_row(tab, record_id, mutate, allow_deleted=False):
+    """
+    Load the row with this record_id, let `mutate(row_dict)` change it, and
+    write that ONE row back (RAW). Returns the new row dict, or None if the
+    record does not exist (or is already deleted).
+    """
+    worksheet = _checked_worksheet(tab)
+    index = _find_row_index(worksheet, record_id)
+    if index is None:
+        return None
+
+    headers = schema.headers(tab)
+    current = _call(lambda: worksheet.row_values(index))
+    padded = [str(c) for c in current] + [""] * (len(headers) - len(current))
+    row = dict(zip(headers, padded[:len(headers)]))
+
+    # Guard: the sheet may have been edited between our two reads.
+    if row["record_id"].strip().lower() != str(record_id).strip().lower():
+        raise SheetsError(
+            "The record changed while you were working. Please reload the "
+            "page and try again.",
+            "Row moved between reading the id column and the row.",
+        )
+    if schema.is_deleted(row) and not allow_deleted:
+        return None
+
+    mutate(row)
+
+    values = [row.get(h, "") for h in headers]
+    last = _col_letter(len(headers))
+    _call(lambda: worksheet.batch_update(
+        [{"range": f"A{index}:{last}{index}", "values": [values]}],
+        value_input_option="RAW",
+    ))
+    return row
+
+
+def update_row(tab, record_id, changes, user_id="", allow_deleted=False):
+    """
+    Change fields of ONE existing record (found by record_id). `changes`
+    holds tab fields only; record_id and the created_* columns can never be
+    changed here. Recomputes import_key and stamps updated_at/updated_by.
+    Returns the updated row dict, or None if the record was not found.
+    """
+    _require_tab(tab)
+    unknown = set(changes) - set(schema.TABS[tab]["fields"])
+    if unknown:
+        raise ValueError(f"Unknown field(s): {', '.join(sorted(unknown))}")
+    normalized = schema.normalize_fields(tab, changes)
+
+    def mutate(row):
+        row.update(normalized)
+        row["import_key"] = schema.make_import_key(tab, row)
+        row["updated_at"] = schema.utc_now_text()
+        row["updated_by"] = str(user_id or "")
+
+    return _modify_row(tab, record_id, mutate, allow_deleted=allow_deleted)
+
+
+def mark_deleted(tab, record_id, user_id=""):
+    """Soft-delete: set status='deleted' (the row stays in the sheet as an
+    audit trail). Returns the row, or None if not found."""
+    _require_tab(tab)
+
+    def mutate(row):
+        row["status"] = "deleted"
+        row["updated_at"] = schema.utc_now_text()
+        row["updated_by"] = str(user_id or "")
+
+    return _modify_row(tab, record_id, mutate)
 
 
 def delete_test_row(tab, record_id):
