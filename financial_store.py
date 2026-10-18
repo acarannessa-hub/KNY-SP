@@ -21,6 +21,8 @@ Rows that cannot be shown safely (no record_id, invalid date or amount) are
 SKIPPED and reported in `problems`, never silently invented.
 """
 
+import csv
+import io
 import re
 import uuid
 from datetime import date, datetime, timedelta
@@ -111,11 +113,20 @@ def _clean_text(name, raw):
     return value
 
 
+def _found(raw):
+    """' (got 'xyz')' for messages, so people can see what was rejected."""
+    text = " ".join(str(raw or "").split())
+    return f" (got '{text[:30]}')" if text else ""
+
+
 def _clean_date(raw):
     try:
         value = datetime.strptime(str(raw or "").strip(), "%Y-%m-%d").date()
     except ValueError:
-        raise ValidationError("Enter a valid date (YYYY-MM-DD).")
+        raise ValidationError(
+            "Enter a valid date in YYYY-MM-DD format, for example "
+            f"2026-10-18{_found(raw)}."
+        )
     if value < EARLIEST_DATE or value > date.today() + timedelta(days=366):
         raise ValidationError(
             "That date looks wrong. Enter a date between 2000 and next year."
@@ -124,7 +135,10 @@ def _clean_date(raw):
 
 
 def _clean_amount(raw):
-    message = "Enter a valid amount greater than zero (at most 2 decimals)."
+    message = (
+        "Enter a valid amount greater than zero (at most 2 decimals)"
+        f"{_found(raw)}."
+    )
     try:
         amount = Decimal(str(raw or "").strip().replace(",", ""))
     except InvalidOperation:
@@ -324,3 +338,137 @@ def membership_fee_count(membership_id):
         1 for row in gs.read_rows("membership_fees")
         if row["membership_id"].strip().upper() == wanted
     )
+
+
+# --------------------------------------------------
+# CSV import (all four record types)
+# --------------------------------------------------
+IMPORT_LABELS = {
+    "fundraising": "fundraising",
+    "sponsorships": "sponsorship",
+    "membership_fees": "membership-fee",
+    "expenses": "expense",
+}
+
+MAX_IMPORT_BYTES = 2 * 1024 * 1024   # a 500-row file is far smaller than this
+
+
+class ImportFileError(ValidationError):
+    """The file as a whole cannot be imported (message is safe to show)."""
+
+
+def _display_name(field):
+    """'membership_id' -> 'Membership_ID', 'reference_no' -> 'Reference_No'."""
+    return "_".join("ID" if part == "id" else part.capitalize()
+                    for part in field.split("_"))
+
+
+def required_fields(tab):
+    """Columns every CSV must have, in sheet order."""
+    spec = schema.TABS[tab]
+    needed = {spec["date_field"], "amount", *REQUIRED_TEXT.get(tab, ())}
+    if tab == "membership_fees":
+        needed |= {"membership_id", "quarter"}
+    return [field for field in spec["fields"] if field in needed]
+
+
+def template_columns(tab):
+    """Header row of the downloadable CSV template."""
+    return [_display_name(field) for field in schema.TABS[tab]["fields"]]
+
+
+def _normalize_header(header):
+    return re.sub(r"[\s\-]+", "_", str(header or "").strip().casefold())
+
+
+def _header_aliases(tab):
+    """Accepted spellings of each column -> the real field name."""
+    spec = schema.TABS[tab]
+    aliases = {field: field for field in spec["fields"]}
+    aliases["date"] = spec["date_field"]
+    aliases["reference_number"] = "reference_no"
+    aliases["reference"] = "reference_no"
+    aliases["ref_no"] = "reference_no"
+    if tab == "sponsorships":
+        aliases["sponsor"] = "sponsor_name"
+    if tab == "membership_fees":
+        aliases["member_id"] = "membership_id"
+    return aliases
+
+
+def parse_csv(tab, content, members_by_id=None):
+    """
+    Read and validate a whole CSV (already decoded to text).
+
+    Returns (candidates, errors):
+      candidates  [(row_number, clean_values), ...] ready to de-duplicate/save
+      errors      ["Row 5: <reason>", ...] for rows that must be skipped
+    Raises ImportFileError for problems with the file itself (no header row,
+    missing required columns, too many rows, ...). Nothing is saved here.
+
+    Row numbers match the spreadsheet: row 1 is the header, row 2 the first
+    record. Blank rows are ignored; unknown extra columns are ignored.
+    """
+    if tab not in IMPORT_LABELS:
+        raise ValueError(f"Unknown financial tab: {tab!r}")
+    aliases = _header_aliases(tab)
+
+    reader = csv.DictReader(io.StringIO(content), strict=True)
+    try:
+        fieldnames = reader.fieldnames
+    except csv.Error:
+        raise ImportFileError("The file is not a valid CSV file.")
+    if not fieldnames:
+        raise ImportFileError("The CSV file is empty or has no header row.")
+
+    column_for = {}
+    for header in fieldnames:
+        field = aliases.get(_normalize_header(header))
+        if field is None:
+            continue
+        if field in column_for:
+            raise ImportFileError(
+                f"Two columns in the file both mean '{_display_name(field)}'. "
+                "Keep only one of them."
+            )
+        column_for[field] = header
+
+    required = required_fields(tab)
+    missing = [f for f in required if f not in column_for]
+    if missing:
+        optional = [f for f in schema.TABS[tab]["fields"] if f not in required]
+        raise ImportFileError(
+            "CSV headers must include "
+            + ", ".join(_display_name(f) for f in required)
+            + ". Missing: " + ", ".join(_display_name(f) for f in missing)
+            + ". Optional columns: "
+            + ", ".join(_display_name(f) for f in optional) + "."
+        )
+
+    try:
+        rows = list(reader)
+    except csv.Error:
+        raise ImportFileError(
+            "The CSV file contains malformed rows and was not imported."
+        )
+    if len(rows) > MAX_IMPORT_ROWS:
+        raise ImportFileError(
+            f"The CSV has more than {MAX_IMPORT_ROWS} rows. Split it into "
+            f"files of {MAX_IMPORT_ROWS} rows or fewer."
+        )
+
+    candidates, errors = [], []
+    for number, row in enumerate(rows, start=2):
+        values = {
+            field: str(row.get(header) or "").strip()
+            for field, header in column_for.items()
+        }
+        if not any(values.values()):
+            continue
+        try:
+            clean = clean_values(tab, values, members_by_id, is_new=True)
+        except ValidationError as error:
+            errors.append(f"Row {number}: {error}")
+            continue
+        candidates.append((number, clean))
+    return candidates, errors

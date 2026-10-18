@@ -80,7 +80,10 @@
 
         <section class="card form-card">
             <h2>Import Membership Fees from CSV</h2>
-            <p>Use columns: Membership_ID, Quarter, Payment_Date, Amount, Payment_Method, Reference_No, Notes.</p>
+            <p>Required columns: Membership_ID, Quarter, Payment_Date, Amount. Optional columns: Payment_Method, Reference_No, Notes.</p>
+            <p>Dates must be written YYYY-MM-DD (for example 2026-10-18). In Excel, format the date column as yyyy-mm-dd and save as "CSV UTF-8". Up to 500 rows per file; rows that already exist are skipped, and nothing is overwritten.
+                <a href="{{ url_for('financial_import_template', tab='membership_fees') }}">Download CSV template</a>
+            </p>
             <form method="POST" action="{{ url_for('import_membership_fees') }}" enctype="multipart/form-data">
                 <div class="form-field">
                     <label for="fee_csv">CSV file</label>

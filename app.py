@@ -2044,6 +2044,89 @@ def _financial_delete(tab, record_id):
     )
 
 
+def _financial_import(tab):
+    """Shared CSV import for all four record types.
+
+    The whole file is checked first. Valid, non-duplicate rows are then saved
+    in ONE call to Google Sheets (all of them or none of them)."""
+
+    label = fin.IMPORT_LABELS[tab]
+
+    uploaded_file = request.files.get("file")
+
+    if not uploaded_file or not uploaded_file.filename:
+        flash(f"Choose a {label} CSV file to import.", "danger")
+        return redirect(url_for(tab))
+
+    raw = uploaded_file.read(fin.MAX_IMPORT_BYTES + 1)
+
+    if len(raw) > fin.MAX_IMPORT_BYTES:
+        flash("That file is too large to import.", "danger")
+        return redirect(url_for(tab))
+
+    try:
+        content = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        flash("The CSV file must use UTF-8 encoding.", "danger")
+        return redirect(url_for(tab))
+
+    try:
+        members = _members_by_id() if tab == "membership_fees" else None
+        candidates, errors = fin.parse_csv(tab, content, members)
+        fresh, duplicates = fin.split_duplicates(tab, candidates)
+        fin.add_records(tab, fresh, user_id=current_user.id)
+    except fin.ImportFileError as error:
+        flash(str(error), "danger")
+        return redirect(url_for(tab))
+    except google_sheets.SheetsError as error:
+        flash(f"{error} No rows from this file were saved.", "danger")
+        return redirect(url_for(tab))
+
+    imported = len(fresh)
+
+    if imported:
+        flash(f"Imported {imported} {label} record(s).", "success")
+
+    if duplicates:
+        listed = ", ".join(str(n) for n in duplicates[:15])
+        more = f" and {len(duplicates) - 15} more" if len(duplicates) > 15 else ""
+        flash(
+            f"Skipped {len(duplicates)} duplicate row(s) (already in the sheet "
+            f"or repeated in this file): row {listed}{more}.",
+            "danger"
+        )
+
+    if errors:
+        details = " ".join(errors[:10])
+        if len(errors) > 10:
+            details += f" Plus {len(errors) - 10} additional invalid row(s)."
+        flash(f"Skipped {len(errors)} invalid row(s). {details}", "danger")
+
+    if not imported and not duplicates and not errors:
+        flash(f"The CSV contains no {label} records.", "danger")
+
+    return redirect(url_for(tab))
+
+
+@app.route("/financial/import-template/<tab>")
+@login_required
+@encoder_required
+def financial_import_template(tab):
+    """A CSV containing just the correct header row for one record type."""
+
+    if tab not in fin.IMPORT_LABELS:
+        abort(404)
+
+    return Response(
+        ",".join(fin.template_columns(tab)) + "\r\n",
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+                f'attachment; filename="{tab}_import_template.csv"'
+        }
+    )
+
+
 # ---------------------------------------------------------------- FUNDRAISING
 
 @app.route("/financial/fundraising")
@@ -2074,6 +2157,13 @@ def delete_fundraising(id):
     return _financial_delete("fundraising", str(id))
 
 
+@app.route("/financial/fundraising/import", methods=["POST"])
+@login_required
+@encoder_required
+def import_fundraising():
+    return _financial_import("fundraising")
+
+
 # ---------------------------------------------------------------- SPONSORSHIPS
 
 @app.route("/financial/sponsorships")
@@ -2102,6 +2192,13 @@ def edit_sponsorship(id):
 @encoder_required
 def delete_sponsorship(id):
     return _financial_delete("sponsorships", str(id))
+
+
+@app.route("/financial/sponsorships/import", methods=["POST"])
+@login_required
+@encoder_required
+def import_sponsorships():
+    return _financial_import("sponsorships")
 
 
 # ---------------------------------------------------------------- MEMBERSHIP FEES
@@ -2138,126 +2235,7 @@ def delete_membership_fee(id):
 @login_required
 @encoder_required
 def import_membership_fees():
-
-    uploaded_file = request.files.get("file")
-
-    if not uploaded_file or not uploaded_file.filename:
-        flash("Choose a membership-fee CSV file to import.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    try:
-        content = uploaded_file.read().decode("utf-8-sig")
-    except UnicodeDecodeError:
-        flash("The CSV file must use UTF-8 encoding.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    reader = csv.DictReader(io.StringIO(content), strict=True)
-
-    if not reader.fieldnames:
-        flash("The CSV file is empty or has no header row.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    header_map = {
-        (header or "").strip().casefold(): header
-        for header in reader.fieldnames
-    }
-
-    required_headers = {
-        "membership_id",
-        "quarter",
-        "payment_date",
-        "amount",
-        "payment_method",
-        "reference_no",
-        "notes",
-    }
-
-    if not required_headers.issubset(header_map):
-        flash(
-            "CSV headers must include Membership_ID, Quarter, Payment_Date, "
-            "Amount, Payment_Method, Reference_No, and Notes.",
-            "danger"
-        )
-        return redirect(url_for("membership_fees"))
-
-    try:
-        csv_rows = list(reader)
-    except csv.Error:
-        flash("The CSV file contains malformed rows and was not imported.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    if len(csv_rows) > fin.MAX_IMPORT_ROWS:
-        flash(
-            f"The CSV has more than {fin.MAX_IMPORT_ROWS} rows. Split it into "
-            f"files of {fin.MAX_IMPORT_ROWS} rows or fewer.",
-            "danger"
-        )
-        return redirect(url_for("membership_fees"))
-
-    members_by_id = _members_by_id()
-
-    candidates = []
-    errors = []
-
-    for row_number, row in enumerate(csv_rows, start=2):
-
-        values = {
-            field: (row.get(header_map[field]) or "").strip()
-            for field in required_headers
-        }
-
-        if not any(values.values()):
-            continue
-
-        try:
-            clean = fin.clean_values(
-                "membership_fees",
-                values,
-                members_by_id,
-                is_new=True
-            )
-        except fin.ValidationError as error:
-            errors.append(f"Row {row_number}: {error}")
-            continue
-
-        candidates.append((row_number, clean))
-
-    imported = 0
-    duplicates = []
-
-    try:
-        fresh, duplicates = fin.split_duplicates("membership_fees", candidates)
-        fin.add_records("membership_fees", fresh, user_id=current_user.id)
-        imported = len(fresh)
-    except google_sheets.SheetsError as error:
-        flash(
-            f"{error} No rows from this file were saved.",
-            "danger"
-        )
-        return redirect(url_for("membership_fees"))
-
-    if imported:
-        flash(f"Imported {imported} membership-fee record(s).", "success")
-
-    if duplicates:
-        listed = ", ".join(str(n) for n in duplicates[:15])
-        more = f" and {len(duplicates) - 15} more" if len(duplicates) > 15 else ""
-        flash(
-            f"Skipped {len(duplicates)} duplicate row(s) (already in the sheet "
-            f"or repeated in this file): row {listed}{more}.",
-            "danger"
-        )
-
-    if errors:
-        details = " ".join(errors[:10])
-        if len(errors) > 10:
-            details += f" Plus {len(errors) - 10} additional invalid row(s)."
-        flash(f"Skipped {len(errors)} invalid row(s). {details}", "danger")
-
-    if not imported and not duplicates and not errors:
-        flash("The CSV contains no membership-fee records.", "danger")
-
-    return redirect(url_for("membership_fees"))
+    return _financial_import("membership_fees")
 
 
 # ---------------------------------------------------------------- EXPENSES
@@ -2288,6 +2266,13 @@ def edit_expense(id):
 @encoder_required
 def delete_expense(id):
     return _financial_delete("expenses", str(id))
+
+
+@app.route("/financial/expenses/import", methods=["POST"])
+@login_required
+@encoder_required
+def import_expenses():
+    return _financial_import("expenses")
 
 # ==================================================
 # FINANCIAL EXPORT REQUESTS
