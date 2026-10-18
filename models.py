@@ -62,7 +62,7 @@ class Member(db.Model):
         back_populates="member"
     )
 
-
+    
 
     attendance_records = db.relationship(
         "Attendance",

@@ -32,16 +32,15 @@ from dotenv import load_dotenv
 from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 
 from models import (
-    db,
+        db,
     Profile,
     Member,
     Attendance,
-    ExportRequest,
+    ExportRequest
 )
-
-import financial_store
-import sheets_schema
 import supabase_auth
+import financial_store as fin
+import google_sheets
 
 
 
