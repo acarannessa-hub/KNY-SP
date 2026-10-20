@@ -53,21 +53,6 @@
             </form>
         </section>
 
-        <section class="card form-card">
-            <h2>Import Fundraising from CSV</h2>
-            <p>Required columns: Fundraising_Date, Amount. Optional columns: Payment_Method, Reference_No, Notes.</p>
-            <p>Dates must be written YYYY-MM-DD (for example 2026-10-18). In Excel, format the date column as yyyy-mm-dd and save as "CSV UTF-8". Up to 500 rows per file; rows that already exist are skipped, and nothing is overwritten.
-                <a href="{{ url_for('financial_import_template', tab='fundraising') }}">Download CSV template</a>
-            </p>
-            <form method="POST" action="{{ url_for('import_fundraising') }}" enctype="multipart/form-data">
-                <div class="form-field">
-                    <label for="fundraising_csv">CSV file</label>
-                    <input type="file" id="fundraising_csv" name="file" accept=".csv,text/csv" required>
-                </div>
-                <button class="btn btn-secondary" type="submit">Import CSV</button>
-            </form>
-        </section>
-
         <section class="card records-card">
             <div class="card-heading table-card-header">
                 <div>

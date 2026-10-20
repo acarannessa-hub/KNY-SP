@@ -1,156 +1,48 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        {% block title %}
-        Kaya Natin! Youth
-        {% endblock %}
-    </title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Kaya Natin! Youth — Candelaria is a civic youth organization that promotes transparency, leadership, and community development.">
+    <title>{% block title %}Kaya Natin! Youth — Candelaria{% endblock %}</title>
     {% block page_styles %}{% endblock %}
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('public_static', filename='css/public.css') }}"
-    >
-
+    <link rel="stylesheet" href="{{ url_for('public_static', filename='css/public.css') }}">
 </head>
+<body class="{% block body_class %}page-home{% endblock %}">
+    {% include "site_header.html" %}
 
+    <main>
+        {% block content %}{% endblock %}
+    </main>
 
-<body class="{% block body_class %}page-landing{% endblock %}">
+    <footer class="public-footer">
+        <div class="footer-container">
+            <div class="footer-column brand-column">
+                <h3>Kaya Natin! Youth — Candelaria</h3>
+                <p>A youth-led civic organization building honest, informed, and empowered communities through service, leadership, and action.</p>
+            </div>
 
+            <div class="footer-column">
+                <h4>Quick Links</h4>
+                <a href="{{ url_for('public_introduction') }}">About the Organization</a>
+                <a href="{{ url_for('public_advocacies') }}">Thematic Advocacies</a>
+                <a href="{{ url_for('public_roster') }}">Roster</a>
+                <a href="{{ url_for('public_events') }}">Events & Announcements</a>
+            </div>
 
-{% include "site_header.html" %}
-
-<!-- ================================================== -->
-<!-- MAIN CONTENT -->
-<!-- ================================================== -->
-
-<main>
-
-    {% block content %}
-
-    {% endblock %}
-
-</main>
-
-
-
-<!-- ================================================== -->
-<!-- FOOTER -->
-<!-- ================================================== -->
-
-<footer class="public-footer">
-
-    <div class="footer-container">
-
-
-        <div class="footer-column">
-
-            <h3>
-                Kaya Natin! Youth
-            </h3>
-
-            <p>
-                [Short organization description
-                will be placed here.]
-            </p>
-
+            <div class="footer-column">
+                <h4>Contact</h4>
+                <p>Candelaria, Quezon, Philippines</p>
+                <p>hello@knyc.org</p>
+                <p>Facebook · Instagram · Messenger</p>
+            </div>
         </div>
 
-
-        <div class="footer-column">
-
-            <h4>
-                Quick Links
-            </h4>
-
-            <a
-                href="{{ url_for('public_introduction') }}"
-            >
-                About the Organization
-            </a>
-
-            <a
-                href="{{ url_for('public_advocacies') }}"
-            >
-                Thematic Advocacies
-            </a>
-
-            <a
-                href="{{ url_for('public_roster') }}"
-            >
-                Roster
-            </a>
-
-            <a
-                href="{{ url_for('public_events') }}"
-            >
-                Events & Announcements
-            </a>
-
+        <div class="footer-bottom">
+            <p>© <span id="currentYear"></span> Kaya Natin! Youth — Candelaria. All rights reserved.</p>
         </div>
+    </footer>
 
-
-        <div class="footer-column">
-
-            <h4>
-                Contact
-            </h4>
-
-            <p>
-                [Organization Email]
-            </p>
-
-            <p>
-                [Organization Address]
-            </p>
-
-            <p>
-                [Social Media / Other Contact]
-            </p>
-
-        </div>
-
-
-    </div>
-
-
-    <div class="footer-bottom">
-
-        <p>
-            ©
-            <span id="currentYear"></span>
-            Kaya Natin! Youth.
-            All rights reserved.
-        </p>
-
-    </div>
-
-</footer>
-
-
-
-<!-- ================================================== -->
-<!-- JAVASCRIPT -->
-<!-- ================================================== -->
-
-{% block scripts %}
-
-{% endblock %}
-
-
-
-
+    {% block scripts %}{% endblock %}
 </body>
-
 </html>
