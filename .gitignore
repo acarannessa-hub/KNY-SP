@@ -6,3 +6,7 @@ instance/
 .vscode/
 .vercel
 .env*
+
+# Data exports and database dumps (may contain member / financial records)
+*.sql
+migration_output/

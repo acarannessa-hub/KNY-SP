@@ -668,6 +668,12 @@ td select {
     background: #f5e5e8;
 }
 
+.message.warning {
+    color: #6b4a0b;
+    border-color: rgba(196, 140, 30, 0.3);
+    background: #fbf0d9;
+}
+
 .message.success,
 .success {
     color: #315c37;

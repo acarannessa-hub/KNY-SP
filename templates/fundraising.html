@@ -32,7 +32,7 @@
                     </div>
                     <div class="form-field">
                         <label for="amount">Amount</label>
-                        <input type="number" id="amount" step="0.01" name="amount" placeholder="0.00" required>
+                        <input type="number" id="amount" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
                     </div>
                     <div class="form-field">
                         <label for="payment_method">Payment Method</label>
@@ -50,6 +50,18 @@
                 <div class="form-actions">
                     <button class="btn btn-primary" type="submit">Add Record</button>
                 </div>
+            </form>
+        </section>
+
+        <section class="card form-card">
+            <h2>Import Fundraising Records from CSV or Excel</h2>
+            <p>Required columns: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}. Dates as YYYY-MM-DD or MM/DD/YYYY. Rows with errors or duplicates are skipped and listed after the import.</p>
+            <form method="POST" action="{{ url_for('import_financial_records', ledger_key='fundraising') }}" enctype="multipart/form-data">
+                <div class="form-field">
+                    <label for="import_file">CSV or Excel (.xlsx) file</label>
+                    <input type="file" id="import_file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                </div>
+                <button class="btn btn-secondary" type="submit">Import File</button>
             </form>
         </section>
 
@@ -72,7 +84,7 @@
                         {% set update_form_id = "edit-fundraising-" ~ record.id %}
                         <tr>
                             <td><input form="{{ update_form_id }}" type="date" name="fundraising_date" value="{{ record.fundraising_date }}" required></td>
-                            <td><input form="{{ update_form_id }}" type="number" step="0.01" name="amount" value="{{ record.amount }}" required></td>
+                            <td><input form="{{ update_form_id }}" type="number" step="0.01" min="0.01" name="amount" value="{{ record.amount }}" required></td>
                             <td><input form="{{ update_form_id }}" type="text" name="payment_method" value="{{ record.payment_method or '' }}"></td>
                             <td><input form="{{ update_form_id }}" type="text" name="reference_no" value="{{ record.reference_no or '' }}"></td>
                             <td><input form="{{ update_form_id }}" type="text" name="notes" value="{{ record.notes or '' }}"></td>

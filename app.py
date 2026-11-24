@@ -1,9 +1,10 @@
 import csv
+import hmac
 import io
 import os
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from xml.sax.saxutils import escape
 
 from flask import (
@@ -43,6 +44,11 @@ from models import (
     ExportRequest
 )
 import supabase_auth
+import google_sheets
+from services.finance import LEDGERS
+from services.finance import ingestion as finance_ingestion
+from services.finance import records as finance_records
+from services.finance import sheets_mirror as finance_sheets_mirror
 
 
 # ==================================================
@@ -1260,7 +1266,12 @@ def financial_management():
         membership_fees=membership_fees,
         expenses=expenses,
         export_requests=export_requests,
-        user=current_user
+        user=current_user,
+        sheets_mirror_enabled=finance_sheets_mirror.is_enabled(),
+        sheets_robot_email=(
+            google_sheets.service_account_email()
+            if current_user.role == "admin" else ""
+        )
     )
 
 
@@ -1931,733 +1942,298 @@ def export_attendance_pdf():
 
 
 # ==================================================
-# FUNDRAISING
+# FINANCIAL RECORDS
+# (fundraising, sponsorships, membership fees, expenses)
+#
+# These routes stay thin. Cleaning, validation, duplicate detection, saving
+# and the Google Sheet mirror all live in services/finance/, so the web form,
+# CSV import and Excel import follow exactly the same rules.
 # ==================================================
 
-@app.route(
-    "/financial/fundraising"
-)
+# ledger key -> endpoint of its management page
+LEDGER_PAGES = {
+    "fundraising": "fundraising",
+    "sponsorships": "sponsorships",
+    "membership_fees": "membership_fees",
+    "expenses": "expenses",
+}
+
+
+def _back_to_ledger(ledger_key):
+    return redirect(url_for(LEDGER_PAGES[ledger_key]))
+
+
+def _flash_outcome(outcome, success_message):
+    if outcome.ok:
+        flash(success_message, "success")
+    for error in outcome.errors:
+        flash(error, "danger")
+    if outcome.mirror_warning:
+        flash(outcome.mirror_warning, "warning")
+
+
+def _ledger_page(ledger_key, template, **extra):
+    model = finance_records.MODELS[ledger_key]
+    date_column = getattr(model, LEDGERS[ledger_key].date_field)
+    records = model.query.order_by(date_column.desc(), model.id.desc()).all()
+    required, optional = finance_ingestion.expected_columns(ledger_key)
+    return render_template(
+        template,
+        records=records,
+        import_required_columns=required,
+        import_optional_columns=optional,
+        **extra
+    )
+
+
+def _add_record(ledger_key):
+    outcome = finance_records.create(ledger_key, request.form)
+    noun = LEDGERS[ledger_key].noun
+    _flash_outcome(outcome, f"{noun.capitalize()} added.")
+    return _back_to_ledger(ledger_key)
+
+
+def _edit_record(ledger_key, record_id):
+    outcome = finance_records.update(ledger_key, record_id, request.form)
+    noun = LEDGERS[ledger_key].noun
+    _flash_outcome(outcome, f"{noun.capitalize()} updated.")
+    return _back_to_ledger(ledger_key)
+
+
+def _delete_record(ledger_key, record_id):
+    outcome = finance_records.delete(ledger_key, record_id)
+    noun = LEDGERS[ledger_key].noun
+    _flash_outcome(outcome, f"{noun.capitalize()} deleted.")
+    return _back_to_ledger(ledger_key)
+
+
+def _import_records(ledger_key):
+    uploaded_file = request.files.get("file")
+    if not uploaded_file or not uploaded_file.filename:
+        flash("Choose a CSV or Excel (.xlsx) file to import.", "danger")
+        return _back_to_ledger(ledger_key)
+
+    data = uploaded_file.read(finance_ingestion.MAX_UPLOAD_BYTES + 1)
+    try:
+        report = finance_records.import_file(
+            ledger_key, uploaded_file.filename, data
+        )
+    except finance_ingestion.IngestionError as error:
+        flash(str(error), "danger")
+        return _back_to_ledger(ledger_key)
+
+    if report.added:
+        flash(
+            f"Imported {report.added} of {report.total_rows} row(s) into "
+            f"{LEDGERS[ledger_key].label}.",
+            "success"
+        )
+    if report.problems:
+        details = " ".join(report.problems[:10])
+        if len(report.problems) > 10:
+            details += f" Plus {len(report.problems) - 10} more row(s)."
+        flash(f"Skipped {len(report.problems)} row(s). {details}", "danger")
+    if report.mirror_warning:
+        flash(report.mirror_warning, "warning")
+    return _back_to_ledger(ledger_key)
+
+
+# ---------------- Fundraising ----------------
+
+@app.route("/financial/fundraising")
 @login_required
 @encoder_required
 def fundraising():
-
-    records = Fundraising.query.order_by(
-        Fundraising.fundraising_date.desc()
-    ).all()
-
-    return render_template(
-        "fundraising.html",
-        records=records
-    )
+    return _ledger_page("fundraising", "fundraising.html")
 
 
-@app.route(
-    "/financial/fundraising/add",
-    methods=["POST"]
-)
+@app.route("/financial/fundraising/add", methods=["POST"])
 @login_required
 @encoder_required
 def add_fundraising():
-
-    record = Fundraising(
-        fundraising_date=request.form.get(
-            "fundraising_date"
-        ),
-        amount=request.form.get(
-            "amount"
-        ),
-        payment_method=request.form.get(
-            "payment_method"
-        ),
-        reference_no=request.form.get(
-            "reference_no"
-        ),
-        notes=request.form.get(
-            "notes"
-        )
-    )
-
-    db.session.add(record)
-
-    db.session.commit()
-
-    flash(
-        "Fundraising record added successfully.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _add_record("fundraising")
 
 
-@app.route(
-    "/financial/fundraising/<int:id>/edit",
-    methods=["POST"]
-)
+@app.route("/financial/fundraising/<int:id>/edit", methods=["POST"])
 @login_required
 @encoder_required
 def edit_fundraising(id):
-
-    record = Fundraising.query.get_or_404(
-        id
-    )
-
-    record.fundraising_date = request.form.get(
-        "fundraising_date"
-    )
-
-    record.amount = request.form.get(
-        "amount"
-    )
-
-    record.payment_method = request.form.get(
-        "payment_method"
-    )
-
-    record.reference_no = request.form.get(
-        "reference_no"
-    )
-
-    record.notes = request.form.get(
-        "notes"
-    )
-
-    db.session.commit()
-
-    flash(
-        "Fundraising record updated.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _edit_record("fundraising", id)
 
 
-@app.route(
-    "/financial/fundraising/<int:id>/delete",
-    methods=["POST"]
-)
+@app.route("/financial/fundraising/<int:id>/delete", methods=["POST"])
 @login_required
 @encoder_required
 def delete_fundraising(id):
-
-    record = Fundraising.query.get_or_404(
-        id
-    )
-
-    db.session.delete(record)
-
-    db.session.commit()
-
-    flash(
-        "Fundraising record deleted.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _delete_record("fundraising", id)
 
 
-# ==================================================
-# SPONSORSHIPS
-# ==================================================
+# ---------------- Sponsorships ----------------
 
-@app.route(
-    "/financial/sponsorships"
-)
+@app.route("/financial/sponsorships")
 @login_required
 @encoder_required
 def sponsorships():
-
-    records = Sponsorship.query.order_by(
-        Sponsorship.sponsorship_date.desc()
-    ).all()
-
-    return render_template(
-        "sponsorships.html",
-        records=records
-    )
+    return _ledger_page("sponsorships", "sponsorships.html")
 
 
-@app.route(
-    "/financial/sponsorships/add",
-    methods=["POST"]
-)
+@app.route("/financial/sponsorships/add", methods=["POST"])
 @login_required
 @encoder_required
 def add_sponsorship():
-
-    record = Sponsorship(
-        sponsorship_date=request.form.get(
-            "sponsorship_date"
-        ),
-        sponsor_name=request.form.get(
-            "sponsor_name"
-        ),
-        amount=request.form.get(
-            "amount"
-        ),
-        payment_method=request.form.get(
-            "payment_method"
-        ),
-        reference_no=request.form.get(
-            "reference_no"
-        ),
-        notes=request.form.get(
-            "notes"
-        )
-    )
-
-    db.session.add(record)
-
-    db.session.commit()
-
-    flash(
-        "Sponsorship record added successfully.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _add_record("sponsorships")
 
 
-@app.route(
-    "/financial/sponsorships/<int:id>/edit",
-    methods=["POST"]
-)
+@app.route("/financial/sponsorships/<int:id>/edit", methods=["POST"])
 @login_required
 @encoder_required
 def edit_sponsorship(id):
-
-    record = Sponsorship.query.get_or_404(
-        id
-    )
-
-    record.sponsorship_date = request.form.get(
-        "sponsorship_date"
-    )
-
-    record.sponsor_name = request.form.get(
-        "sponsor_name"
-    )
-
-    record.amount = request.form.get(
-        "amount"
-    )
-
-    record.payment_method = request.form.get(
-        "payment_method"
-    )
-
-    record.reference_no = request.form.get(
-        "reference_no"
-    )
-
-    record.notes = request.form.get(
-        "notes"
-    )
-
-    db.session.commit()
-
-    flash(
-        "Sponsorship record updated.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _edit_record("sponsorships", id)
 
 
-@app.route(
-    "/financial/sponsorships/<int:id>/delete",
-    methods=["POST"]
-)
+@app.route("/financial/sponsorships/<int:id>/delete", methods=["POST"])
 @login_required
 @encoder_required
 def delete_sponsorship(id):
-
-    record = Sponsorship.query.get_or_404(
-        id
-    )
-
-    db.session.delete(record)
-
-    db.session.commit()
-
-    flash(
-        "Sponsorship record deleted.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _delete_record("sponsorships", id)
 
 
-# ==================================================
-# MEMBERSHIP FEES
-# ==================================================
+# ---------------- Membership fees ----------------
 
-@app.route(
-    "/financial/membership-fees"
-)
+@app.route("/financial/membership-fees")
 @login_required
 @encoder_required
 def membership_fees():
-
-    records = MembershipFee.query.order_by(
-        MembershipFee.payment_date.desc()
-    ).all()
     members = Member.query.filter_by(
         status="active"
     ).order_by(Member.membership_id).all()
     all_members = Member.query.order_by(
         Member.membership_id
     ).all()
-
-    return render_template(
+    return _ledger_page(
+        "membership_fees",
         "membership_fees.html",
-        records=records,
         members=members,
         all_members=all_members
     )
 
 
-@app.route(
-    "/financial/membership-fees/add",
-    methods=["POST"]
-)
+@app.route("/financial/membership-fees/add", methods=["POST"])
 @login_required
 @encoder_required
 def add_membership_fee():
-
-    membership_id = request.form.get(
-        "membership_id",
-        ""
-    ).strip()
-    member = Member.query.filter_by(
-        membership_id=membership_id,
-        status="active"
-    ).first()
-    if not member:
-        flash("Select an existing active member.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    try:
-        payment_date = datetime.strptime(
-            request.form.get("payment_date", ""),
-            "%Y-%m-%d"
-        ).date()
-        amount = Decimal(request.form.get("amount", ""))
-    except (ValueError, InvalidOperation):
-        flash("Enter a valid payment date and amount.", "danger")
-        return redirect(url_for("membership_fees"))
-    quarter = request.form.get("quarter", "")
-    if quarter not in {"Q1", "Q2", "Q3", "Q4"}:
-        flash("Choose a valid membership-fee quarter.", "danger")
-        return redirect(url_for("membership_fees"))
-    if not amount.is_finite() or amount <= 0:
-        flash("The payment amount must be greater than zero.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    record = MembershipFee(
-        membership_id=membership_id,
-        quarter=quarter,
-        payment_date=payment_date,
-        amount=amount,
-        payment_method=request.form.get(
-            "payment_method"
-        ),
-        reference_no=request.form.get(
-            "reference_no"
-        ),
-        notes=request.form.get(
-            "notes"
-        )
-    )
-
-    db.session.add(record)
-
-    db.session.commit()
-
-    flash(
-        "Membership fee record added successfully.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _add_record("membership_fees")
 
 
-@app.route(
-    "/financial/membership-fees/<int:id>/edit",
-    methods=["POST"]
-)
+@app.route("/financial/membership-fees/<int:id>/edit", methods=["POST"])
 @login_required
 @encoder_required
 def edit_membership_fee(id):
-
-    record = MembershipFee.query.get_or_404(
-        id
-    )
-
-    membership_id = request.form.get("membership_id", "").strip()
-    member = Member.query.filter_by(membership_id=membership_id).first()
-    quarter = request.form.get("quarter", "")
-    try:
-        payment_date = datetime.strptime(
-            request.form.get("payment_date", ""),
-            "%Y-%m-%d"
-        ).date()
-        amount = Decimal(request.form.get("amount", ""))
-    except (ValueError, InvalidOperation):
-        flash("Enter a valid payment date and amount.", "danger")
-        return redirect(url_for("membership_fees"))
-    if not member:
-        flash("Select an existing member.", "danger")
-        return redirect(url_for("membership_fees"))
-    if quarter not in {"Q1", "Q2", "Q3", "Q4"}:
-        flash("Choose a valid membership-fee quarter.", "danger")
-        return redirect(url_for("membership_fees"))
-    if not amount.is_finite() or amount <= 0:
-        flash("The payment amount must be greater than zero.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    record.membership_id = membership_id
-    record.quarter = quarter
-    record.payment_date = payment_date
-    record.amount = amount
-
-    record.payment_method = request.form.get(
-        "payment_method"
-    )
-
-    record.reference_no = request.form.get(
-        "reference_no"
-    )
-
-    record.notes = request.form.get(
-        "notes"
-    )
-
-    db.session.commit()
-
-    flash(
-        "Membership fee record updated.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _edit_record("membership_fees", id)
 
 
-@app.route(
-    "/financial/membership-fees/import",
-    methods=["POST"]
-)
-@login_required
-@encoder_required
-def import_membership_fees():
-
-    uploaded_file = request.files.get("file")
-    if not uploaded_file or not uploaded_file.filename:
-        flash("Choose a membership-fee CSV file to import.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    try:
-        content = uploaded_file.read().decode("utf-8-sig")
-    except UnicodeDecodeError:
-        flash("The CSV file must use UTF-8 encoding.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    reader = csv.DictReader(io.StringIO(content), strict=True)
-    if not reader.fieldnames:
-        flash("The CSV file is empty or has no header row.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    header_map = {
-        (header or "").strip().casefold(): header
-        for header in reader.fieldnames
-    }
-    required_headers = {
-        "membership_id",
-        "quarter",
-        "payment_date",
-        "amount",
-        "payment_method",
-        "reference_no",
-        "notes",
-    }
-    if not required_headers.issubset(header_map):
-        flash(
-            "CSV headers must include Membership_ID, Quarter, Payment_Date, "
-            "Amount, Payment_Method, Reference_No, and Notes.",
-            "danger"
-        )
-        return redirect(url_for("membership_fees"))
-
-    try:
-        csv_rows = list(reader)
-    except csv.Error:
-        flash("The CSV file contains malformed rows and was not imported.", "danger")
-        return redirect(url_for("membership_fees"))
-
-    members_by_id = {
-        member.membership_id: member
-        for member in Member.query.all()
-    }
-    imported = 0
-    errors = []
-    for row_number, row in enumerate(csv_rows, start=2):
-        values = {
-            field: (row.get(header_map[field]) or "").strip()
-            for field in required_headers
-        }
-        if not any(values.values()):
-            continue
-
-        membership_id = values["membership_id"]
-        member = members_by_id.get(membership_id)
-        if not member:
-            errors.append(
-                f"Row {row_number}: Membership_ID '{membership_id}' "
-                "does not exist."
-            )
-            continue
-        quarter = values["quarter"].upper()
-        if quarter not in {"Q1", "Q2", "Q3", "Q4"}:
-            errors.append(f"Row {row_number}: invalid Quarter.")
-            continue
-        try:
-            payment_date = datetime.strptime(
-                values["payment_date"],
-                "%Y-%m-%d"
-            ).date()
-            amount = Decimal(values["amount"])
-        except (ValueError, InvalidOperation):
-            errors.append(
-                f"Row {row_number}: invalid Payment_Date or Amount."
-            )
-            continue
-        if not amount.is_finite() or amount <= 0:
-            errors.append(
-                f"Row {row_number}: Amount must be greater than zero."
-            )
-            continue
-
-        db.session.add(MembershipFee(
-            membership_id=member.membership_id,
-            quarter=quarter,
-            payment_date=payment_date,
-            amount=amount,
-            payment_method=values["payment_method"] or None,
-            reference_no=values["reference_no"] or None,
-            notes=values["notes"] or None
-        ))
-        imported += 1
-
-    if imported:
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.logger.exception("Failed to import membership-fee CSV.")
-            flash(
-                "The CSV import could not be saved; no imported rows were "
-                "committed. Check the server log for details.",
-                "danger"
-            )
-            return redirect(url_for("membership_fees"))
-
-    if imported:
-        flash(f"Imported {imported} membership-fee record(s).", "success")
-    if errors:
-        details = " ".join(errors[:10])
-        if len(errors) > 10:
-            details += f" Plus {len(errors) - 10} additional invalid row(s)."
-        flash(f"Skipped {len(errors)} row(s). {details}", "danger")
-    if not imported and not errors:
-        flash("The CSV contains no membership-fee records.", "danger")
-
-    return redirect(url_for("membership_fees"))
-
-
-@app.route(
-    "/financial/membership-fees/<int:id>/delete",
-    methods=["POST"]
-)
+@app.route("/financial/membership-fees/<int:id>/delete", methods=["POST"])
 @login_required
 @encoder_required
 def delete_membership_fee(id):
-
-    record = MembershipFee.query.get_or_404(
-        id
-    )
-
-    db.session.delete(record)
-
-    db.session.commit()
-
-    flash(
-        "Membership fee record deleted.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _delete_record("membership_fees", id)
 
 
-# ==================================================
-# EXPENSES
-# ==================================================
+@app.route("/financial/membership-fees/import", methods=["POST"])
+@login_required
+@encoder_required
+def import_membership_fees():
+    return _import_records("membership_fees")
 
-@app.route(
-    "/financial/expenses"
-)
+
+# ---------------- Expenses ----------------
+
+@app.route("/financial/expenses")
 @login_required
 @encoder_required
 def expenses():
-
-    records = Expense.query.order_by(
-        Expense.expense_date.desc()
-    ).all()
-
-    return render_template(
-        "expenses.html",
-        records=records
-    )
+    return _ledger_page("expenses", "expenses.html")
 
 
-@app.route(
-    "/financial/expenses/add",
-    methods=["POST"]
-)
+@app.route("/financial/expenses/add", methods=["POST"])
 @login_required
 @encoder_required
 def add_expense():
-
-    record = Expense(
-        expense_date=request.form.get(
-            "expense_date"
-        ),
-        category=request.form.get(
-            "category"
-        ),
-        description=request.form.get(
-            "description"
-        ),
-        amount=request.form.get(
-            "amount"
-        ),
-        payment_method=request.form.get(
-            "payment_method"
-        ),
-        reference_no=request.form.get(
-            "reference_no"
-        ),
-        notes=request.form.get(
-            "notes"
-        )
-    )
-
-    db.session.add(record)
-
-    db.session.commit()
-
-    flash(
-        "Expense record added successfully.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _add_record("expenses")
 
 
-@app.route(
-    "/financial/expenses/<int:id>/edit",
-    methods=["POST"]
-)
+@app.route("/financial/expenses/<int:id>/edit", methods=["POST"])
 @login_required
 @encoder_required
 def edit_expense(id):
-
-    record = Expense.query.get_or_404(
-        id
-    )
-
-    record.expense_date = request.form.get(
-        "expense_date"
-    )
-
-    record.category = request.form.get(
-        "category"
-    )
-
-    record.description = request.form.get(
-        "description"
-    )
-
-    record.amount = request.form.get(
-        "amount"
-    )
-
-    record.payment_method = request.form.get(
-        "payment_method"
-    )
-
-    record.reference_no = request.form.get(
-        "reference_no"
-    )
-
-    record.notes = request.form.get(
-        "notes"
-    )
-
-    db.session.commit()
-
-    flash(
-        "Expense record updated.",
-        "success"
-    )
-
-    return redirect(
-        url_for("financial_management")
-    )
+    return _edit_record("expenses", id)
 
 
-@app.route(
-    "/financial/expenses/<int:id>/delete",
-    methods=["POST"]
-)
+@app.route("/financial/expenses/<int:id>/delete", methods=["POST"])
 @login_required
 @encoder_required
 def delete_expense(id):
+    return _delete_record("expenses", id)
 
-    record = Expense.query.get_or_404(
-        id
-    )
 
-    db.session.delete(record)
+# ---------------- Import (any ledger) ----------------
 
-    db.session.commit()
+@app.route("/financial/<ledger_key>/import", methods=["POST"])
+@login_required
+@encoder_required
+def import_financial_records(ledger_key):
+    if ledger_key not in LEDGERS:
+        abort(404)
+    return _import_records(ledger_key)
 
-    flash(
-        "Expense record deleted.",
-        "success"
-    )
 
-    return redirect(
-        url_for("financial_management")
-    )
+# ---------------- Google Sheet mirror ----------------
+
+@app.route("/admin/finance/sheets/resync", methods=["POST"])
+@login_required
+@admin_required
+def resync_finance_sheet():
+    if not finance_sheets_mirror.is_enabled():
+        flash(
+            "The Google Sheet mirror is not set up. Add GOOGLE_SHEET_ID and "
+            "GOOGLE_SERVICE_ACCOUNT_B64 to the environment first.",
+            "danger"
+        )
+        return redirect(url_for("financial_management"))
+
+    results = finance_records.resync_all()
+    failed = [(label, message) for label, ok, message in results if not ok]
+    synced = [label for label, ok, _ in results if ok]
+    if synced:
+        flash("Google Sheet updated: " + ", ".join(synced) + ".", "success")
+    for label, message in failed:
+        flash(f"{label} could not be synced: {message}", "danger")
+    return redirect(url_for("financial_management"))
+
+
+# ==================================================
+# KEEP-ALIVE (Vercel Cron)
+#
+# Supabase free projects pause after about a week without activity.
+# vercel.json calls this once a day; it runs one tiny query. When the
+# CRON_SECRET environment variable is set, Vercel sends it as a Bearer
+# token and any other caller is refused.
+# ==================================================
+
+@app.route("/api/keepalive")
+def keepalive():
+    secret = (os.getenv("CRON_SECRET") or "").strip()
+    if secret:
+        supplied = request.headers.get("Authorization", "")
+        if not hmac.compare_digest(supplied, f"Bearer {secret}"):
+            abort(401)
+    try:
+        db.session.execute(db.text("select 1 from members limit 1"))
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Keep-alive query failed.")
+        return {"ok": False}, 503
+    return {"ok": True}
 
 # ==================================================
 # FINANCIAL EXPORT REQUESTS

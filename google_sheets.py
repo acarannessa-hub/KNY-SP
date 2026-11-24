@@ -407,6 +407,68 @@ def append_record(tab, record, user_id=""):
     return row
 
 
+def _create_tab_if_missing(tab, rows, cols):
+    spreadsheet = get_spreadsheet()
+    try:
+        spreadsheet.worksheet(tab)
+        return
+    except Exception as exc:  # noqa: BLE001
+        if type(exc).__name__ != "WorksheetNotFound":
+            raise _translate(exc) from exc
+    _call(lambda: spreadsheet.add_worksheet(
+        title=tab, rows=max(rows, 100), cols=max(cols, 10)
+    ))
+    log.info("Created missing tab %s in the Google Sheet", tab)
+
+
+def replace_tab(tab, values):
+    """
+    Overwrite a tab with `values` (first row = header row). Used by the
+    one-way mirror (services/finance/sheets_mirror.py), where the database
+    is the source of truth.
+
+    Safety: refuses to touch a tab whose first row is something other than
+    the expected KNY-SP header, so an unrelated sheet is never wiped.
+    Values are written RAW: text such as "=1+1" stays plain text.
+    """
+    _require_tab(tab)
+    if not values or values[0][:len(schema.headers(tab))] != schema.headers(tab):
+        raise ValueError("replace_tab needs the standard header as the first row")
+
+    _create_tab_if_missing(tab, len(values), len(values[0]))
+    status = header_status(tab)
+    if status == "mismatch":
+        raise _config_error(
+            f"Tab '{tab}' has content that does not start with the KNY-SP "
+            "header row, so it was not overwritten. Clear the tab (or create "
+            "a new empty one with the same name) and resync."
+        )
+
+    worksheet = _worksheet(tab)
+    rows_needed = len(values)
+    cols_needed = max(len(row) for row in values)
+    if worksheet.row_count < rows_needed:
+        _call(lambda: worksheet.add_rows(rows_needed - worksheet.row_count))
+    if worksheet.col_count < cols_needed:
+        _call(lambda: worksheet.add_cols(cols_needed - worksheet.col_count))
+
+    _call(lambda: worksheet.clear())
+    _call(lambda: worksheet.update(
+        values=values,
+        range_name="A1",
+        value_input_option="RAW",
+    ))
+
+    if status == "empty":
+        # First sync of this tab: bold, frozen header. Not fatal if it fails.
+        try:
+            last = _col_letter(cols_needed)
+            worksheet.format(f"A1:{last}1", {"textFormat": {"bold": True}})
+            worksheet.freeze(rows=1)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not format tab %s: %s", tab, str(exc)[:200])
+
+
 def delete_test_row(tab, record_id):
     """Remove a row created by check_sheets.py. Only ids starting with
     'TEST-' are accepted, so this can never delete real records."""
