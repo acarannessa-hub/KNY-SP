@@ -86,6 +86,11 @@ def _describe_bad_b64(encoded):
 def _load_service_account_info():
     """Read and sanity-check the service account key from the environment."""
     encoded = "".join(_env("GOOGLE_SERVICE_ACCOUNT_B64").split())
+    # The trailing "=" padding is easy to lose when copying the value into a
+    # hosting dashboard (double-click selection stops at "="). Restore it;
+    # a value that is genuinely cut off still fails the JSON check below.
+    if encoded and len(encoded) % 4 in (2, 3):
+        encoded += "=" * (-len(encoded) % 4)
     if encoded:
         try:
             text = base64.b64decode(encoded, validate=True).decode("utf-8")
