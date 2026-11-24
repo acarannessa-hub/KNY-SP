@@ -177,6 +177,12 @@ def _translate(exc):
     status = _status_of(exc)
     message = GENERIC
 
+    # gspread raises the BUILT-IN PermissionError when Google answers 403
+    # while opening the spreadsheet; it must not fall into the OSError
+    # ("network problem") branch below.
+    if isinstance(exc, PermissionError) and status is None:
+        status = 403
+
     if name == "SpreadsheetNotFound" or status == 404:
         hint = ("Spreadsheet not found. Check GOOGLE_SHEET_ID (the long ID in "
                 "the sheet's web address).")
