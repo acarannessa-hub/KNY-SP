@@ -229,5 +229,38 @@ class SheetRowTests(unittest.TestCase):
         self.assertEqual(record["import_key"], cleaning.fingerprint("membership_fees", values))
 
 
+class PublicDatasetTests(unittest.TestCase):
+    PRIVATE_VALUES = ("KNYC-001", "REF-9", "secret note", "Juan", "GCash", "Acme Corp", "lunch for Juan")
+
+    def test_combined_table_is_public_safe_and_sorted(self):
+        from services.finance import public_dataset
+        fee, _ = clean("membership_fees", {
+            "membership_id": "KNYC-001", "quarter": "Q1", "payment_date": "2026-02-10",
+            "amount": "50", "payment_method": "gcash", "reference_no": "REF-9", "notes": "secret note",
+        }, members={"knyc-001": ("KNYC-001", "active")})
+        sponsor, _ = clean("sponsorships", {"sponsorship_date": "2026-01-05", "sponsor_name": "Acme Corp", "amount": "5000"})
+        expense, _ = clean("expenses", {"expense_date": "2026-03-31", "category": "Food",
+                                        "description": "lunch for Juan", "amount": "300.50"})
+        table = public_dataset.build_table({
+            "membership_fees": [fee], "sponsorships": [sponsor], "expenses": [expense], "fundraising": [],
+        })
+
+        self.assertEqual(table[0], public_dataset.PUBLIC_HEADERS)
+        self.assertEqual([row[0] for row in table[1:]], ["2026-01-05", "2026-02-10", "2026-03-31"])
+        self.assertEqual(table[1], ["2026-01-05", 2026, "2026-Q1", "2026-01", "Income",
+                                    "Sponsorships", "Sponsorships", 5000.0, 5000.0])
+        self.assertEqual(table[3][4:], ["Expense", "Expenses", "Food", 300.5, -300.5])
+        flat = " ".join(str(cell) for row in table for cell in row)
+        for private in self.PRIVATE_VALUES:
+            self.assertNotIn(private, flat)
+
+    def test_quarter_boundaries(self):
+        from services.finance import public_dataset
+        for day, quarter in ((date(2026, 3, 31), "2026-Q1"), (date(2026, 4, 1), "2026-Q2"),
+                             (date(2026, 12, 31), "2026-Q4")):
+            row = public_dataset.transaction_row("fundraising", {"fundraising_date": day, "amount": Decimal("1")})
+            self.assertEqual(row[2], quarter)
+
+
 if __name__ == "__main__":
     unittest.main()

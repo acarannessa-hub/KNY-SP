@@ -455,7 +455,48 @@ def replace_tab(tab, values):
             "a new empty one with the same name) and resync."
         )
 
-    worksheet = _worksheet(tab)
+    _overwrite(tab, _worksheet(tab), values, first_time=(status == "empty"))
+
+
+def replace_derived_tab(tab, values):
+    """
+    Overwrite a tab that the app derives itself (for example the public
+    'transactions' table for Looker Studio). Same safety rule as
+    replace_tab: a tab whose first row is not the expected header, or that
+    holds other data with no header, is never overwritten.
+    """
+    if tab in schema.TABS:
+        raise ValueError("use replace_tab for ledger tabs")
+    if not values or not values[0]:
+        raise ValueError("replace_derived_tab needs a header row")
+    expected = [str(h) for h in values[0]]
+
+    _create_tab_if_missing(tab, len(values), len(expected))
+    spreadsheet = get_spreadsheet()
+    worksheet = _call(lambda: spreadsheet.worksheet(tab))
+    first = _clean(_call(lambda: worksheet.row_values(1)))
+
+    if any(first):
+        if first[:len(expected)] != expected:
+            raise _config_error(
+                f"Tab '{tab}' has content that does not start with the "
+                "expected header row, so it was not overwritten. Clear the "
+                "tab (or delete it; the app recreates it) and resync."
+            )
+        first_time = False
+    else:
+        existing = _call(lambda: worksheet.get_all_values())
+        if any(any(str(c).strip() for c in row) for row in existing):
+            raise _config_error(
+                f"Tab '{tab}' has data but no header row, so it was not "
+                "overwritten. Clear the tab and resync."
+            )
+        first_time = True
+
+    _overwrite(tab, worksheet, values, first_time)
+
+
+def _overwrite(tab, worksheet, values, first_time):
     rows_needed = len(values)
     cols_needed = max(len(row) for row in values)
     if worksheet.row_count < rows_needed:
@@ -470,7 +511,7 @@ def replace_tab(tab, values):
         value_input_option="RAW",
     ))
 
-    if status == "empty":
+    if first_time:
         # First sync of this tab: bold, frozen header. Not fatal if it fails.
         try:
             last = _col_letter(cols_needed)

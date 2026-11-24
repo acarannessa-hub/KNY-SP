@@ -182,11 +182,31 @@ def public_roster():
     )
 
 
+LOOKER_HOSTS = ("https://lookerstudio.google.com/", "https://datastudio.google.com/")
+
+
+def _looker_report_urls():
+    """(report_url, embed_url) from LOOKER_STUDIO_URL, or (None, None).
+
+    Paste the report's normal share link into LOOKER_STUDIO_URL; the embed
+    address is derived from it. Only Looker Studio addresses are accepted,
+    so the page can never be made to frame another site."""
+    url = (os.getenv("LOOKER_STUDIO_URL") or "").strip()
+    if not url.startswith(LOOKER_HOSTS) or "/reporting/" not in url:
+        return None, None
+    if "/embed/reporting/" in url:
+        return url.replace("/embed/reporting/", "/reporting/", 1), url
+    return url, url.replace("/reporting/", "/embed/reporting/", 1)
+
+
 @app.route("/financial-dashboard")
 def public_financial_dashboard():
 
+    report_url, embed_url = _looker_report_urls()
     return render_template(
-        "public/financial_dashboard.html"
+        "public/financial_dashboard.html",
+        looker_report_url=report_url,
+        looker_embed_url=embed_url
     )
 
 

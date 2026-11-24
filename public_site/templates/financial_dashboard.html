@@ -371,6 +371,53 @@
 
 
         /* =========================
+           LOOKER STUDIO REPORT
+        ========================= */
+
+        .report-frame {
+            position: relative;
+
+            width: 100%;
+
+            aspect-ratio: 4 / 3;
+
+            min-height: 480px;
+
+            border: 0;
+
+            border-radius: 10px;
+
+            background: #fff;
+        }
+
+
+        .report-actions {
+            margin-top: 16px;
+
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 12px;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            color: #666;
+
+            font-size: 13px;
+        }
+
+
+        .report-actions a {
+            color: #7562B5;
+
+            font-weight: bold;
+        }
+
+
+        /* =========================
            FOOTER
         ========================= */
 
@@ -512,6 +559,52 @@
     </section>
 
 
+
+{% if looker_embed_url %}
+
+    <!-- =========================
+         LIVE REPORT (Looker Studio)
+         Data: the public 'transactions' table. It holds only dates,
+         categories and amounts - no names, IDs or reference numbers.
+    ========================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            Financial Overview
+        </h2>
+
+        <div class="chart-card">
+
+            <iframe
+                class="report-frame"
+                src="{{ looker_embed_url }}"
+                title="KNYC financial transparency report"
+                loading="lazy"
+                allowfullscreen
+                sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox">
+            </iframe>
+
+            <div class="report-actions">
+
+                <span>
+                    Figures update automatically from the organization's
+                    recorded transactions.
+                </span>
+
+                <a href="{{ looker_report_url }}" target="_blank" rel="noopener">
+                    Open the full report &rarr;
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+{% else %}
 
     <!-- =========================
          SUMMARY CARDS
@@ -870,6 +963,10 @@
         </div>
 
     </section>
+
+
+
+{% endif %}
 
 
 

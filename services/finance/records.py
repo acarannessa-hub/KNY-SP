@@ -22,7 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import google_sheets as gs
 from models import db, Expense, Fundraising, Member, MembershipFee, Sponsorship
 
-from . import cleaning, ingestion, sheets_mirror
+from . import cleaning, ingestion, public_dataset, sheets_mirror
 from .ledgers import LEDGERS
 
 log = logging.getLogger(__name__)
@@ -153,12 +153,27 @@ def mirror(ledger_key):
     sheets_mirror.push_ledger(ledger_key, rows)
 
 
+def mirror_public():
+    """Rebuild the public 'transactions' tab (the Looker Studio data source)
+    from all four ledgers. Raises gs.SheetsError."""
+    rows_by_ledger = {
+        key: [_values(key, record) for record in MODELS[key].query.all()]
+        for key in LEDGERS
+    }
+    gs.replace_derived_tab(
+        public_dataset.PUBLIC_TAB,
+        public_dataset.build_table(rows_by_ledger),
+    )
+
+
 def safe_mirror(ledger_key):
-    """Mirror if enabled. Returns a warning message instead of raising."""
+    """Mirror the ledger and the public table if enabled. Returns a warning
+    message instead of raising."""
     if not sheets_mirror.is_enabled():
         return None
     try:
         mirror(ledger_key)
+        mirror_public()
     except gs.SheetsError as error:
         log.warning("Sheet mirror failed for %s: %s", ledger_key, getattr(error, "hint", ""))
         return sheets_mirror.warning_for(error)
@@ -169,18 +184,21 @@ def safe_mirror(ledger_key):
 
 
 def resync_all():
-    """Mirror every ledger. Returns [(label, ok, message)]."""
+    """Mirror every ledger plus the public table. Returns [(label, ok, message)]."""
+    jobs = [(ledger.label, lambda key=key: mirror(key)) for key, ledger in LEDGERS.items()]
+    jobs.append(("Public transactions", mirror_public))
+
     results = []
-    for key, ledger in LEDGERS.items():
+    for label, job in jobs:
         try:
-            mirror(key)
-            results.append((ledger.label, True, "synced"))
+            job()
+            results.append((label, True, "synced"))
         except gs.SheetsError as error:
             hint = getattr(error, "hint", "")
-            results.append((ledger.label, False, f"{error} {hint}".strip()))
+            results.append((label, False, f"{error} {hint}".strip()))
         except Exception:  # noqa: BLE001
-            log.exception("Unexpected error mirroring %s", key)
-            results.append((ledger.label, False, "unexpected error (see server log)"))
+            log.exception("Unexpected error mirroring %s", label)
+            results.append((label, False, "unexpected error (see server log)"))
     return results
 
 
