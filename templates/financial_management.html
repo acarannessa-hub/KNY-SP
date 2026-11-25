@@ -24,26 +24,27 @@
         {% endwith %}
 
         <section class="summary-grid" aria-label="Financial summary">
+            <h2 class="sr-only" id="totals-heading">Totals</h2>
             <article class="summary-card">
                 <h3>Fundraising</h3>
-                <div class="amount">₱{{ "%.2f"|format(fundraising | sum(attribute="amount")) }}</div>
+                <div class="amount">₱{{ "{:,.2f}".format(fundraising | sum(attribute="amount")) }}</div>
             </article>
             <article class="summary-card">
                 <h3>Sponsorships</h3>
-                <div class="amount">₱{{ "%.2f"|format(sponsorships | sum(attribute="amount")) }}</div>
+                <div class="amount">₱{{ "{:,.2f}".format(sponsorships | sum(attribute="amount")) }}</div>
             </article>
             <article class="summary-card">
                 <h3>Membership Fees</h3>
-                <div class="amount">₱{{ "%.2f"|format(membership_fees | sum(attribute="amount")) }}</div>
+                <div class="amount">₱{{ "{:,.2f}".format(membership_fees | sum(attribute="amount")) }}</div>
             </article>
             <article class="summary-card">
                 <h3>Expenses</h3>
-                <div class="amount">₱{{ "%.2f"|format(expenses | sum(attribute="amount")) }}</div>
+                <div class="amount">₱{{ "{:,.2f}".format(expenses | sum(attribute="amount")) }}</div>
             </article>
             <article class="summary-card balance">
                 <h3>Current Balance</h3>
                 <div class="amount">
-                    ₱{{ "%.2f"|format(
+                    ₱{{ "{:,.2f}".format(
                         (fundraising | sum(attribute="amount"))
                         + (sponsorships | sum(attribute="amount"))
                         + (membership_fees | sum(attribute="amount"))

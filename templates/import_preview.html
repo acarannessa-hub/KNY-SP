@@ -8,16 +8,16 @@
     <style>
         .import-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 20px; }
         .import-summary div { background: #fff; border: 1px solid #e3def0; border-radius: 10px; padding: 12px 14px; }
-        .import-summary strong { display: block; font-size: 1.6rem; color: #5d4b9a; }
-        .import-summary span { font-size: .85rem; color: #555; }
+        .import-summary strong { display: block; font-size: var(--type-figure); font-weight: 800; font-variant-numeric: tabular-nums; color: #5d4b9a; }
+        .import-summary span { font-size: var(--type-meta); color: #555; }
         .import-section { margin-bottom: 22px; }
         .import-section h2 { display: flex; gap: 10px; align-items: baseline; }
-        .import-section h2 small { font-size: .85rem; font-weight: 400; color: #666; }
-        .problem { color: #7d3640; font-size: .9rem; margin: 2px 0; }
+        .import-section h2 small { font-size: var(--type-meta); font-weight: 400; color: #666; }
+        .problem { color: #7d3640; font-size: var(--type-ui); margin: 2px 0; }
         .fix-input { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
         .fix-input input[type=date], .fix-input input[type=number] { max-width: 180px; }
-        .corrections { font-size: .82rem; color: #555; margin: 0; padding-left: 18px; }
-        .muted { color: #777; font-size: .9rem; }
+        .corrections { font-size: var(--type-meta); color: #555; margin: 0; padding-left: 18px; }
+        .muted { color: #777; font-size: var(--type-ui); }
         .sticky-actions { position: sticky; bottom: 0; background: #faf9fd; border-top: 1px solid #e3def0; padding: 12px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         td.num { text-align: right; font-variant-numeric: tabular-nums; }
     </style>

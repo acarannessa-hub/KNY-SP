@@ -25,29 +25,46 @@ typography:
   headline:
     fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
     fontSize: "clamp(30px, 4vw, 42px)"
-    fontWeight: 700
+    fontWeight: 800
     lineHeight: 1.15
     letterSpacing: "-0.025em"
+  section:
+    fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
+    fontSize: "22px"
+    fontWeight: 700
+    lineHeight: 1.25
+    letterSpacing: "-0.01em"
   title:
     fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
-    fontSize: "20px"
+    fontSize: "18px"
     fontWeight: 700
     lineHeight: 1.3
+  figure:
+    fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
+    fontSize: "24px"
+    fontWeight: 800
+    lineHeight: 1.2
+    fontFeature: "tnum"
   body:
     fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.6
-  label:
-    fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
-    fontSize: "12px"
-    fontWeight: 700
-    letterSpacing: "0.03em"
   ui:
     fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
     fontSize: "14px"
     fontWeight: 700
     lineHeight: 1.2
+  meta:
+    fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.5
+  label:
+    fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
+    fontSize: "12px"
+    fontWeight: 700
+    letterSpacing: "0.03em"
 rounded:
   control: "8px"
   card-public: "10px"
@@ -167,14 +184,20 @@ The four official organization colors, each paired with a deep shade for text an
 **Character:** One familiar system face that feels native on the Windows laptops and phones officers already use. Hierarchy comes from weight (700–800) and the purple-deep heading color rather than from a second typeface.
 
 ### Hierarchy
-- **Headline** (700, clamp(30px, 4vw, 42px), 1.15, -0.025em): page titles in Civic Purple Deep.
-- **Title** (700, 20px, 1.3): dialog titles, card and section headings.
+Every size comes from a CSS variable in `private.css` (`--type-headline` … `--type-label`); no literal font sizes outside the ramp.
+- **Headline** (800, clamp(30px, 4vw, 42px), 1.15, -0.025em): every page title (h1), in Civic Purple Deep.
+- **Section** (700, 22px, 1.25): every h2: card, toolbar and dialog headings.
+- **Title** (700, 18px, 1.3): h3 and the brand name.
+- **Figure** (800, 24px, tabular numerals): stat tiles and finance totals.
 - **Body** (400, 16px, 1.6): paragraphs and table cells; page descriptions are capped near 60–72ch in Quiet Slate.
 - **UI** (700, 14px, 1.2): buttons, navigation links, table actions.
+- **Meta** (400, 13px, 1.5): field hints, the back link, filter menus, audit details.
 - **Label** (700, 12px, 0.03em, uppercase): stat labels, column headers, pills (800).
 
 ### Named Rules
 **The Numbers Line Up Rule.** Money and counts always use tabular numerals, right-aligned in tables, with ₱ and two decimals.
+
+**The Clear Step Rule.** Adjacent heading roles differ by at least one clear step (42 → 22 → 18 → 16). Headings wrap balanced, paragraphs wrap pretty; never add a new size without adding it to the ramp.
 
 ## Layout
 
@@ -233,10 +256,10 @@ Friendly, solid and confident.
 A sticky white top bar: the KNY brand mark and name on the left, bold 14px links on the right. Links get a lavender wash on hover. The last link (Logout) is a gradient pill. Links wrap onto more lines on narrow screens.
 
 ### Ledger Table (signature)
-The portal's main workhorse: a white card with a toolbar, then a full-width table whose header row is lavender with purple-deep, letter-spaced column titles. Every column title is a button with a ▾ that opens a sort-and-filter menu. Money columns are right-aligned tabular figures, empty cells show a pale "—", and row actions (Edit, Delete) sit right-aligned as link buttons. A stat strip in the page header (uppercase labels over 20px bold figures) updates live as filters change.
+The portal's main workhorse: a white card with a toolbar, then a full-width table whose header row is lavender with purple-deep, letter-spaced column titles. Every column title is a button with a ▾ that opens a sort-and-filter menu. Money columns are right-aligned tabular figures, empty cells show a pale "—", and row actions (Edit, Delete) sit right-aligned as link buttons. A stat strip in the page header (uppercase labels over 24px Figure numbers) updates live as filters change.
 
 ### Dialogs
-Centered modal cards (16px radius, up to 680px wide, 480px for confirmations) with a header row (20px purple-deep title and a round × close button), a scrolling body and a footer with Cancel and the main action. All add, edit, delete and confirm flows use dialogs, not inline forms.
+Centered modal cards (16px radius, up to 680px wide, 480px for confirmations) with a header row (Section-size purple-deep title and a round × close button), a scrolling body and a footer with Cancel and the main action. All add, edit, delete and confirm flows use dialogs, not inline forms.
 
 ## Do's and Don'ts
 

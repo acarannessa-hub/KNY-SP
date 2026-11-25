@@ -1,0 +1,116 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/audit_log.html"
+        ],
+        "createdAt": "2026-11-25T13:09:52.044Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/dashboard.html"
+        ],
+        "createdAt": "2026-11-25T13:09:52.273Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/dues_reminders.html"
+        ],
+        "createdAt": "2026-11-25T13:09:52.502Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/events.html"
+        ],
+        "createdAt": "2026-11-25T13:09:52.768Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/exports.html"
+        ],
+        "createdAt": "2026-11-25T13:09:53.020Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/financial_management.html"
+        ],
+        "createdAt": "2026-11-25T13:09:53.327Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/import_preview.html"
+        ],
+        "createdAt": "2026-11-25T13:09:53.572Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/ledger.html"
+        ],
+        "createdAt": "2026-11-25T13:09:53.775Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/manage_export_requests.html"
+        ],
+        "createdAt": "2026-11-25T13:09:54.061Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/manage_members.html"
+        ],
+        "createdAt": "2026-11-25T13:09:54.297Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/manage_users.html"
+        ],
+        "createdAt": "2026-11-25T13:09:54.541Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/notifications.html"
+        ],
+        "createdAt": "2026-11-25T13:09:54.830Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      }
+    ]
+  }
+}

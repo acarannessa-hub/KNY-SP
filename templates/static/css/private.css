@@ -14,6 +14,16 @@
     --private-shadow: 0 10px 28px rgba(48, 50, 61, 0.08);
     --private-shadow-hover: 0 16px 34px rgba(48, 50, 61, 0.13);
     --private-radius: 12px;
+
+    /* Type ramp (see DESIGN.md > Typography). One family; size + weight do the work. */
+    --type-headline: clamp(30px, 4vw, 42px);
+    --type-section: 22px;
+    --type-title: 18px;
+    --type-figure: 24px;
+    --type-body: 16px;
+    --type-ui: 14px;
+    --type-meta: 13px;
+    --type-label: 12px;
 }
 
 * {
@@ -31,6 +41,43 @@ body {
     font-family: "Segoe UI", Aptos, Arial, Helvetica, sans-serif;
     line-height: 1.6;
     background: linear-gradient(180deg, var(--private-light-purple) 0, #fff 280px, var(--private-background) 100%);
+}
+
+h1,
+h2,
+h3 {
+    color: var(--private-purple-dark);
+    text-wrap: balance;
+}
+
+h1 {
+    font-size: var(--type-headline);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+}
+
+h2 {
+    font-size: var(--type-section);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+h3 {
+    font-size: var(--type-title);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+p,
+li {
+    text-wrap: pretty;
+}
+
+::selection {
+    color: #fff;
+    background: var(--private-purple);
 }
 
 a {
@@ -80,7 +127,7 @@ textarea {
     align-items: center;
     gap: 12px;
     color: var(--private-purple-dark);
-    font-size: 17px;
+    font-size: var(--type-title);
     font-weight: 800;
     white-space: nowrap;
 }
@@ -92,7 +139,7 @@ textarea {
     place-items: center;
     content: "KNY";
     color: #fff;
-    font-size: 12px;
+    font-size: var(--type-label);
     letter-spacing: 0.04em;
     border-radius: 12px;
     background: linear-gradient(135deg, var(--private-purple), var(--private-cyan), var(--private-green));
@@ -109,7 +156,7 @@ textarea {
 .private-nav a {
     padding: 9px 12px;
     color: var(--private-dark);
-    font-size: 14px;
+    font-size: var(--type-ui);
     font-weight: 700;
     border-radius: 8px;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
@@ -144,17 +191,13 @@ textarea {
 
 .page-heading h1 {
     margin: 0 0 8px;
-    color: var(--private-purple-dark);
-    font-size: clamp(30px, 4vw, 42px);
-    line-height: 1.15;
-    letter-spacing: -0.025em;
 }
 
 .page-heading p {
     max-width: 720px;
     margin: 0;
     color: var(--private-gray);
-    font-size: 16px;
+    font-size: var(--type-body);
 }
 
 .page-heading-row,
@@ -244,9 +287,14 @@ textarea {
 
 .card-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     margin-top: 20px;
+}
+
+.card-actions .btn {
+    white-space: nowrap;
 }
 
 .btn,
@@ -260,7 +308,7 @@ input[type="submit"] {
     gap: 8px;
     padding: 10px 16px;
     color: #fff;
-    font-size: 14px;
+    font-size: var(--type-ui);
     font-weight: 700;
     line-height: 1.2;
     text-align: center;
@@ -335,7 +383,7 @@ input[type="submit"]:hover {
 .btn-small {
     min-height: 34px;
     padding: 7px 11px;
-    font-size: 12px;
+    font-size: var(--type-label);
 }
 
 .back {
@@ -344,7 +392,7 @@ input[type="submit"]:hover {
     gap: 7px;
     margin: 0 0 20px;
     color: var(--private-purple-dark);
-    font-size: 14px;
+    font-size: var(--type-ui);
     font-weight: 700;
 }
 
@@ -362,8 +410,6 @@ input[type="submit"]:hover {
 
 .dashboard-welcome h1 {
     margin: 0 0 8px;
-    color: var(--private-purple-dark);
-    font-size: clamp(28px, 4vw, 38px);
 }
 
 .dashboard-welcome p {
@@ -425,15 +471,16 @@ input[type="submit"]:hover {
 .summary-card h4 {
     margin: 0 0 10px;
     color: var(--private-gray);
-    font-size: 14px;
+    font-size: var(--type-ui);
 }
 
 .summary-card .amount,
 .summary-card .value {
     color: var(--private-purple-dark);
-    font-size: clamp(23px, 3vw, 30px);
+    font-size: var(--type-figure);
     font-weight: 800;
     line-height: 1.2;
+    font-variant-numeric: tabular-nums;
 }
 
 .summary-card.balance {
@@ -471,7 +518,7 @@ input[type="submit"]:hover {
     align-items: center;
     padding: 8px 11px;
     color: var(--private-purple-dark);
-    font-size: 13px;
+    font-size: var(--type-meta);
     font-weight: 700;
     border-radius: 7px;
     background: var(--private-light-purple);
@@ -515,7 +562,7 @@ label {
     display: block;
     margin-bottom: 7px;
     color: var(--private-dark);
-    font-size: 13px;
+    font-size: var(--type-meta);
     font-weight: 700;
 }
 
@@ -575,7 +622,7 @@ table {
 th {
     padding: 13px 14px;
     color: #fff;
-    font-size: 12px;
+    font-size: var(--type-label);
     font-weight: 800;
     letter-spacing: 0.035em;
     text-align: left;
@@ -630,7 +677,7 @@ td select {
     align-items: center;
     padding: 5px 9px;
     color: #315c37;
-    font-size: 12px;
+    font-size: var(--type-label);
     font-weight: 800;
     border-radius: 999px;
     background: var(--private-light-green);
@@ -710,7 +757,7 @@ td select {
     gap: 11px;
     margin-bottom: 24px;
     color: var(--private-purple-dark);
-    font-size: 14px;
+    font-size: var(--type-ui);
     font-weight: 800;
 }
 
@@ -720,15 +767,14 @@ td select {
     display: grid;
     place-items: center;
     color: #fff;
-    font-size: 11px;
+    font-size: var(--type-label);
     border-radius: 11px;
     background: linear-gradient(135deg, var(--private-purple), var(--private-cyan), var(--private-green));
 }
 
 .auth-box h1 {
     margin: 0 0 8px;
-    color: var(--private-purple-dark);
-    font-size: 28px;
+    font-size: 30px;
 }
 
 .auth-box .subtitle,
@@ -754,7 +800,7 @@ td select {
     justify-content: center;
     margin: 18px 0 0;
     color: var(--private-purple-dark);
-    font-size: 14px;
+    font-size: var(--type-ui);
     font-weight: 700;
 }
 
@@ -1052,7 +1098,7 @@ td select {
 
     .private-nav a {
         padding: 8px 10px;
-        font-size: 13px;
+        font-size: var(--type-meta);
     }
 
     .private-container,
@@ -1220,7 +1266,7 @@ td select {
 }
 .ledger-stats dt {
     color: var(--private-gray);
-    font-size: 12px;
+    font-size: var(--type-label);
     font-weight: 700;
     letter-spacing: 0.03em;
     text-transform: uppercase;
@@ -1228,7 +1274,7 @@ td select {
 .ledger-stats dd {
     margin: 2px 0 0;
     color: var(--private-dark);
-    font-size: 20px;
+    font-size: var(--type-figure);
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
@@ -1238,7 +1284,7 @@ td select {
     align-items: center;
     gap: 6px;
     padding: 3px 10px;
-    font-size: 14px;
+    font-size: var(--type-ui);
     font-weight: 800;
     border-radius: 999px;
     background: #edf0f3;
@@ -1314,7 +1360,7 @@ td select {
 .pill {
     display: inline-block;
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: var(--type-label);
     font-weight: 800;
     border-radius: 999px;
     background: #edf0f3;
@@ -1346,12 +1392,12 @@ td select {
     padding: 18px 22px 12px;
     border-bottom: 1px solid var(--private-line);
 }
-.dialog-header h2 { margin: 0; font-size: 20px; color: var(--private-purple-dark); }
+.dialog-header h2 { margin: 0; }
 .dialog-x {
     width: 36px; height: 36px;
     border: 0; border-radius: 50%;
     background: transparent;
-    font-size: 24px; line-height: 1;
+    font-size: var(--type-section); line-height: 1;
     color: var(--private-gray);
     cursor: pointer;
 }
@@ -1371,7 +1417,7 @@ td select {
 }
 .dialog-footer .muted { margin-right: auto; }
 .req { color: #a14452; }
-.field-hint { display: block; margin-top: 4px; color: var(--private-gray); font-size: 12px; }
+.field-hint { display: block; margin-top: 4px; color: var(--private-gray); font-size: var(--type-label); }
 .member-select { width: 100%; min-height: 120px; }
 .member-search { margin-bottom: 6px; }
 .delete-summary {
@@ -1417,7 +1463,7 @@ td select {
 th.num .col-filter { justify-content: flex-end; }
 .col-filter:hover, .col-filter[aria-expanded="true"] { background: rgba(93, 75, 154, 0.12); }
 .col-filter:focus-visible { outline: 2px solid var(--private-purple); outline-offset: 1px; }
-.col-filter .caret { font-size: 11px; opacity: 0.6; }
+.col-filter .caret { font-size: var(--type-label); opacity: 0.6; }
 th.is-filtered .col-filter, th.is-sorted .col-filter { background: var(--private-purple-dark); color: #fff; }
 th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1; }
 
@@ -1431,7 +1477,7 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
     border-radius: 12px;
     background: #fff;
     box-shadow: 0 18px 40px rgba(48, 50, 61, 0.2);
-    font-size: 14px;
+    font-size: var(--type-ui);
     color: var(--private-dark);
 }
 .col-menu hr { margin: 6px 4px; border: 0; border-top: 1px solid var(--private-line); }
@@ -1450,7 +1496,7 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .col-menu-item:hover, .col-menu-item:focus-visible { background: var(--private-light-purple); outline: none; }
 .col-menu-search { width: 100%; min-height: 36px; margin: 2px 0 4px; }
 .col-menu-bulk { display: flex; justify-content: space-between; padding: 0 2px; }
-.col-menu-bulk .link-btn { padding: 4px 8px; font-size: 13px; }
+.col-menu-bulk .link-btn { padding: 4px 8px; font-size: var(--type-meta); }
 .col-menu-list { max-height: 240px; overflow-y: auto; padding: 2px; }
 .col-menu-option {
     display: flex;
@@ -1464,7 +1510,7 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .col-menu-option:hover { background: var(--private-background); }
 .col-menu-option input { width: 16px; height: 16px; min-height: 0; margin: 0; accent-color: var(--private-purple-dark); }
 .col-menu-option span:first-of-type { flex: 1; overflow-wrap: anywhere; }
-.col-menu-count { color: var(--private-gray); font-size: 12px; font-variant-numeric: tabular-nums; }
+.col-menu-count { color: var(--private-gray); font-size: var(--type-label); font-variant-numeric: tabular-nums; }
 [hidden] { display: none !important; }
 .ledger-table th .col-filter { justify-content: flex-start; }
 .ledger-table th.num .col-filter { justify-content: flex-end; }
@@ -1476,12 +1522,12 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .audit-details > summary { list-style: none; display: inline-block; }
 .audit-details > summary::-webkit-details-marker { display: none; }
 .audit-detail-body { white-space: normal; text-align: left; }
-.audit-diff { min-width: 0; width: 100%; font-size: 13px; }
+.audit-diff { min-width: 0; width: 100%; font-size: var(--type-meta); }
 .audit-diff th { background: var(--private-background); color: var(--private-dark); padding: 6px 8px; }
 .audit-diff td { padding: 6px 8px; overflow-wrap: anywhere; }
 .audit-old { color: #7d3640; text-decoration: line-through; }
 .audit-new { color: #315c37; font-weight: 700; }
-.audit-snapshot { display: grid; gap: 4px; margin: 0; font-size: 13px; }
+.audit-snapshot { display: grid; gap: 4px; margin: 0; font-size: var(--type-meta); }
 .audit-snapshot > div { display: grid; grid-template-columns: 130px 1fr; gap: 8px; }
 .audit-snapshot dt { color: var(--private-gray); font-weight: 700; }
 .audit-snapshot dd { margin: 0; overflow-wrap: anywhere; }
@@ -1531,9 +1577,9 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .pill-role-encoder { background: var(--private-light-cyan); color: #1f5f69; }
 .pill-role-viewer { background: #eef0f3; color: #4a5260; }
 .row-focus td { background: #fff8e1 !important; }
-.role-help { margin: 4px 0 0; padding-left: 18px; color: #555; font-size: 0.92rem; line-height: 1.6; }
+.role-help { margin: 4px 0 0; padding-left: 18px; color: #555; font-size: var(--type-ui); line-height: 1.6; }
 .dialog-divider { border: none; border-top: 1px solid #ece6f5; margin: 18px 0; }
-.dialog-body h3 { font-size: 1rem; margin: 0 0 6px; }
+.dialog-body h3 { font-size: var(--type-body); margin: 0 0 6px; }
 .inline-password-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .inline-password-form input { flex: 1 1 220px; width: auto; }
 .choice-list legend { font-weight: 600; margin-bottom: 4px; }
@@ -1546,4 +1592,4 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .dataset-option { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #e3ddef; border-radius: 10px; cursor: pointer; font-weight: normal; background: #fff; }
 .dataset-option:has(input:checked) { border-color: var(--private-purple-dark); background: #f7f4fd; }
 .dataset-option input[type="radio"] { width: 18px; height: 18px; min-height: 0; flex: 0 0 auto; margin: 3px 0 0; padding: 0; box-shadow: none; accent-color: var(--private-purple-dark); }
-.dataset-option .pill { margin-left: 6px; font-size: 0.7rem; }
+.dataset-option .pill { margin-left: 6px; font-size: var(--type-label); }

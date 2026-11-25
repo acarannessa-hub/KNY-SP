@@ -293,11 +293,19 @@
     "typographyMeta": {
       "headline": {
         "displayName": "Headline",
-        "purpose": "Page titles in Civic Purple Deep."
+        "purpose": "Every page title (h1)."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Every h2: card, toolbar and dialog headings."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Dialog, card and section headings."
+        "purpose": "h3 and the brand name."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Stat tiles and finance totals, tabular numerals."
       },
       "body": {
         "displayName": "Body",
@@ -306,6 +314,10 @@
       "ui": {
         "displayName": "UI",
         "purpose": "Buttons, navigation, row actions."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Hints, back link, menus, audit details."
       },
       "label": {
         "displayName": "Label",
@@ -453,6 +465,11 @@
         "name": "The Gentle Lift Rule",
         "body": "Only things you can click lift on hover (1px for buttons, 2px for cards). Static content never moves.",
         "section": "elevation"
+      },
+      {
+        "name": "The Clear Step Rule",
+        "body": "Adjacent heading roles differ by at least one clear step (42 → 22 → 18 → 16). Headings wrap balanced, paragraphs wrap pretty; never add a new size without adding it to the ramp.",
+        "section": "typography"
       }
     ],
     "dos": [
