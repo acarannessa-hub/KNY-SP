@@ -1,898 +1,148 @@
 {% extends "public_base.html" %}
+{% macro peso(value) -%}{{ "−" if value < 0 else "" }}₱{{ "{:,.2f}".format(value|abs) }}{%- endmacro %}
 
-
-{% block title %}
-Kaya Natin! Youth | Home
-{% endblock %}
-
-{% block body_class %}
-page-landing
-{% endblock %}
-
-
+{% block title %}Kaya Natin! Youth – Candelaria{% endblock %}
+{% block body_class %}page-home{% endblock %}
 
 {% block content %}
-
-
-<!-- ================================================== -->
-<!-- HERO -->
-<!-- ================================================== -->
-
 <section class="hero">
-
-    <div class="hero-content">
-
+    <div class="wrap hero-grid">
         <div>
-
-            <p
-                style="
-                    margin-bottom: 10px;
-                    font-size: 14px;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
-                "
-            >
-                [Organization Tagline]
-            </p>
-
-
-            <h1>
-                Kaya Natin! Youth
-            </h1>
-
-
-            <p>
-                [Short introductory statement about
-                the organization, its purpose, and
-                the community it serves.]
-            </p>
-
-
-            <div class="hero-buttons">
-
-                <a
-                    href="{{ url_for('public_introduction') }}"
-                    class="public-button public-button-primary"
-                >
-                    Learn More
-                </a>
-
-
-                <a
-                    href="{{ url_for('public_advocacies') }}"
-                    class="public-button public-button-secondary"
-                >
-                    Our Advocacies
-                </a>
-
+            <p class="tagline placeholder">[Organization Tagline]</p>
+            <h1>Kaya Natin! Youth</h1>
+            <p class="lead placeholder">[Short introductory statement about the organization, its purpose, and the community it serves.]</p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="{{ url_for('public_introduction') }}">Learn more about us</a>
+                <a class="btn btn-ghost" href="{{ url_for('public_advocacies') }}">Our advocacies</a>
             </div>
-
         </div>
 
+        <aside class="ledger-card" aria-labelledby="ledger-heading">
+            <div class="ledger-card-head">
+                <h2 id="ledger-heading">Where our money goes</h2>
+                {% if finance %}<span class="live-dot">Live record</span>{% endif %}
+            </div>
+            {% if finance %}
+            <dl class="ledger-rows">
+                <div><dt>Fundraising</dt><dd>{{ peso(finance.fundraising) }}</dd></div>
+                <div><dt>Sponsorships</dt><dd>{{ peso(finance.sponsorships) }}</dd></div>
+                <div><dt>Membership fees</dt><dd>{{ peso(finance.membership_fees) }}</dd></div>
+                <div><dt>Expenses</dt><dd>−{{ peso(finance.expenses) }}</dd></div>
+                <div class="ledger-total"><dt>Balance</dt><dd class="{{ 'is-negative' if finance.balance < 0 else '' }}">{{ peso(finance.balance) }}</dd></div>
+            </dl>
+            <div class="ledger-card-foot">
+                <span>{% if finance.latest %}Latest entry {{ finance.latest.strftime("%B %d, %Y") }}{% else %}No entries recorded yet{% endif %}</span>
+                <a class="text-link" href="{{ url_for('public_financial_dashboard') }}">Full breakdown</a>
+            </div>
+            {% else %}
+            <p class="placeholder">Financial figures are temporarily unavailable.</p>
+            {% endif %}
+        </aside>
     </div>
-
 </section>
 
-
-
-<!-- ================================================== -->
-<!-- ORGANIZATION INTRODUCTION -->
-<!-- ================================================== -->
-
-<section class="public-section public-section-light">
-
-    <div class="section-container">
-
-        <div class="section-heading">
-
-            <span class="eyebrow">
-                Who We Are
-            </span>
-
-            <h2>
-                [Short Organization Introduction]
-            </h2>
-
-            <p>
-                [A short public-facing description
-                of Kaya Natin! Youth.]
-            </p>
-
+<section class="section">
+    <div class="wrap split">
+        <div>
+            <h2 class="placeholder">[Short Organization Introduction]</h2>
+            <p class="lead placeholder mt-4">[A short public-facing description of Kaya Natin! Youth.]</p>
+            <p class="mt-5"><a class="text-link" href="{{ url_for('public_introduction') }}">Read our story</a></p>
         </div>
-
-
-        <div class="public-grid-2">
-
-
-            <div class="public-card">
-
-                <h3>
-                    Mission
-                </h3>
-
-                <p>
-                    [Placeholder for the organization's
-                    mission statement.]
-                </p>
-
+        <div class="statement-list">
+            <div class="statement">
+                <h3>Mission</h3>
+                <p class="placeholder">[Placeholder for the organization's mission statement.]</p>
             </div>
-
-
-            <div class="public-card">
-
-                <h3>
-                    Vision
-                </h3>
-
-                <p>
-                    [Placeholder for the organization's
-                    vision statement.]
-                </p>
-
+            <div class="statement">
+                <h3>Vision</h3>
+                <p class="placeholder">[Placeholder for the organization's vision statement.]</p>
             </div>
-
-
         </div>
-
-
-        <div
-            style="
-                text-align: center;
-                margin-top: 30px;
-            "
-        >
-
-            <a
-                href="{{ url_for('public_introduction') }}"
-                class="public-button public-button-accent"
-            >
-                Read Our Story
-            </a>
-
-        </div>
-
     </div>
-
 </section>
 
-
-
-<!-- ================================================== -->
-<!-- ADVOCACIES PREVIEW -->
-<!-- ================================================== -->
-
-<section class="public-section public-section-gray">
-
-    <div class="section-container">
-
-        <div class="section-heading">
-
-            <span class="eyebrow">
-                What We Stand For
-            </span>
-
-            <h2>
-                Our Thematic Advocacies
-            </h2>
-
-            <p>
-                [Short description of the organization's
-                eight thematic advocacies.]
-            </p>
-
+<section class="section section-tint">
+    <div class="wrap">
+        <div class="section-head">
+            <div>
+                <h2>Our thematic advocacies</h2>
+                <p class="placeholder">[Short description of the organization's eight thematic advocacies.]</p>
+            </div>
+            <a class="text-link" href="{{ url_for('public_advocacies') }}">View all advocacies</a>
         </div>
-
-
-        <div class="public-grid">
-
-
-            <!-- ADVOCACY 1 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    01
+        <ol class="numbered">
+            {% for n in range(1, 9) %}
+            <li>
+                <span class="numbered-no">{{ "%02d"|format(n) }}</span>
+                <div>
+                    <h3 class="placeholder">[Advocacy Title]</h3>
+                    <p class="placeholder">[Short description.]</p>
                 </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 2 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    02
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 3 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    03
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 4 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    04
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 5 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    05
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 6 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    06
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 7 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    07
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <!-- ADVOCACY 8 -->
-
-            <div class="public-card advocacy-card">
-
-                <div class="advocacy-number">
-                    08
-                </div>
-
-                <h3>
-                    [Advocacy Title]
-                </h3>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-        </div>
-
-
-        <div
-            style="
-                text-align: center;
-                margin-top: 35px;
-            "
-        >
-
-            <a
-                href="{{ url_for('public_advocacies') }}"
-                class="public-button public-button-accent"
-            >
-                View All Advocacies
-            </a>
-
-        </div>
-
+            </li>
+            {% endfor %}
+        </ol>
     </div>
-
 </section>
 
-
-
-<!-- ================================================== -->
-<!-- UPCOMING EVENTS PREVIEW -->
-<!-- ================================================== -->
-
-<section class="public-section public-section-light">
-
-    <div class="section-container">
-
-        <div class="section-heading">
-
-            <span class="eyebrow">
-                Stay Updated
-            </span>
-
-            <h2>
-                Upcoming Events
-            </h2>
-
-            <p>
-                [Short description of upcoming
-                activities and events.]
-            </p>
-
-        </div>
-
-
-        <div class="public-grid-2">
-
-
-            <div class="public-card announcement-card">
-
-                <div class="announcement-image">
-
-                    [EVENT IMAGE]
-
-                </div>
-
-                <div class="announcement-content">
-
-                    <div class="announcement-date">
-
-                        [EVENT DATE]
-
-                    </div>
-
-                    <h3>
-                        [Upcoming Event Title]
-                    </h3>
-
-                    <p>
-                        [Short description of the
-                        upcoming event.]
-                    </p>
-
-                    <a
-                        href="{{ url_for('public_events') }}"
-                        class="public-button public-button-accent"
-                    >
-                        View Event Details
-                    </a>
-
-                </div>
-
+<section class="section">
+    <div class="wrap">
+        <div class="section-head">
+            <div>
+                <h2>Upcoming events</h2>
+                <p class="placeholder">[Short description of upcoming activities and events.]</p>
             </div>
-
-
-            <div class="public-card">
-
-                <h3>
-                    [Second Event / Announcement]
-                </h3>
-
-                <p>
-                    [Placeholder description for
-                    another upcoming activity.]
-                </p>
-
-                <p>
-                    <strong>
-                        Date:
-                    </strong>
-
-                    [Date]
-                </p>
-
-                <p>
-                    <strong>
-                        Location:
-                    </strong>
-
-                    [Location]
-                </p>
-
-                <a
-                    href="{{ url_for('public_events') }}"
-                    class="public-button public-button-accent"
-                >
-                    See All Events
-                </a>
-
-            </div>
-
-
+            <a class="text-link" href="{{ url_for('public_events') }}">See all events</a>
         </div>
-
+        <ul class="event-list">
+            <li class="event">
+                <span class="event-date placeholder">[EVENT DATE]</span>
+                <div>
+                    <h3 class="placeholder">[Upcoming Event Title]</h3>
+                    <p class="placeholder">[Short description of the upcoming event.]</p>
+                    <div class="event-meta"><a class="text-link" href="{{ url_for('public_events') }}">View event details</a></div>
+                </div>
+            </li>
+            <li class="event">
+                <span class="event-date placeholder">[DATE]</span>
+                <div>
+                    <h3 class="placeholder">[Second Event / Announcement]</h3>
+                    <p class="placeholder">[Placeholder description for another upcoming activity.]</p>
+                    <div class="event-meta"><span><strong>Date:</strong> <span class="placeholder">[Date]</span></span><span><strong>Location:</strong> <span class="placeholder">[Location]</span></span></div>
+                </div>
+            </li>
+        </ul>
     </div>
-
 </section>
 
-
-
-<!-- ================================================== -->
-<!-- FINANCIAL TRANSPARENCY -->
-<!-- ================================================== -->
-
-<section class="public-section public-section-gray">
-
-    <div class="section-container">
-
-        <div class="section-heading">
-
-            <span class="eyebrow">
-                Transparency
-            </span>
-
-            <h2>
-                Financial Dashboard
-            </h2>
-
-            <p>
-                [Short statement explaining the
-                organization's commitment to
-                financial transparency.]
-            </p>
-
+<section class="section section-tint">
+    <div class="wrap">
+        <div class="section-head">
+            <div>
+                <h2>Organization roster</h2>
+                <p class="placeholder">[Short introduction to the organization's officers and members.]</p>
+            </div>
+            <a class="text-link" href="{{ url_for('public_roster') }}">View full roster</a>
         </div>
-
-
-        <div class="public-grid-4">
-
-
-            <div class="public-card financial-card">
-
-                <h3>
-                    Fundraising
-                </h3>
-
-                <div class="financial-value">
-                    ₱[Amount]
-                </div>
-
-                <div class="financial-note">
-                    [Period]
-                </div>
-
-            </div>
-
-
-            <div class="public-card financial-card">
-
-                <h3>
-                    Sponsorships
-                </h3>
-
-                <div class="financial-value">
-                    ₱[Amount]
-                </div>
-
-                <div class="financial-note">
-                    [Period]
-                </div>
-
-            </div>
-
-
-            <div class="public-card financial-card">
-
-                <h3>
-                    Membership Fees
-                </h3>
-
-                <div class="financial-value">
-                    ₱[Amount]
-                </div>
-
-                <div class="financial-note">
-                    [Period]
-                </div>
-
-            </div>
-
-
-            <div class="public-card financial-card">
-
-                <h3>
-                    Expenses
-                </h3>
-
-                <div class="financial-value">
-                    ₱[Amount]
-                </div>
-
-                <div class="financial-note">
-                    [Period]
-                </div>
-
-            </div>
-
-
-        </div>
-
-
-        <div
-            style="
-                text-align: center;
-                margin-top: 35px;
-            "
-        >
-
-            <a
-                href="{{ url_for('public_financial_dashboard') }}"
-                class="public-button public-button-accent"
-            >
-                View Financial Dashboard
-            </a>
-
-        </div>
-
+        <ul class="people-grid">
+            {% for i in range(4) %}
+            <li class="person">
+                <div class="person-photo" aria-hidden="true">PHOTO</div>
+                <h3 class="placeholder">[Full Name]</h3>
+                <p class="person-role placeholder">[Position]</p>
+                <p class="placeholder">[Short description.]</p>
+            </li>
+            {% endfor %}
+        </ul>
     </div>
-
 </section>
 
-
-
-<!-- ================================================== -->
-<!-- ROSTER PREVIEW -->
-<!-- ================================================== -->
-
-<section class="public-section public-section-light">
-
-    <div class="section-container">
-
-        <div class="section-heading">
-
-            <span class="eyebrow">
-                Our People
-            </span>
-
-            <h2>
-                Organization Roster
-            </h2>
-
-            <p>
-                [Short introduction to the organization's
-                officers and members.]
-            </p>
-
+<section class="cta-band">
+    <div class="wrap cta-band-inner">
+        <div>
+            <h2>Have a question?</h2>
+            <p class="placeholder">[Short message inviting visitors to contact the organization.]</p>
         </div>
-
-
-        <div class="public-grid-4">
-
-
-            <div class="public-card roster-card">
-
-                <div class="roster-photo">
-                    PHOTO
-                </div>
-
-                <h3>
-                    [Full Name]
-                </h3>
-
-                <div class="roster-position">
-                    [Position]
-                </div>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <div class="public-card roster-card">
-
-                <div class="roster-photo">
-                    PHOTO
-                </div>
-
-                <h3>
-                    [Full Name]
-                </h3>
-
-                <div class="roster-position">
-                    [Position]
-                </div>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <div class="public-card roster-card">
-
-                <div class="roster-photo">
-                    PHOTO
-                </div>
-
-                <h3>
-                    [Full Name]
-                </h3>
-
-                <div class="roster-position">
-                    [Position]
-                </div>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-            <div class="public-card roster-card">
-
-                <div class="roster-photo">
-                    PHOTO
-                </div>
-
-                <h3>
-                    [Full Name]
-                </h3>
-
-                <div class="roster-position">
-                    [Position]
-                </div>
-
-                <p>
-                    [Short description.]
-                </p>
-
-            </div>
-
-
-        </div>
-
-
-        <div
-            style="
-                text-align: center;
-                margin-top: 35px;
-            "
-        >
-
-            <a
-                href="{{ url_for('public_roster') }}"
-                class="public-button public-button-accent"
-            >
-                View Full Roster
-            </a>
-
-        </div>
-
+        <a class="btn" href="{{ url_for('public_contact') }}">Send us a message</a>
     </div>
-
 </section>
-
-
-
-<!-- ================================================== -->
-<!-- CONTACT CTA -->
-<!-- ================================================== -->
-
-<section
-    class="public-section"
-    style="
-        background:
-            linear-gradient(
-                135deg,
-                #7562B5,
-                #55B8C7,
-                #82B96B
-            );
-        color: white;
-    "
->
-
-    <div
-        class="section-container"
-        style="text-align: center;"
-    >
-
-        <h2
-            style="
-                margin-top: 0;
-                font-size: 38px;
-            "
-        >
-            Have a Question?
-        </h2>
-
-        <p
-            style="
-                max-width: 650px;
-                margin: 0 auto 25px;
-                color: rgba(255,255,255,0.9);
-            "
-        >
-            [Short message inviting visitors
-            to contact the organization.]
-        </p>
-
-        <a
-            href="{{ url_for('public_contact') }}"
-            class="public-button public-button-primary"
-        >
-            Send Us a Message
-        </a>
-
-    </div>
-
-</section>
-
-
-
-<!-- ================================================== -->
-<!-- SPECIAL ANNOUNCEMENT POPUP -->
-<!-- ================================================== -->
-
-<div
-    id="announcementModal"
-    class="announcement-modal"
-
-    /*
-       This will later be controlled by the
-       administrator's announcement data.
-
-       true  = show popup
-       false = do not show popup
-    */
-
-    data-show="false"
->
-
-
-    <div class="announcement-modal-content">
-
-
-        <button
-            type="button"
-            class="close-announcement"
-            onclick="closeAnnouncementModal()"
-        >
-            ×
-        </button>
-
-
-        <div class="announcement-modal-image">
-
-            [SPECIAL ANNOUNCEMENT IMAGE]
-
-        </div>
-
-
-        <div class="announcement-modal-body">
-
-            <div class="announcement-date">
-
-                [ANNOUNCEMENT DATE]
-
-            </div>
-
-
-            <h2>
-                [Special Announcement / Event Title]
-            </h2>
-
-
-            <p>
-                [Announcement description goes here.
-                This section can contain information
-                about an event, important notice,
-                registration details, or other
-                organizational updates.]
-            </p>
-
-
-            <p>
-                <strong>
-                    Date:
-                </strong>
-
-                [Event Date]
-            </p>
-
-
-            <p>
-                <strong>
-                    Time:
-                </strong>
-
-                [Event Time]
-            </p>
-
-
-            <p>
-                <strong>
-                    Location:
-                </strong>
-
-                [Event Location]
-            </p>
-
-
-            <a
-                href="{{ url_for('public_events') }}"
-                class="public-button public-button-accent"
-            >
-                View Details
-            </a>
-
-        </div>
-
-    </div>
-
-</div>
-
-
 {% endblock %}

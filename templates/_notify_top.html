@@ -1,9 +1,4 @@
 {# Shared top of the notification pages: tabs, email status, unfinished batch. #}
-<nav class="notify-tabs" aria-label="Notifications">
-    {% for endpoint, label in [("manage_events", "Meetings & Events"), ("dues_reminders", "Dues Reminders"), ("send_warning", "Send a Warning"), ("notifications", "Email History & Setup")] %}
-    <a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
-    {% endfor %}
-</nav>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}

@@ -1,24 +1,97 @@
-<header class="private-site-header">
-    <div class="private-site-header-inner">
-        <a class="private-brand" href="{{ url_for('dashboard') }}">
-            Kaya Natin! Youth
-        </a>
-
-        {% if current_user.is_authenticated %}
-        <nav class="private-nav" aria-label="Private navigation">
-            {% if current_user.role in ["admin", "encoder"] %}
-            <a href="{{ url_for('financial_management') }}">Manage Finances</a>
-            {% endif %}
-            {% if current_user.role == "admin" %}
-            <a href="{{ url_for('manage_members') }}">Members</a>
-            <a href="{{ url_for('manage_users') }}">Users</a>
-            <a href="{{ url_for('manage_events') }}">Events &amp; Notifications</a>
-            <a href="{{ url_for('audit_log') }}">Audit Log</a>
-            {% endif %}
-            <a href="{{ url_for('exports_page') }}">Exports</a>
-            <a href="{{ url_for('change_password') }}">Password</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
-        </nav>
-        {% endif %}
-    </div>
+{% from "_icons.html" import icon with context %}
+{% if current_user.is_authenticated %}
+{% set role = current_user.role %}
+{% set nav_groups = [
+    ("", [
+        ("dashboard", "Overview", "home", ["dashboard"], True),
+    ]),
+    ("Finances", [
+        ("financial_management", "Finance overview", "wallet", ["financial_management", "confirm_financial_import", "import_financial_records"], role in ["admin", "encoder", "viewer"]),
+        ("fundraising", "Fundraising", "trending-up", ["fundraising"], role in ["admin", "encoder"]),
+        ("sponsorships", "Sponsorships", "heart", ["sponsorships"], role in ["admin", "encoder"]),
+        ("membership_fees", "Membership fees", "receipt", ["membership_fees"], role in ["admin", "encoder"]),
+        ("expenses", "Expenses", "trending-down", ["expenses"], role in ["admin", "encoder"]),
+    ]),
+    ("People", [
+        ("manage_members", "Members", "users", ["manage_members"], role == "admin"),
+        ("manage_users", "Portal accounts", "key", ["manage_users"], role == "admin"),
+    ]),
+    ("Communication", [
+        ("manage_events", "Meetings & events", "calendar", ["manage_events"], role == "admin"),
+        ("dues_reminders", "Dues reminders", "bell", ["dues_reminders"], role == "admin"),
+        ("send_warning", "Warnings", "alert", ["send_warning"], role == "admin"),
+        ("notifications", "Email history", "mail", ["notifications"], role == "admin"),
+    ]),
+    ("Records", [
+        ("exports_page", "Exports", "download", ["exports_page"], True),
+        ("manage_export_requests", "Export requests", "inbox", ["manage_export_requests"], role == "admin"),
+        ("audit_log", "Audit log", "shield", ["audit_log"], role == "admin"),
+    ]),
+] %}
+<header class="app-topbar">
+    <a class="app-brand" href="{{ url_for('dashboard') }}"><span class="app-brand-mark" aria-hidden="true">KNY</span><span>Kaya Natin! Youth</span></a>
+    <button class="app-menu-button" type="button" aria-controls="app-sidebar" aria-expanded="false" data-sidebar-toggle>
+        {{ icon("menu") }}<span class="sr-only">Open menu</span>
+    </button>
 </header>
+<aside class="app-sidebar" id="app-sidebar" aria-label="Portal navigation">
+    <div class="app-sidebar-head">
+        <a class="app-brand" href="{{ url_for('dashboard') }}"><span class="app-brand-mark" aria-hidden="true">KNY</span><span>Kaya Natin! Youth<small>Officers' portal</small></span></a>
+        <button class="app-menu-close" type="button" data-sidebar-toggle aria-controls="app-sidebar">{{ icon("x") }}<span class="sr-only">Close menu</span></button>
+    </div>
+    <nav class="app-nav">
+        {% for group, items in nav_groups %}
+        {% set visible = items|selectattr(4)|list %}
+        {% if visible %}
+        <div class="app-nav-group">
+            {% if group %}<p class="app-nav-label">{{ group }}</p>{% endif %}
+            <ul>
+                {% for endpoint, label, icon_name, active_on, show in visible %}
+                <li><a href="{{ url_for(endpoint) }}" {% if request.endpoint in active_on %}aria-current="page"{% endif %}>
+                    {{ icon(icon_name) }}<span>{{ label }}</span>
+                    {% if endpoint == "manage_export_requests" and nav_pending_exports %}<span class="app-nav-count" aria-label="{{ nav_pending_exports }} waiting">{{ nav_pending_exports }}</span>{% endif %}
+                </a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <div class="app-nav-group">
+            <ul>
+                <li><a href="{{ url_for('public_home') }}" target="_blank" rel="noopener">{{ icon("globe") }}<span>Public website</span></a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="app-account">
+        <div class="app-account-who">
+            <strong>{{ current_user.member.full_name if current_user.member else current_user.email }}</strong>
+            <span>{{ role|capitalize }} · {{ current_user.email }}</span>
+        </div>
+        <div class="app-account-actions">
+            <a href="{{ url_for('change_password') }}" {% if request.endpoint == "change_password" %}aria-current="page"{% endif %}>{{ icon("lock") }}<span>Password</span></a>
+            <a href="{{ url_for('logout') }}">{{ icon("logout") }}<span>Log out</span></a>
+        </div>
+    </div>
+</aside>
+<div class="app-scrim" data-sidebar-toggle hidden></div>
+<script>
+    (function () {
+        var sidebar = document.getElementById("app-sidebar");
+        var scrim = document.querySelector(".app-scrim");
+        var opener = document.querySelector(".app-menu-button");
+        function setOpen(open) {
+            sidebar.classList.toggle("is-open", open);
+            scrim.hidden = !open;
+            opener.setAttribute("aria-expanded", open ? "true" : "false");
+            document.body.classList.toggle("app-menu-open", open);
+            if (open) { var first = sidebar.querySelector("a"); if (first) { first.focus(); } } else { opener.focus(); }
+        }
+        document.querySelectorAll("[data-sidebar-toggle]").forEach(function (el) {
+            el.addEventListener("click", function () { setOpen(!sidebar.classList.contains("is-open")); });
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && sidebar.classList.contains("is-open")) { setOpen(false); }
+        });
+    })();
+</script>
+{% endif %}

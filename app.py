@@ -159,11 +159,62 @@ def public_static(filename):
     )
 
 
+def _public_finance_summary():
+    """Totals only (no names, payers, references or notes): safe to publish.
+
+    Returns None if the database can't be reached, so public pages still load."""
+    try:
+        def total(model):
+            return db.session.query(db.func.coalesce(db.func.sum(model.amount), 0)).scalar() or Decimal("0")
+
+        fundraising_total = total(Fundraising)
+        sponsorship_total = total(Sponsorship)
+        fees_total = total(MembershipFee)
+        expense_total = total(Expense)
+        income_total = fundraising_total + sponsorship_total + fees_total
+
+        by_income_type = [
+            (label or "Other fundraising", amount)
+            for label, amount in db.session.query(
+                Fundraising.income_type, db.func.sum(Fundraising.amount)
+            ).group_by(Fundraising.income_type).order_by(db.func.sum(Fundraising.amount).desc())
+        ]
+        by_category = [
+            (label or "Uncategorized", amount)
+            for label, amount in db.session.query(
+                Expense.category, db.func.sum(Expense.amount)
+            ).group_by(Expense.category).order_by(db.func.sum(Expense.amount).desc())
+        ]
+        monthly = exports.build("summary")[0].rows[-12:]
+        dates = [d for (d,) in db.session.query(db.func.max(Fundraising.fundraising_date))] + \
+                [d for (d,) in db.session.query(db.func.max(Sponsorship.sponsorship_date))] + \
+                [d for (d,) in db.session.query(db.func.max(MembershipFee.payment_date))] + \
+                [d for (d,) in db.session.query(db.func.max(Expense.expense_date))]
+        latest = max((d for d in dates if d), default=None)
+        return {
+            "fundraising": fundraising_total,
+            "sponsorships": sponsorship_total,
+            "membership_fees": fees_total,
+            "expenses": expense_total,
+            "income": income_total,
+            "balance": income_total - expense_total,
+            "by_income_type": by_income_type,
+            "by_category": by_category,
+            "monthly": monthly,
+            "latest": latest,
+        }
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Public finance summary failed.")
+        return None
+
+
 @app.route("/")
 def public_home():
 
     return render_template(
-        "public/landing.html"
+        "public/landing.html",
+        finance=_public_finance_summary()
     )
 
 
@@ -231,7 +282,8 @@ def public_financial_dashboard():
     return render_template(
         "public/financial_dashboard.html",
         looker_report_url=report_url,
-        looker_embed_url=embed_url
+        looker_embed_url=embed_url,
+        finance=_public_finance_summary()
     )
 
 
@@ -347,6 +399,18 @@ def csrf_protect():
         "danger"
     )
     return redirect(_safe_back_url(), code=303)
+
+
+@app.context_processor
+def portal_navigation_context():
+    """Counts shown in the portal sidebar (one cheap query, admins only)."""
+    pending = 0
+    try:
+        if current_user.is_authenticated and current_user.role == "admin":
+            pending = ExportRequest.query.filter_by(status="pending").count()
+    except SQLAlchemyError:
+        db.session.rollback()
+    return {"nav_pending_exports": pending}
 
 
 # ==================================================
@@ -481,10 +545,66 @@ def login():
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    """Overview: money at a glance, then what needs this person's attention."""
+    def total(model):
+        return db.session.query(db.func.coalesce(db.func.sum(model.amount), 0)).scalar() or Decimal("0")
+
+    def total_since(model, date_col, start):
+        return (db.session.query(db.func.coalesce(db.func.sum(model.amount), 0))
+                .filter(date_col >= start).scalar() or Decimal("0"))
+
+    now = datetime.now(timezone.utc)
+    year_start = date(notify_messages.today_in_manila(now).year, 1, 1)
+    income = total(Fundraising) + total(Sponsorship) + total(MembershipFee)
+    spent = total(Expense)
+    income_year = (total_since(Fundraising, Fundraising.fundraising_date, year_start)
+                   + total_since(Sponsorship, Sponsorship.sponsorship_date, year_start)
+                   + total_since(MembershipFee, MembershipFee.payment_date, year_start))
+    spent_year = total_since(Expense, Expense.expense_date, year_start)
+
+    upcoming = Event.query.filter(
+        Event.status == "scheduled", Event.starts_at > now
+    ).order_by(Event.starts_at).limit(4).all()
+
+    role = current_user.role
+    attention = []
+    recent = []
+    if role == "admin":
+        pending = ExportRequest.query.filter_by(status="pending").count()
+        if pending:
+            attention.append({"icon": "inbox", "tone": "warn",
+                              "text": f"{pending} export request{'s' if pending != 1 else ''} waiting for your decision",
+                              "action": "Review", "url": url_for("manage_export_requests")})
+        if not notify_mailer.is_configured():
+            attention.append({"icon": "mail", "tone": "warn",
+                              "text": "Email isn't connected, so reminders and notices can't be sent",
+                              "action": "Set up", "url": url_for("notifications") + "#setup"})
+        _, missing = notify.reachable(notify.active_members())
+        if missing:
+            attention.append({"icon": "users", "tone": "info",
+                              "text": f"{len(missing)} active member{'s have' if len(missing) != 1 else ' has'} no email and won't get reminders",
+                              "action": "Add emails", "url": url_for("manage_members")})
+        if not upcoming:
+            attention.append({"icon": "calendar", "tone": "info",
+                              "text": "No meetings or events are scheduled",
+                              "action": "Schedule one", "url": url_for("manage_events")})
+        recent = AuditLog.query.order_by(AuditLog.occurred_at.desc(), AuditLog.id.desc()).limit(6).all()
 
     return render_template(
         "dashboard.html",
-        user=current_user
+        user=current_user,
+        first_name=(current_user.member.first_name.split(" ")[0]
+                    if current_user.member and current_user.member.first_name else ""),
+        income=income, spent=spent, balance=income - spent,
+        income_year=income_year, spent_year=spent_year, year=year_start.year,
+        upcoming=upcoming,
+        attention=attention,
+        recent=recent,
+        audit_actions=AUDIT_ACTION_LABELS,
+        audit_entities=AUDIT_ENTITY_LABELS,
+        sheets_enabled=finance_sheets_mirror.is_enabled() and role in ("admin", "encoder"),
+        local=notify_messages.local,
+        when_text=notify_messages.when_text,
     )
 
 

@@ -1,77 +1,45 @@
 {% extends "public_base.html" %}
-
-{% block title %}
-Introduction | KAYA NATIN! Youth
-{% endblock %}
-
-{% block body_class %}
-page-introduction
-{% endblock %}
+{% block title %}Introduction – Kaya Natin! Youth{% endblock %}
+{% block body_class %}page-introduction{% endblock %}
 
 {% block content %}
+<header class="page-head">
+    <div class="wrap">
+        <ol class="breadcrumb"><li><a href="{{ url_for('public_home') }}">Home</a></li><li>About</li></ol>
+        <h1>Introduction</h1>
+        <p class="lead placeholder">[INTRODUCTION DESCRIPTION]</p>
+    </div>
+</header>
 
-<section class="page-header">
-
-    <h1>
-        Introduction
-    </h1>
-
-    <p>
-        [INTRODUCTION DESCRIPTION]
-    </p>
-
+<section class="section">
+    <div class="wrap doc-layout">
+        <nav class="doc-toc" aria-label="On this page">
+            <p>On this page</p>
+            <ol>
+                <li><a href="#nature">Nature</a></li>
+                <li><a href="#history">History</a></li>
+                <li><a href="#mission">Mission</a></li>
+                <li><a href="#vision">Vision</a></li>
+            </ol>
+        </nav>
+        <div>
+            <article class="article" id="nature">
+                <h2>Nature</h2>
+                <p class="placeholder">[PLACEHOLDER CONTENT]</p>
+            </article>
+            <article class="article" id="history">
+                <h2>History</h2>
+                <p class="placeholder">[PLACEHOLDER CONTENT]</p>
+            </article>
+            <article class="article" id="mission">
+                <h2>Mission</h2>
+                <p class="placeholder">[PLACEHOLDER CONTENT]</p>
+            </article>
+            <article class="article" id="vision">
+                <h2>Vision</h2>
+                <p class="placeholder">[PLACEHOLDER CONTENT]</p>
+            </article>
+        </div>
+    </div>
 </section>
-
-
-<section class="content-section">
-
-    <h2>
-        Nature
-    </h2>
-
-    <p>
-        [PLACEHOLDER CONTENT]
-    </p>
-
-</section>
-
-
-<section class="content-section">
-
-    <h2>
-        History
-    </h2>
-
-    <p>
-        [PLACEHOLDER CONTENT]
-    </p>
-
-</section>
-
-
-<section class="content-section">
-
-    <h2>
-        Mission
-    </h2>
-
-    <p>
-        [PLACEHOLDER CONTENT]
-    </p>
-
-</section>
-
-
-<section class="content-section">
-
-    <h2>
-        Vision
-    </h2>
-
-    <p>
-        [PLACEHOLDER CONTENT]
-    </p>
-
-</section>
-
 {% endblock %}

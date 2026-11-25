@@ -75,6 +75,7 @@ class Section:
     money: set = field(default_factory=set)      # column indexes holding amounts
     total: bool = True                           # add a total row for money columns
     kind: str = ""                               # income / expense / ""
+    date_index: int = 0                          # ledger sections: the transaction date column
 
 
 def _period_label(start, end):
@@ -97,13 +98,17 @@ def _ledger_section(key, start, end):
 
     headers = []
     money = set()
+    date_index = 0
     for f in ledger.fields:
         if f.kind == "amount":
             money.add(len(headers))
+        if f.name == ledger.date_field:
+            date_index = len(headers)
         headers.append(f.label)
         if f.kind == "member":
             headers.append("Member name")
     section = Section(ledger.label, headers, money=money, kind=ledger.kind)
+    section.date_index = date_index    # membership fees start with the member ID, not the date
     for record in records:
         values = finance_records._values(key, record)
         row = []
@@ -137,7 +142,7 @@ def _summary_section(start, end):
     columns = ["fundraising", "sponsorships", "membership_fees", "expenses"]
     for key in columns:
         ledger_section = _ledger_section(key, start, end)
-        date_index = 0
+        date_index = ledger_section.date_index
         amount_index = min(ledger_section.money)
         for row in ledger_section.rows:
             month = row[date_index].strftime("%Y-%m") if hasattr(row[date_index], "strftime") else str(row[date_index])[:7]

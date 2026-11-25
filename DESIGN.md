@@ -16,11 +16,14 @@ colors:
   quiet-slate: "#68717d"
   desk-white: "#f7f8fa"
   paper-white: "#ffffff"
+  alert-rose: "#a94f5a"
   alert-rose-ink: "#7d3640"
   alert-rose-wash: "#f5e5e8"
   caution-amber-ink: "#6b4a0b"
   caution-amber-wash: "#fbf0d9"
   success-ink: "#315c37"
+  lagoon-ink: "#1f5f69"
+  sidebar-white: "#fbfaff"
 typography:
   headline:
     fontFamily: "Segoe UI, Aptos, Arial, Helvetica, sans-serif"
@@ -167,7 +170,8 @@ The four official organization colors, each paired with a deep shade for text an
 - **Desk White** (#f7f8fa): page background, under a pale lavender gradient at the top of portal pages.
 - **Paper White** (#ffffff): cards, dialogs, inputs, table rows.
 - **Washes**: Lavender (#e9e3f5) for table headers, secondary buttons and hover fills; Lagoon (#e2f2f3) and Field (#e7f2e2) for tinted states.
-- **Status inks and washes**: Alert Rose (#7d3640 on #f5e5e8), Caution Amber (#6b4a0b on #fbf0d9), Success (#315c37 on the field wash).
+- **Status inks and washes**: Alert Rose (#7d3640 on #f5e5e8; solid #a94f5a for danger hover and negative money), Caution Amber (#6b4a0b on #fbf0d9), Success (#315c37 on the field wash), Lagoon ink (#1f5f69 on the lagoon wash for in-between states).
+- **Sidebar White** (#fbfaff): the portal sidebar, one step warmer than the page so navigation reads as its own layer.
 - **Hairline** (rgba(48, 50, 61, 0.1)): card borders, input borders, dividers.
 
 ### Named Rules
@@ -201,11 +205,18 @@ Every size comes from a CSS variable in `private.css` (`--type-headline` … `--
 
 ## Layout
 
-A centered column, at most 1160px wide (48px side gutters), with 44px top and 72px bottom page padding. The sticky header is 76px tall and spans the full width, with its contents capped at 1200px.
+**Portal (Operate).** A fixed 256px sidebar on the left (Sidebar White, hairline right edge) and a content column up to 1180px wide beside it, with 32px top padding. The sidebar groups every destination by job: Overview; Finances; People; Communication; Records. The current page is a lavender pill. The signed-in person and Password / Log out sit at the bottom. Below 960px the sidebar becomes an off-canvas drawer opened from a sticky top bar with a menu button; a dimmed scrim closes it, as does Escape.
 
-Portal pages share one skeleton: a back link, a header row (title and one-line description on the left, a strip of stat tiles on the right), flash messages, then one or more white cards holding a toolbar and a full-width table. Dashboards and the finance hub use auto-fitting card grids. Dialog forms use a two-column grid that collapses to one column on narrow screens. Spacing steps run 8, 14, 20, 26 and 44px.
+Every portal page uses the same skeleton: an optional back link (only on true sub-pages, e.g. a ledger back to Finance overview), the page header (title and one-line purpose on the left, stat tiles on the right, the most important tile tinted lavender), flash messages, then white **panels**. The Overview page is a two-column grid (attention, activity and totals on the left; coming up and shortcuts on the right) that stacks below 1100px. Stat tiles become a two-column grid on phones.
 
-On small screens the navigation wraps, tables scroll horizontally inside their card, and action buttons stretch to full width.
+**Public site (Persuade / Read).** A sticky white header topped by the four-color ribbon, a 1160px centered column, and full-width sections separated by hairlines, alternating white and Desk White. Inner pages open with a page header band (breadcrumb, title, lead paragraph, left-aligned). Long documents (Introduction, Constitution) use a sticky contents list beside the text, which folds above it on narrow screens. Prose is capped near 68ch.
+
+Spacing runs on a 4px base: 4, 8, 12, 16, 24, 32, 48, 72, 104px (`--space-*` in the portal, `--s1`–`--s9` on the public site).
+
+### Named Rules
+**The One Way There Rule.** Every destination has exactly one place in navigation. Don't add tab strips or "back to dashboard" links that repeat the sidebar.
+
+**The Attention First Rule.** The Overview page leads with what needs a decision (waiting requests, missing emails, sync problems), not with links to every module.
 
 ## Elevation & Depth
 
@@ -253,7 +264,17 @@ Friendly, solid and confident.
 - **Hints and errors:** hints in 13px Quiet Slate below the field; errors arrive as rose flash messages at the top of the page.
 
 ### Navigation
-A sticky white top bar: the KNY brand mark and name on the left, bold 14px links on the right. Links get a lavender wash on hover. The last link (Logout) is a gradient pill. Links wrap onto more lines on narrow screens.
+- **Portal sidebar:** 14px semibold links with an outline icon each (one consistent 1.75-stroke set in `templates/_icons.html`), uppercase 12px group labels, a lavender pill and purple icon for the current page, a purple count badge for waiting export requests. Icons are drawn SVG, never emoji or glyphs.
+- **Public header:** brand mark and name, then Home, About (a dropdown for Introduction, Constitution, Best practices, Roster), Advocacies, Events, Transparency, and a gradient "Contact us" button. The current page is a lavender pill. On phones it collapses to a menu button revealing the same links grouped.
+
+### Panels
+The portal's standard container: white, 1px hairline, 12px corners, a barely-there shadow (0 1px 2px), 24px padding, and a header row (Section-size title on the left, one secondary action on the right). Tables inside a panel run edge to edge. Panels never lift on hover.
+
+### Attention List (signature, portal Overview)
+Rows on a pale lavender-gray tint, each with a 34px tinted icon square (amber for things to act on, lagoon for information), one plain sentence, and one small secondary button naming the action ("Review", "Add emails"). When nothing needs attention it says "All clear" in success green.
+
+### Money Ledger Card (signature, public home)
+A white card beside the hero listing each income source, expenses as a negative, then a heavy rule and the balance in large purple figures, with the latest-entry date and a link to the full breakdown. It is the public face of The Open Record: real totals, never names.
 
 ### Ledger Table (signature)
 The portal's main workhorse: a white card with a toolbar, then a full-width table whose header row is lavender with purple-deep, letter-spaced column titles. Every column title is a button with a ▾ that opens a sort-and-filter menu. Money columns are right-aligned tabular figures, empty cells show a pale "—", and row actions (Edit, Delete) sit right-aligned as link buttons. A stat strip in the page header (uppercase labels over 24px Figure numbers) updates live as filters change.
@@ -269,6 +290,8 @@ Centered modal cards (16px radius, up to 680px wide, 480px for confirmations) wi
 - **Do** right-align money in tables with tabular numerals, ₱ and two decimals.
 - **Do** put add, edit and confirm forms in dialogs with Cancel on the left and the action on the right.
 - **Do** keep page titles in Civic Purple Deep and descriptions in Quiet Slate.
+- **Do** put new portal pages in the sidebar group that matches the job, and build them from the page header + panels skeleton.
+- **Do** publish real totals wherever the public site shows money; show an empty state, never a fake ₱0.00 placeholder.
 - **Do** use the 8 / 12 / 16px radius ladder and the 1px slate hairline for borders.
 
 ### Don't:
@@ -277,3 +300,5 @@ Centered modal cards (16px radius, up to 680px wide, 480px for confirmations) wi
 - **Don't** set yellow (#d8cf65) as text or as a large fill; it is a highlight only.
 - **Don't** make static content move on hover; only clickable elements lift.
 - **Don't** go back to inline expand-to-edit forms in tables; use the dialog pattern.
+- **Don't** put a colored bar along one edge of a rounded card, or a small uppercase label above a heading.
+- **Don't** give each public page its own inline stylesheet; everything public lives in `public_site/static/css/public.css`.

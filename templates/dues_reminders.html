@@ -9,10 +9,9 @@
 <body>
     {% include "private_header.html" %}
     <main class="private-container ledger-page">
-        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
         <header class="ledger-header">
             <div>
-                <h1>Dues Reminders</h1>
+                <h1>Dues reminders</h1>
                 <p>Email members who haven't fully paid their membership dues for a quarter. Each member gets their own email showing only their own balance.</p>
             </div>
             {% set owing = rows|selectattr("suggested")|list %}

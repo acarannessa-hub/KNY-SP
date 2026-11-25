@@ -1,46 +1,51 @@
-<header class="public-navbar">
-    <div class="navbar-container">
-        <a href="{{ url_for('public_home') }}" class="public-logo">
-            <div class="logo-placeholder">LOGO</div>
-            <div class="logo-text">
-                <strong>Kaya Natin!</strong>
-                <span>Youth</span>
-            </div>
+{% set ep = request.endpoint %}
+{% set about_pages = [
+    ("public_introduction", "Introduction"),
+    ("public_constitution", "Constitution & By-Laws"),
+    ("public_best_practices", "Best practices"),
+    ("public_roster", "Roster"),
+] %}
+{% set about_current = ep in about_pages|map(attribute=0)|list %}
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+    <div class="site-ribbon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div class="wrap site-header-inner">
+        <a class="brand" href="{{ url_for('public_home') }}">
+            <span class="brand-mark" aria-hidden="true">KNY</span>
+            <span>Kaya Natin! Youth<small>Candelaria</small></span>
         </a>
 
-        <nav class="public-nav">
-            <a href="{{ url_for('public_home') }}">Home</a>
-            <a href="{{ url_for('public_introduction') }}">About</a>
-            <a href="{{ url_for('public_advocacies') }}">Advocacies</a>
-            <a href="{{ url_for('public_constitution') }}">Constitution</a>
-            <a href="{{ url_for('public_best_practices') }}">Best Practices</a>
-            <a href="{{ url_for('public_roster') }}">Roster</a>
-            <a href="{{ url_for('public_financial_dashboard') }}">Financials</a>
-            <a href="{{ url_for('public_events') }}">Events</a>
-            <a href="{{ url_for('public_contact') }}" class="nav-contact">Contact</a>
+        <nav class="site-nav" aria-label="Main">
+            <a href="{{ url_for('public_home') }}" {% if ep == "public_home" %}aria-current="page"{% endif %}>Home</a>
+            <div class="nav-menu {% if about_current %}is-current{% endif %}">
+                <button type="button" aria-expanded="false" aria-controls="about-menu" data-menu-button>About</button>
+                <ul class="nav-dropdown" id="about-menu" hidden>
+                    {% for endpoint, label in about_pages %}
+                    <li><a href="{{ url_for(endpoint) }}" {% if ep == endpoint %}aria-current="page"{% endif %}>{{ label }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <a href="{{ url_for('public_advocacies') }}" {% if ep == "public_advocacies" %}aria-current="page"{% endif %}>Advocacies</a>
+            <a href="{{ url_for('public_events') }}" {% if ep == "public_events" %}aria-current="page"{% endif %}>Events</a>
+            <a href="{{ url_for('public_financial_dashboard') }}" {% if ep == "public_financial_dashboard" %}aria-current="page"{% endif %}>Transparency</a>
+            <a class="nav-cta" href="{{ url_for('public_contact') }}" {% if ep == "public_contact" %}aria-current="page"{% endif %}>Contact us</a>
         </nav>
 
-        <button
-            type="button"
-            class="mobile-menu-button"
-            onclick="togglePublicMenu()"
-            aria-label="Toggle navigation"
-            aria-expanded="false"
-        >
-            ☰
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-mobile-toggle>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <span class="sr-only">Menu</span>
         </button>
     </div>
 
-    <nav id="mobilePublicNav" class="mobile-public-nav">
-        <a href="{{ url_for('public_home') }}">Home</a>
-        <a href="{{ url_for('public_introduction') }}">About</a>
-        <a href="{{ url_for('public_advocacies') }}">Advocacies</a>
-        <a href="{{ url_for('public_constitution') }}">Constitution</a>
-        <a href="{{ url_for('public_best_practices') }}">Best Practices</a>
-        <a href="{{ url_for('public_roster') }}">Roster</a>
-        <a href="{{ url_for('public_financial_dashboard') }}">Financials</a>
-        <a href="{{ url_for('public_events') }}">Events</a>
-        <a href="{{ url_for('public_contact') }}">Contact</a>
+    <nav class="mobile-nav wrap" id="mobile-nav" aria-label="Main" hidden>
+        <a href="{{ url_for('public_home') }}" {% if ep == "public_home" %}aria-current="page"{% endif %}>Home</a>
+        <a href="{{ url_for('public_advocacies') }}" {% if ep == "public_advocacies" %}aria-current="page"{% endif %}>Advocacies</a>
+        <a href="{{ url_for('public_events') }}" {% if ep == "public_events" %}aria-current="page"{% endif %}>Events</a>
+        <a href="{{ url_for('public_financial_dashboard') }}" {% if ep == "public_financial_dashboard" %}aria-current="page"{% endif %}>Transparency</a>
+        <p>About</p>
+        {% for endpoint, label in about_pages %}
+        <a href="{{ url_for(endpoint) }}" {% if ep == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+        <a class="btn btn-primary" href="{{ url_for('public_contact') }}">Contact us</a>
     </nav>
 </header>
-<script src="{{ url_for('public_static', filename='js/public.js') }}"></script>

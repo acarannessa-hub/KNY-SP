@@ -1,220 +1,42 @@
-/* ==================================================
-   PUBLIC WEBSITE JAVASCRIPT
-================================================== */
+/* Public site: mobile menu, "About" dropdown, footer year. */
+(function () {
+    "use strict";
 
-
-/* ==================================================
-   MOBILE MENU
-================================================== */
-
-function togglePublicMenu() {
-
-    const menu =
-        document.getElementById("mobilePublicNav");
-
-    if (!menu) {
-        return;
+    // Mobile menu
+    var toggle = document.querySelector("[data-mobile-toggle]");
+    var mobileNav = document.getElementById("mobile-nav");
+    if (toggle && mobileNav) {
+        toggle.addEventListener("click", function () {
+            var open = mobileNav.hidden;
+            mobileNav.hidden = !open;
+            toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
     }
 
-    const button =
-        document.querySelector(".mobile-menu-button");
-
-    if (menu.style.display === "flex") {
-
-        menu.style.display = "none";
-        button?.setAttribute("aria-expanded", "false");
-
-    } else {
-
-        menu.style.display = "flex";
-        button?.setAttribute("aria-expanded", "true");
-
-    }
-
-}
-
-
-/* ==================================================
-   CLOSE MOBILE MENU AFTER CLICKING A LINK
-================================================== */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        const menu =
-            document.getElementById("mobilePublicNav");
-
-        if (!menu) {
-            return;
+    // "About" dropdown: click or keyboard to open; Escape / outside click closes
+    document.querySelectorAll("[data-menu-button]").forEach(function (button) {
+        var menu = document.getElementById(button.getAttribute("aria-controls"));
+        if (!menu) { return; }
+        function setOpen(open) {
+            menu.hidden = !open;
+            button.setAttribute("aria-expanded", open ? "true" : "false");
         }
+        button.addEventListener("click", function (event) {
+            event.stopPropagation();
+            setOpen(menu.hidden);
+            if (!menu.hidden) { var first = menu.querySelector("a"); if (first) { first.focus(); } }
+        });
+        document.addEventListener("click", function (event) {
+            if (!menu.hidden && !menu.contains(event.target)) { setOpen(false); }
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && !menu.hidden) { setOpen(false); button.focus(); }
+        });
+        menu.addEventListener("focusout", function (event) {
+            if (!menu.contains(event.relatedTarget) && event.relatedTarget !== button) { setOpen(false); }
+        });
+    });
 
-        const links =
-            menu.querySelectorAll("a");
-
-        links.forEach(
-            function (link) {
-
-                link.addEventListener(
-                    "click",
-                    function () {
-
-                        menu.style.display =
-                            "none";
-
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* ==================================================
-   ANNOUNCEMENT POPUP
-================================================== */
-
-function openAnnouncementModal() {
-
-    const modal =
-        document.getElementById(
-            "announcementModal"
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.add("active");
-
-    document.body.style.overflow =
-        "hidden";
-
-}
-
-
-function closeAnnouncementModal() {
-
-    const modal =
-        document.getElementById(
-            "announcementModal"
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.remove("active");
-
-    document.body.style.overflow =
-        "";
-
-}
-
-
-/* ==================================================
-   CLOSE POPUP WHEN CLICKING OUTSIDE
-================================================== */
-
-document.addEventListener(
-    "click",
-    function (event) {
-
-        const modal =
-            document.getElementById(
-                "announcementModal"
-            );
-
-        if (!modal) {
-            return;
-        }
-
-        if (event.target === modal) {
-
-            closeAnnouncementModal();
-
-        }
-
-    }
-);
-
-
-/* ==================================================
-   ESC KEY
-================================================== */
-
-document.addEventListener(
-    "keydown",
-    function (event) {
-
-        if (event.key !== "Escape") {
-            return;
-        }
-
-        closeAnnouncementModal();
-
-    }
-);
-
-
-/* ==================================================
-   AUTOMATIC ANNOUNCEMENT POPUP
-================================================== */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        const modal =
-            document.getElementById(
-                "announcementModal"
-            );
-
-        if (!modal) {
-            return;
-        }
-
-        const shouldShow =
-            modal.dataset.show === "true";
-
-        if (shouldShow) {
-
-            setTimeout(
-                function () {
-
-                    openAnnouncementModal();
-
-                },
-                500
-            );
-
-        }
-
-    }
-);
-
-
-/* ==================================================
-   CURRENT YEAR
-================================================== */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        const yearElement =
-            document.getElementById(
-                "currentYear"
-            );
-
-        if (!yearElement) {
-            return;
-        }
-
-        yearElement.textContent =
-            new Date().getFullYear();
-
-    }
-);
+    var year = document.getElementById("currentYear");
+    if (year) { year.textContent = new Date().getFullYear(); }
+})();

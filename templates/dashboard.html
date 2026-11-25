@@ -3,68 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KNY-SP Dashboard</title>
+    <title>Overview - KNY-SP</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
 <body>
     {% include "private_header.html" %}
+    {% from "_icons.html" import icon with context %}
+    {% macro peso(value) -%}{{ "−" if value < 0 else "" }}₱{{ "{:,.2f}".format(value|abs) }}{%- endmacro %}
 
-    <main class="private-container">
+    <main class="private-container ledger-page">
+        <header class="ledger-header">
+            <div>
+                <h1>Overview</h1>
+                <p>Welcome back{% if first_name %}, {{ first_name }}{% endif %}. {% if user.role == "admin" %}Here's the organization's money at a glance and what needs your attention.{% else %}Here's the organization's money at a glance and what's coming up.{% endif %}</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Income {{ year }}</dt><dd>{{ peso(income_year) }}</dd></div>
+                <div><dt>Expenses {{ year }}</dt><dd>{{ peso(spent_year) }}</dd></div>
+                <div class="stat-emphasis"><dt>Balance</dt><dd class="{{ 'is-negative' if balance < 0 else '' }}">{{ peso(balance) }}</dd></div>
+            </dl>
+        </header>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
-            <div class="message {{ 'danger' if category == 'danger' else category }}">{{ message }}</div>
+            <div class="message {{ category }}">{{ message }}</div>
             {% endfor %}
         {% endwith %}
 
-        <section class="welcome dashboard-welcome">
-            <h1>Welcome, {{ user.full_name }}!</h1>
-            <p>Welcome to the KNY-SP Transparency and Financial Monitoring System.</p>
-            <div class="dashboard-meta">
-                <p><strong>Email:</strong> {{ user.email }}</p>
-                <p><strong>Role:</strong> {{ user.role }}</p>
+        <div class="overview-grid">
+            <div class="overview-main">
+                {% if user.role == "admin" or sheets_enabled %}
+                <section class="panel" aria-labelledby="attention-heading">
+                    <div class="panel-head"><h2 id="attention-heading">Needs attention</h2></div>
+                    <ul class="attention-list">
+                        {% for item in attention %}
+                        <li class="attention-item tone-{{ item.tone }}">
+                            <span class="attention-icon">{{ icon(item.icon) }}</span>
+                            <span class="attention-text">{{ item.text }}</span>
+                            <a class="btn btn-small btn-secondary" href="{{ item.url }}">{{ item.action }}</a>
+                        </li>
+                        {% endfor %}
+                        {% if sheets_enabled %}
+                        <li class="attention-item tone-info" id="sync-item" hidden>
+                            <span class="attention-icon">{{ icon("alert") }}</span>
+                            <span class="attention-text" id="sync-text">The Google Sheet doesn't match the database</span>
+                            <a class="btn btn-small btn-secondary" href="{{ url_for('financial_management') }}">Check sync</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    <p class="attention-clear" id="attention-clear" {% if attention %}hidden{% endif %}>{{ icon("check") }} All clear. Nothing needs your attention right now.</p>
+                </section>
+                {% endif %}
+
+                {% if user.role == "admin" %}
+                <section class="panel" aria-labelledby="activity-heading">
+                    <div class="panel-head">
+                        <h2 id="activity-heading">Recent activity</h2>
+                        <a class="link-btn" href="{{ url_for('audit_log') }}">Full audit log</a>
+                    </div>
+                    {% if recent %}
+                    <ol class="activity-list">
+                        {% for entry in recent %}
+                        <li>
+                            <span class="activity-what">{{ entry.summary or (audit_actions.get(entry.action, entry.action) ~ " " ~ audit_entities.get(entry.entity, entry.entity)) }}</span>
+                            <span class="activity-meta">{{ entry.user_email or "system" }} · {{ local(entry.occurred_at).strftime("%b %d, %H:%M") if entry.occurred_at else "" }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="empty-inline">Changes to records, members and accounts will be listed here.</p>
+                    {% endif %}
+                </section>
+                {% endif %}
+
+                <section class="panel" aria-labelledby="money-heading">
+                    <div class="panel-head">
+                        <h2 id="money-heading">All-time totals</h2>
+                        <a class="link-btn" href="{{ url_for('financial_management') }}">Finance overview</a>
+                    </div>
+                    <dl class="totals-list">
+                        <div><dt>Total income</dt><dd>{{ peso(income) }}</dd></div>
+                        <div><dt>Total expenses</dt><dd>{{ peso(spent) }}</dd></div>
+                        <div class="totals-balance"><dt>Balance</dt><dd class="{{ 'is-negative' if balance < 0 else '' }}">{{ peso(balance) }}</dd></div>
+                    </dl>
+                </section>
             </div>
-        </section>
 
-        <div class="dashboard-cards">
-            {% if user.role in ["admin", "encoder"] %}
-            <section class="card dashboard-card">
-                <h2>Financial Dashboard</h2>
-                <p>View financial information and manage fundraising, sponsorships, membership fees, and expenses.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('financial_management') }}">View Financials</a>
-                </div>
-            </section>
-            {% endif %}
+            <div class="overview-side">
+                <section class="panel" aria-labelledby="upcoming-heading">
+                    <div class="panel-head">
+                        <h2 id="upcoming-heading">Coming up</h2>
+                        {% if user.role == "admin" %}<a class="link-btn" href="{{ url_for('manage_events') }}">All events</a>{% endif %}
+                    </div>
+                    {% if upcoming %}
+                    <ul class="event-list">
+                        {% for e in upcoming %}
+                        {% set d = local(e.starts_at) %}
+                        <li>
+                            <span class="event-date" aria-hidden="true"><span>{{ d.strftime("%b") }}</span><strong>{{ d.day }}</strong></span>
+                            <span class="event-body">
+                                <strong>{{ e.title }}</strong>
+                                <span class="muted">{{ "Meeting" if e.kind == "meeting" else "Event" }} · {{ d.strftime("%a") }} {{ d.strftime("%I:%M %p").lstrip("0") }}{% if e.location %} · {{ e.location }}{% endif %}</span>
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="empty-inline">No meetings or events scheduled.{% if user.role == "admin" %} <a href="{{ url_for('manage_events') }}">Schedule one</a> and members get reminders automatically.{% endif %}</p>
+                    {% endif %}
+                </section>
 
-            <section class="card dashboard-card">
-                <h2>Transparency</h2>
-                <p>Review the organization's public financial information and activities.</p>
-                <div class="card-actions">
-                    <a class="btn btn-secondary" href="{{ url_for('public_financial_dashboard') }}">View Transparency</a>
-                </div>
-            </section>
-
-            {% if user.role == "admin" %}
-            <section class="card dashboard-card">
-                <h2>User Management</h2>
-                <p>Manage members, their emails, and portal accounts and system access.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('manage_users') }}">Manage Users</a>
-                    <a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Manage Members</a>
-                </div>
-            </section>
-
-            <section class="card dashboard-card">
-                <h2>Notifications</h2>
-                <p>Email members about meetings and events (with automatic reminders), remind them about unpaid dues, and send warnings.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('manage_events') }}">Meetings &amp; Events</a>
-                    <a class="btn btn-secondary" href="{{ url_for('dues_reminders') }}">Dues Reminders</a>
-                    <a class="btn btn-secondary" href="{{ url_for('send_warning') }}">Send a Warning</a>
-                </div>
-            </section>
-            {% endif %}
+                <section class="panel" aria-labelledby="shortcuts-heading">
+                    <div class="panel-head"><h2 id="shortcuts-heading">Shortcuts</h2></div>
+                    <ul class="shortcut-list">
+                        {% if user.role in ["admin", "encoder"] %}
+                        <li><a href="{{ url_for('expenses') }}">{{ icon("trending-down") }}<span>Record an expense</span>{{ icon("arrow-right", "icon icon-end") }}</a></li>
+                        <li><a href="{{ url_for('fundraising') }}">{{ icon("trending-up") }}<span>Record fundraising income</span>{{ icon("arrow-right", "icon icon-end") }}</a></li>
+                        <li><a href="{{ url_for('membership_fees') }}">{{ icon("receipt") }}<span>Import a membership-fee sheet</span>{{ icon("arrow-right", "icon icon-end") }}</a></li>
+                        {% endif %}
+                        {% if user.role == "admin" %}
+                        <li><a href="{{ url_for('dues_reminders') }}">{{ icon("bell") }}<span>Send dues reminders</span>{{ icon("arrow-right", "icon icon-end") }}</a></li>
+                        {% endif %}
+                        <li><a href="{{ url_for('exports_page') }}">{{ icon("download") }}<span>Download a report</span>{{ icon("arrow-right", "icon icon-end") }}</a></li>
+                        <li><a href="{{ url_for('public_financial_dashboard') }}" target="_blank" rel="noopener">{{ icon("globe") }}<span>See the public transparency page</span>{{ icon("arrow-right", "icon icon-end") }}</a></li>
+                    </ul>
+                </section>
+            </div>
         </div>
     </main>
+    {% if sheets_enabled %}
+    <script>
+        // Show a sync warning only when the sheet and database differ.
+        fetch("{{ url_for('finance_sheet_status') }}", { cache: "no-store", credentials: "same-origin" })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (!data || !data.enabled || data.ok) { return; }
+                document.getElementById("sync-item").hidden = false;
+                document.getElementById("attention-clear").hidden = true;
+            })
+            .catch(function () {});
+    </script>
+    {% endif %}
 </body>
 </html>

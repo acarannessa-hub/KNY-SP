@@ -3,18 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Management - KNY-SP</title>
+    <title>Finance overview - KNY-SP</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
 <body>
     {% include "private_header.html" %}
 
-    <main class="private-container">
-        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+    <main class="private-container ledger-page">
+        {% set f_total = fundraising | sum(attribute="amount") %}
+        {% set s_total = sponsorships | sum(attribute="amount") %}
+        {% set m_total = membership_fees | sum(attribute="amount") %}
+        {% set e_total = expenses | sum(attribute="amount") %}
+        {% set income = f_total + s_total + m_total %}
+        {% set balance = income - e_total %}
+        {% set can_manage = current_user.role in ["admin", "encoder"] %}
 
-        <header class="page-heading">
-            <h1>Financial Management</h1>
-            <p>Manage and monitor the organization's financial records.</p>
+        <header class="ledger-header">
+            <div>
+                <h1>Finance overview</h1>
+                <p>Every peso the organization has recorded, by ledger. The database is the official record; the Google Sheet and public figures are copies of it.</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Income</dt><dd>₱{{ "{:,.2f}".format(income) }}</dd></div>
+                <div><dt>Expenses</dt><dd>₱{{ "{:,.2f}".format(e_total) }}</dd></div>
+                <div class="stat-emphasis"><dt>Balance</dt><dd class="{{ 'is-negative' if balance < 0 else '' }}">{{ "−" if balance < 0 else "" }}₱{{ "{:,.2f}".format(balance|abs) }}</dd></div>
+            </dl>
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -23,76 +36,41 @@
             {% endfor %}
         {% endwith %}
 
-        <section class="summary-grid" aria-label="Financial summary">
-            <h2 class="sr-only" id="totals-heading">Totals</h2>
-            <article class="summary-card">
-                <h3>Fundraising</h3>
-                <div class="amount">₱{{ "{:,.2f}".format(fundraising | sum(attribute="amount")) }}</div>
-            </article>
-            <article class="summary-card">
-                <h3>Sponsorships</h3>
-                <div class="amount">₱{{ "{:,.2f}".format(sponsorships | sum(attribute="amount")) }}</div>
-            </article>
-            <article class="summary-card">
-                <h3>Membership Fees</h3>
-                <div class="amount">₱{{ "{:,.2f}".format(membership_fees | sum(attribute="amount")) }}</div>
-            </article>
-            <article class="summary-card">
-                <h3>Expenses</h3>
-                <div class="amount">₱{{ "{:,.2f}".format(expenses | sum(attribute="amount")) }}</div>
-            </article>
-            <article class="summary-card balance">
-                <h3>Current Balance</h3>
-                <div class="amount">
-                    ₱{{ "{:,.2f}".format(
-                        (fundraising | sum(attribute="amount"))
-                        + (sponsorships | sum(attribute="amount"))
-                        + (membership_fees | sum(attribute="amount"))
-                        - (expenses | sum(attribute="amount"))
-                    ) }}
-                </div>
-            </article>
-        </section>
-
-        <section class="module-grid" aria-label="Financial management sections">
-            <article class="card">
-                <h2>Fundraising</h2>
-                <p>Track funds raised through organizational fundraising activities.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('fundraising') }}">Manage Fundraising</a>
-                </div>
-            </article>
-            <article class="card">
-                <h2>Sponsorships</h2>
-                <p>Manage sponsorship records and contributions received.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('sponsorships') }}">Manage Sponsorships</a>
-                </div>
-            </article>
-            <article class="card">
-                <h2>Membership Fees</h2>
-                <p>Track quarterly membership payments and related records.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('membership_fees') }}">Manage Membership Fees</a>
-                </div>
-            </article>
-            <article class="card">
-                <h2>Expenses</h2>
-                <p>Record and review organizational expenses and disbursements.</p>
-                <div class="card-actions">
-                    <a class="btn btn-primary" href="{{ url_for('expenses') }}">Manage Expenses</a>
-                </div>
-            </article>
-        </section>
-
-        <section class="export-section">
-            <h2>Export financial records</h2>
-            <p>Download records as Excel, CSV or PDF on the <a href="{{ url_for('exports_page') }}">Exports</a> page.{% if current_user.role != "admin" %} Exports with personal data need an administrator's approval.{% endif %}</p>
-            <a class="btn btn-secondary" href="{{ url_for('exports_page') }}">Go to Exports</a>
+        <section class="panel" aria-labelledby="ledgers-heading">
+            <div class="panel-head">
+                <h2 id="ledgers-heading">Ledgers</h2>
+                <a class="btn btn-secondary" href="{{ url_for('exports_page') }}">Export records</a>
+            </div>
+            <div class="table-responsive">
+                <table class="ledger-table overview-table">
+                    <thead><tr><th>Ledger</th><th class="num">Records</th><th class="num">Total</th><th>Latest entry</th>{% if can_manage %}<th class="actions-col"><span class="sr-only">Open</span></th>{% endif %}</tr></thead>
+                    <tbody>
+                    {% for endpoint, label, rows, date_attr, total, note in [
+                        ("fundraising", "Fundraising", fundraising, "fundraising_date", f_total, "Income from activities and donations"),
+                        ("sponsorships", "Sponsorships", sponsorships, "sponsorship_date", s_total, "Contributions from sponsors"),
+                        ("membership_fees", "Membership fees", membership_fees, "payment_date", m_total, "Quarterly dues paid by members"),
+                        ("expenses", "Expenses", expenses, "expense_date", e_total, "Money spent on activities and supplies"),
+                    ] %}
+                    {% set latest = rows | map(attribute=date_attr) | select | max if rows else None %}
+                    <tr>
+                        <td>
+                            {% if can_manage %}<a class="overview-link" href="{{ url_for(endpoint) }}">{{ label }}</a>{% else %}<strong>{{ label }}</strong>{% endif %}
+                            <span class="muted overview-note">{{ note }}</span>
+                        </td>
+                        <td class="num">{{ rows|length }}</td>
+                        <td class="num {{ 'amount-out' if endpoint == 'expenses' else '' }}">₱{{ "{:,.2f}".format(total) }}</td>
+                        <td class="nowrap">{{ latest.strftime("%b %d, %Y") if latest else "—" }}</td>
+                        {% if can_manage %}<td class="row-actions"><a class="link-btn" href="{{ url_for(endpoint) }}">Open</a></td>{% endif %}
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot><tr><th scope="row">Balance</th><td></td><td class="num {{ 'is-negative' if balance < 0 else '' }}">{{ "−" if balance < 0 else "" }}₱{{ "{:,.2f}".format(balance|abs) }}</td><td></td>{% if can_manage %}<td></td>{% endif %}</tr></tfoot>
+                </table>
+            </div>
         </section>
 
         {% if sheets_mirror_enabled and current_user.role in ["admin", "encoder"] %}
-        <section class="card sync-panel" aria-label="Google Sheet sync status">
+        <section class="panel sync-panel" aria-label="Google Sheet sync status">
             <div class="sync-panel-head">
                 <h2>Database vs. Google Sheet</h2>
                 <span id="sync-overall" class="sync-badge is-checking" role="status">Checking…</span>
@@ -164,8 +142,8 @@
         {% endif %}
 
         {% if current_user.role == "admin" %}
-        <section class="export-section">
-            <h2>Google Sheet Copy</h2>
+        <section class="panel">
+            <h2>Google Sheet copy</h2>
             {% if sheets_mirror_enabled %}
             <p>Every saved financial record is copied to the organization's Google Sheet (one tab per ledger). The database stays the official record; changes typed into the sheet are overwritten on the next sync, so share the sheet with officers as <strong>Viewer</strong>.</p>
             {% if sheets_robot_email %}

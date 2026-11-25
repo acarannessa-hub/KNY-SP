@@ -110,6 +110,15 @@
         ],
         "createdAt": "2026-11-25T13:09:54.830Z",
         "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for() stylesheet link, so it measures headings at the 16px default; rendered sizes are h1 42px, h2 22px, h3 18px, body 16px (private.css --type-* ramp)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "public_site/templates/public_base.html"
+        ],
+        "createdAt": "2026-11-25T13:36:44.474Z",
+        "reason": "Claude, verified in browser 2026-11-25: detector cannot resolve the Jinja url_for('public_static') stylesheet link; rendered public sizes are h1 46px, h2 30px, h3 19px, body 16px (public.css type ramp)"
       }
     ]
   }
