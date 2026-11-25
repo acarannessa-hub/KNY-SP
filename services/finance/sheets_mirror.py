@@ -75,6 +75,44 @@ def push_ledger(ledger_key, rows):
     gs.replace_tab(ledger_key, [sheet_headers(ledger_key)] + list(rows))
 
 
+def compare(ledger_key, db_fingerprints, sheet_rows):
+    """
+    Compare one ledger in the database with its sheet tab.
+
+    db_fingerprints : {record_id (str): fingerprint} from the database
+    sheet_rows      : dicts from google_sheets.read_rows(tab, include_deleted=True)
+
+    The sheet fingerprint is RECOMPUTED from the row's visible values, so an
+    amount or date typed over in the sheet shows up as "changed" even if the
+    import_key cell was left alone.
+    """
+    sheet = {}
+    for row in sheet_rows:
+        record_id = str(row.get("record_id", "")).strip()
+        if record_id:
+            sheet[record_id] = schema.make_import_key(ledger_key, row)
+    missing = sorted(set(db_fingerprints) - set(sheet), key=_as_number)
+    extra = sorted(set(sheet) - set(db_fingerprints), key=_as_number)
+    changed = sorted(
+        (rid for rid in set(sheet) & set(db_fingerprints) if sheet[rid] != db_fingerprints[rid]),
+        key=_as_number,
+    )
+    blank = sum(1 for row in sheet_rows if not str(row.get("record_id", "")).strip())
+    return {
+        "db_rows": len(db_fingerprints),
+        "sheet_rows": len(sheet_rows),
+        "missing": missing,      # in the database, not in the sheet
+        "extra": extra,          # in the sheet, not in the database
+        "changed": changed,      # in both, but the sheet's values differ
+        "unlabeled": blank,      # sheet rows typed by hand without a record_id
+        "ok": not (missing or extra or changed or blank),
+    }
+
+
+def _as_number(text):
+    return (0, int(text)) if str(text).isdigit() else (1, str(text))
+
+
 def warning_for(error):
     detail = str(error).rstrip(".")
     return (

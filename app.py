@@ -1,6 +1,7 @@
 import csv
 import hmac
 import io
+import json
 import os
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -1995,16 +1996,146 @@ def _flash_outcome(outcome, success_message):
         flash(outcome.mirror_warning, "warning")
 
 
-def _ledger_page(ledger_key, template, **extra):
+# What each ledger page shows. Table columns: (field, heading, format).
+# Form fields: name, label, input type, plus options. Fields not listed in
+# "columns" (payer, notes, ...) are still editable in the Edit form.
+_METHOD = {"name": "payment_method", "label": "Payment method", "type": "text",
+           "list": ["Cash", "GCash", "Maya", "Bank Transfer", "MariBank", "BPI", "Landbank", "GoTyme Bank"]}
+_REFERENCE = {"name": "reference_no", "label": "Reference / O.R. no.", "type": "text"}
+_NOTES = {"name": "notes", "label": "Notes", "type": "textarea", "full": True}
+_AMOUNT = {"name": "amount", "label": "Amount (₱)", "type": "money", "required": True}
+
+LEDGER_UI = {
+    "fundraising": {
+        "description": "Money raised through donations, registration fees and other fundraising activities.",
+        "endpoints": ("add_fundraising", "edit_fundraising", "delete_fundraising"),
+        "columns": [("fundraising_date", "Date", "date"), ("activity", "Activity", ""),
+                    ("income_type", "Type", ""), ("payment_method", "Method", ""),
+                    ("amount", "Amount", "money")],
+        "fields": [
+            {"name": "fundraising_date", "label": "Date", "type": "date", "required": True},
+            _AMOUNT,
+            {"name": "activity", "label": "Activity / event", "type": "text", "full": True},
+            {"name": "income_type", "label": "Income type", "type": "text",
+             "list": ["Donation", "Registration Fee", "Sponsorship", "Event Proceeds"]},
+            _METHOD, _REFERENCE,
+            {"name": "payer", "label": "Account no. / name (private)", "type": "text", "full": True,
+             "hint": "Never shown on the public dashboard."},
+            _NOTES,
+        ],
+    },
+    "sponsorships": {
+        "description": "Contributions from individuals, businesses and organizations.",
+        "endpoints": ("add_sponsorship", "edit_sponsorship", "delete_sponsorship"),
+        "columns": [("sponsorship_date", "Date", "date"), ("sponsor_name", "Sponsor", ""),
+                    ("sponsor_type", "Type", ""), ("activity", "Purpose", ""),
+                    ("amount", "Amount", "money")],
+        "fields": [
+            {"name": "sponsorship_date", "label": "Date", "type": "date", "required": True},
+            _AMOUNT,
+            {"name": "sponsor_name", "label": "Sponsor", "type": "text", "required": True, "full": True},
+            {"name": "sponsor_type", "label": "Sponsor type", "type": "select",
+             "options": ["", "Individual", "Business", "Organization", "Government"]},
+            {"name": "activity", "label": "Purpose / activity", "type": "text"},
+            _METHOD, _REFERENCE, _NOTES,
+        ],
+    },
+    "membership_fees": {
+        "description": "Quarterly membership dues paid by members.",
+        "endpoints": ("add_membership_fee", "edit_membership_fee", "delete_membership_fee"),
+        "columns": [("payment_date", "Paid on", "date"), ("member", "Member", ""),
+                    ("period", "Period", ""), ("payment_method", "Method", ""),
+                    ("amount", "Amount", "money")],
+        "fields": [
+            {"name": "membership_id", "label": "Member", "type": "member", "required": True, "full": True},
+            {"name": "year", "label": "Dues year", "type": "number", "min": 2000, "max": 2100,
+             "hint": "Leave blank to use the payment year."},
+            {"name": "quarter", "label": "Quarter", "type": "select", "required": True,
+             "options": ["", "Q1", "Q2", "Q3", "Q4"]},
+            {"name": "payment_date", "label": "Payment date", "type": "date", "required": True},
+            _AMOUNT, _METHOD, _REFERENCE, _NOTES,
+        ],
+    },
+    "expenses": {
+        "description": "Money spent on activities, materials, food, transportation and other costs.",
+        "endpoints": ("add_expense", "edit_expense", "delete_expense"),
+        "columns": [("expense_date", "Date", "date"), ("activity", "Activity", ""),
+                    ("category", "Category", ""), ("description", "Description", ""),
+                    ("amount", "Amount", "money")],
+        "fields": [
+            {"name": "expense_date", "label": "Date", "type": "date", "required": True},
+            _AMOUNT,
+            {"name": "activity", "label": "Activity / event", "type": "text", "full": True},
+            {"name": "category", "label": "Category", "type": "text", "required": True, "list": "categories"},
+            {"name": "description", "label": "Description", "type": "text"},
+            _METHOD, _REFERENCE, _NOTES,
+        ],
+    },
+}
+
+
+def _form_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return f"{value:.2f}"
+    return str(value)
+
+
+def _ledger_rows(ledger_key, records):
+    """Each record as display cells + the values the Edit form needs."""
+    ui = LEDGER_UI[ledger_key]
+    names = LEDGERS[ledger_key].field_names
+    rows = []
+    for record in records:
+        values = {name: _form_value(getattr(record, name)) for name in names}
+        cells = {}
+        for field, _, _ in ui["columns"]:
+            if field == "member":
+                member = getattr(record, "member", None)
+                cells[field] = f"{record.membership_id} — {member.full_name}" if member else record.membership_id
+            elif field == "period":
+                cells[field] = f"{record.year or ''}-{record.quarter}".strip("-")
+            else:
+                cells[field] = values.get(field, "")
+        rows.append({
+            "id": record.id,
+            "values": values,
+            "cells": cells,
+            "amount": float(record.amount),
+            "search": " ".join([*values.values(), *cells.values()]).lower(),
+        })
+    return rows
+
+
+def _ledger_page(ledger_key, template="ledger.html", **extra):
     model = finance_records.MODELS[ledger_key]
     date_column = getattr(model, LEDGERS[ledger_key].date_field)
     records = model.query.order_by(date_column.desc(), model.id.desc()).all()
     required, optional = finance_ingestion.expected_columns(ledger_key)
+    ui = LEDGER_UI[ledger_key]
+    add_ep, edit_ep, delete_ep = ui["endpoints"]
+    categories = sorted({
+        c for (c,) in db.session.query(Expense.category).distinct() if c
+    }) if ledger_key == "expenses" else []
     return render_template(
         template,
-        records=records,
+        ledger=LEDGERS[ledger_key],
+        ledger_key=ledger_key,
+        ui=ui,
+        rows=_ledger_rows(ledger_key, records),
+        total_amount=sum((r.amount for r in records), Decimal("0")),
+        add_url=url_for(add_ep),
+        edit_url_pattern=url_for(edit_ep, id=0).replace("/0/", "/__ID__/"),
+        delete_url_pattern=url_for(delete_ep, id=0).replace("/0/", "/__ID__/"),
+        import_url=(url_for("import_membership_fees") if ledger_key == "membership_fees"
+                    else url_for("import_financial_records", ledger_key=ledger_key)),
         import_required_columns=required,
         import_optional_columns=optional,
+        categories=categories,
+        sheets_mirror_enabled=finance_sheets_mirror.is_enabled(),
         **extra
     )
 
@@ -2161,7 +2292,7 @@ def confirm_financial_import(ledger_key):
 @login_required
 @encoder_required
 def fundraising():
-    return _ledger_page("fundraising", "fundraising.html")
+    return _ledger_page("fundraising")
 
 
 @app.route("/financial/fundraising/add", methods=["POST"])
@@ -2191,7 +2322,7 @@ def delete_fundraising(id):
 @login_required
 @encoder_required
 def sponsorships():
-    return _ledger_page("sponsorships", "sponsorships.html")
+    return _ledger_page("sponsorships")
 
 
 @app.route("/financial/sponsorships/add", methods=["POST"])
@@ -2232,7 +2363,6 @@ def membership_fees():
     ).all()
     return _ledger_page(
         "membership_fees",
-        "membership_fees.html",
         members=members,
         all_members=all_members,
         dues=dues
@@ -2273,7 +2403,7 @@ def import_membership_fees():
 @login_required
 @encoder_required
 def expenses():
-    return _ledger_page("expenses", "expenses.html")
+    return _ledger_page("expenses")
 
 
 @app.route("/financial/expenses/add", methods=["POST"])
@@ -2309,6 +2439,27 @@ def import_financial_records(ledger_key):
 
 
 # ---------------- Google Sheet mirror ----------------
+
+@app.route("/financial/sheet-status")
+@login_required
+@encoder_required
+def finance_sheet_status():
+    """JSON: does the Google Sheet match the database? Read-only."""
+    ledger_key = request.args.get("ledger", "").strip()
+    if ledger_key and ledger_key not in LEDGERS:
+        abort(404)
+    try:
+        status = finance_records.sync_status([ledger_key] if ledger_key else None)
+    except Exception:  # noqa: BLE001 - never break the page over a status check
+        app.logger.exception("Sheet status check failed")
+        status = {"enabled": True, "ok": False, "ledgers": [], "error": "The check could not be completed."}
+    status["checked_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    response = app.response_class(
+        response=json.dumps(status), mimetype="application/json"
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 @app.route("/admin/finance/sheets/resync", methods=["POST"])
 @login_required

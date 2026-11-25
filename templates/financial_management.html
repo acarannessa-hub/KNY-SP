@@ -95,6 +95,78 @@
             <button class="btn btn-secondary" type="button" onclick="openExportModal()">Request Export</button>
         </section>
 
+        {% if sheets_mirror_enabled and current_user.role in ["admin", "encoder"] %}
+        <section class="card sync-panel" aria-label="Google Sheet sync status">
+            <div class="sync-panel-head">
+                <h2>Database vs. Google Sheet</h2>
+                <span id="sync-overall" class="sync-badge is-checking" role="status">Checking…</span>
+                <span id="sync-checked" class="muted"></span>
+            </div>
+            <p class="muted">The database is the official record; the sheet is a copy. This compares every record so you know whether the sheet can be trusted right now.</p>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Ledger / tab</th><th class="num">Database</th><th class="num">Sheet</th><th>Status</th></tr></thead>
+                    <tbody id="sync-rows"><tr><td colspan="4" class="muted">Comparing…</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+        <script>
+        (function () {
+            var body = document.getElementById("sync-rows");
+            var overall = document.getElementById("sync-overall");
+            function cell(text, cls) { var td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; return td; }
+            function badge(ok, text) { var s = document.createElement("span"); s.className = "sync-badge " + (ok ? "is-ok" : "is-warn"); s.textContent = text; return s; }
+            fetch({{ url_for('finance_sheet_status')|tojson }}, { headers: { "Accept": "application/json" }, credentials: "same-origin" })
+                .then(function (r) { return r.json(); })
+                .then(function (s) {
+                    body.textContent = "";
+                    (s.ledgers || []).forEach(function (l) {
+                        var tr = document.createElement("tr");
+                        tr.appendChild(cell(l.label));
+                        tr.appendChild(cell(l.db_rows == null ? "—" : l.db_rows, "num"));
+                        tr.appendChild(cell(l.sheet_rows == null ? "—" : l.sheet_rows, "num"));
+                        var td = document.createElement("td");
+                        if (l.ok) { td.appendChild(badge(true, "Match")); }
+                        else if (l.error) { td.appendChild(badge(false, "Cannot compare")); td.appendChild(document.createTextNode(" " + l.error)); }
+                        else {
+                            var parts = [];
+                            if (l.missing_count) parts.push(l.missing_count + " missing from sheet");
+                            if (l.extra_count) parts.push(l.extra_count + " only in sheet");
+                            if (l.changed_count) parts.push(l.changed_count + " edited in sheet");
+                            if (l.unlabeled) parts.push(l.unlabeled + " typed by hand");
+                            td.appendChild(badge(false, "Different"));
+                            td.appendChild(document.createTextNode(" " + parts.join(", ")));
+                        }
+                        tr.appendChild(td);
+                        body.appendChild(tr);
+                    });
+                    var names = { transactions: "Public transactions (Looker Studio)", dues: "Dues (private)" };
+                    (s.tables || []).forEach(function (t) {
+                        var tr = document.createElement("tr");
+                        tr.appendChild(cell(names[t.tab] || t.tab));
+                        tr.appendChild(cell(t.db_rows, "num"));
+                        tr.appendChild(cell(t.sheet_rows == null ? "—" : t.sheet_rows, "num"));
+                        var td = document.createElement("td");
+                        td.appendChild(badge(t.ok, t.ok ? "Match" : "Different"));
+                        if (t.note) td.appendChild(document.createTextNode(" " + t.note));
+                        tr.appendChild(td);
+                        body.appendChild(tr);
+                    });
+                    overall.classList.remove("is-checking");
+                    overall.classList.add(s.ok ? "is-ok" : "is-warn");
+                    overall.textContent = s.ok ? "Everything matches" : "Sheet is out of date";
+                    if (s.checked_at) document.getElementById("sync-checked").textContent = "Checked " + new Date(s.checked_at).toLocaleString();
+                    if (s.error) body.innerHTML = "";
+                })
+                .catch(function () {
+                    overall.classList.remove("is-checking");
+                    overall.textContent = "Could not check";
+                    body.innerHTML = "";
+                });
+        })();
+        </script>
+        {% endif %}
+
         {% if current_user.role == "admin" %}
         <section class="export-section">
             <h2>Google Sheet Copy</h2>

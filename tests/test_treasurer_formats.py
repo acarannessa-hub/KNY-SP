@@ -190,6 +190,36 @@ class MembershipSheetTests(unittest.TestCase):
         self.assertIn("Status", item.error)
 
 
+class SyncCompareTests(unittest.TestCase):
+    def test_detects_missing_extra_edited_and_hand_typed_rows(self):
+        from services.finance import sheets_mirror
+        rec1, _ = cleaning.clean_record("fundraising", {"fundraising_date": "2026-03-01", "amount": "100"}, today=TODAY)
+        rec2, _ = cleaning.clean_record("fundraising", {"fundraising_date": "2026-03-02", "amount": "200"}, today=TODAY)
+        rec3, _ = cleaning.clean_record("fundraising", {"fundraising_date": "2026-03-03", "amount": "300"}, today=TODAY)
+        db = {str(i): cleaning.fingerprint("fundraising", r) for i, r in ((1, rec1), (2, rec2), (3, rec3))}
+
+        def sheet_row(record_id, record, amount_text=None):
+            row = {"record_id": str(record_id), "fundraising_date": record["fundraising_date"].isoformat(),
+                   "amount": amount_text or f"{record['amount']:,}"}
+            return row
+
+        in_sync = [sheet_row(1, rec1), sheet_row(2, rec2), sheet_row(3, rec3)]
+        self.assertTrue(sheets_mirror.compare("fundraising", db, in_sync)["ok"])
+
+        drifted = [
+            sheet_row(1, rec1),
+            sheet_row(2, rec2, amount_text="250"),           # amount typed over in the sheet
+            sheet_row(9, rec3),                               # id not in the database
+            {"record_id": "", "fundraising_date": "2026-03-04", "amount": "5"},  # typed by hand
+        ]                                                     # record 3 missing
+        result = sheets_mirror.compare("fundraising", db, drifted)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["missing"], ["3"])
+        self.assertEqual(result["extra"], ["9"])
+        self.assertEqual(result["changed"], ["2"])
+        self.assertEqual(result["unlabeled"], 1)
+
+
 class DuesSummaryTests(unittest.TestCase):
     def test_totals_per_period_without_names(self):
         dues = [

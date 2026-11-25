@@ -503,6 +503,20 @@ def replace_derived_tab(tab, values):
     _overwrite(tab, worksheet, values, first_time)
 
 
+def count_data_rows(tab):
+    """Number of non-blank rows below the header in a tab, or None if the
+    tab does not exist. Read-only."""
+    spreadsheet = get_spreadsheet()
+    try:
+        worksheet = spreadsheet.worksheet(tab)
+    except Exception as exc:  # noqa: BLE001
+        if type(exc).__name__ == "WorksheetNotFound":
+            return None
+        raise _translate(exc) from exc
+    values = _call(lambda: worksheet.get_all_values())
+    return sum(1 for row in values[1:] if any(str(c).strip() for c in row))
+
+
 def _overwrite(tab, worksheet, values, first_time):
     rows_needed = len(values)
     cols_needed = max(len(row) for row in values)

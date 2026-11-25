@@ -211,6 +211,56 @@ def safe_mirror(ledger_key, include_dues=False):
     return None
 
 
+def sync_status(ledger_keys=None):
+    """
+    Does the Google Sheet match the database? Reads the sheet (a few API
+    calls), changes nothing. With ledger_keys=None every ledger plus the
+    public 'transactions' and private 'dues' tabs are checked.
+    """
+    if not sheets_mirror.is_enabled():
+        return {"enabled": False, "ok": None, "ledgers": []}
+
+    keys = list(ledger_keys or LEDGERS)
+    result = {"enabled": True, "ok": True, "ledgers": [], "tables": []}
+    db_total = 0
+    for key in keys:
+        db_map = {
+            str(record.id): cleaning.fingerprint(key, _values(key, record))
+            for record in MODELS[key].query.all()
+        }
+        db_total += len(db_map)
+        try:
+            item = sheets_mirror.compare(key, db_map, gs.read_rows(key, include_deleted=True))
+        except gs.SheetsError as error:
+            item = {"db_rows": len(db_map), "ok": False,
+                    "error": getattr(error, "hint", "") or str(error)}
+        for name in ("missing", "extra", "changed"):
+            if name in item:
+                item[f"{name}_count"] = len(item[name])
+                item[name] = item[name][:20]
+        item.update(key=key, label=LEDGERS[key].label)
+        result["ledgers"].append(item)
+        result["ok"] = result["ok"] and item["ok"]
+
+    if ledger_keys is None:
+        expected = {
+            public_dataset.PUBLIC_TAB: db_total,
+            DUES_TAB: Due.query.count(),
+        }
+        for tab, db_rows in expected.items():
+            try:
+                sheet_rows = gs.count_data_rows(tab)
+            except gs.SheetsError as error:
+                sheet_rows, note = None, getattr(error, "hint", "") or str(error)
+            else:
+                note = "tab not created yet" if sheet_rows is None else ""
+            ok = sheet_rows == db_rows
+            result["tables"].append({"tab": tab, "db_rows": db_rows,
+                                     "sheet_rows": sheet_rows, "ok": ok, "note": note})
+            result["ok"] = result["ok"] and ok
+    return result
+
+
 def resync_all():
     """Mirror every ledger, the dues and the public tabs. Returns [(label, ok, message)]."""
     jobs = [(ledger.label, lambda key=key: mirror(key)) for key, ledger in LEDGERS.items()]

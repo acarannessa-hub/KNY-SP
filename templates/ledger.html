@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ ledger.label }} - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+{% macro render_field(f) %}
+    <div class="form-field{% if f.full %} form-field-full{% endif %}">
+        <label for="f_{{ f.name }}">{{ f.label }}{% if f.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+        {% if f.type == "textarea" %}
+            <textarea id="f_{{ f.name }}" name="{{ f.name }}" rows="3"></textarea>
+        {% elif f.type == "select" %}
+            <select id="f_{{ f.name }}" name="{{ f.name }}" {% if f.required %}required{% endif %}>
+                {% for option in f.options %}<option value="{{ option }}">{{ option or "Select…" }}</option>{% endfor %}
+            </select>
+        {% elif f.type == "member" %}
+            <input type="search" id="member_search" class="member-search" placeholder="Type a name or Membership ID to filter" autocomplete="off">
+            <select id="f_{{ f.name }}" name="{{ f.name }}" required size="5" class="member-select">
+                {% for member in all_members %}
+                <option value="{{ member.membership_id }}"
+                        data-search="{{ (member.membership_id ~ ' ' ~ member.full_name ~ ' ' ~ member.org_role)|lower }}">
+                    {{ member.membership_id }} — {{ member.full_name }}{% if member.status != "active" %} (inactive){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        {% elif f.type == "money" %}
+            <input type="number" id="f_{{ f.name }}" name="{{ f.name }}" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" {% if f.required %}required{% endif %}>
+        {% elif f.type == "number" %}
+            <input type="number" id="f_{{ f.name }}" name="{{ f.name }}" {% if f.min %}min="{{ f.min }}"{% endif %} {% if f.max %}max="{{ f.max }}"{% endif %}>
+        {% elif f.type == "date" %}
+            <input type="date" id="f_{{ f.name }}" name="{{ f.name }}" {% if f.required %}required{% endif %}>
+        {% else %}
+            <input type="text" id="f_{{ f.name }}" name="{{ f.name }}" {% if f.list %}list="list_{{ f.name }}"{% endif %} {% if f.required %}required{% endif %} autocomplete="off">
+            {% if f.list %}
+            <datalist id="list_{{ f.name }}">
+                {% for option in (categories if f.list == "categories" else f.list) %}<option value="{{ option }}">{% endfor %}
+            </datalist>
+            {% endif %}
+        {% endif %}
+        {% if f.hint %}<small class="field-hint">{{ f.hint }}</small>{% endif %}
+    </div>
+{% endmacro %}
+
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('financial_management') }}">← Back to Financial Management</a>
+
+        <header class="ledger-header">
+            <div>
+                <h1>{{ ledger.label }}</h1>
+                <p>{{ ui.description }}</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Records</dt><dd id="stat-count">{{ rows|length }}</dd></div>
+                <div><dt>Total</dt><dd id="stat-total">₱{{ "{:,.2f}".format(total_amount) }}</dd></div>
+                {% if sheets_mirror_enabled %}
+                <div>
+                    <dt>Google Sheet</dt>
+                    <dd><span id="sync-badge" class="sync-badge is-checking" role="status">Checking…</span></dd>
+                </div>
+                {% endif %}
+            </dl>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div id="sync-detail" class="message warning sync-detail" hidden></div>
+
+        <section class="card ledger-card" aria-label="{{ ledger.label }} records">
+            <div class="ledger-toolbar">
+                <input type="search" id="ledger-search" class="ledger-search"
+                       placeholder="Search by date, activity, name, amount…" aria-label="Search records">
+                <span id="ledger-showing" class="muted"></span>
+                <div class="toolbar-actions">
+                    <button class="btn btn-secondary" type="button" data-open="import-dialog">Import file</button>
+                    <button class="btn btn-primary" type="button" data-action="add">+ Add record</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="ledger-table" class="ledger-table">
+                    <thead>
+                        <tr>
+                            {% for field, heading, fmt in ui.columns %}
+                            <th{% if fmt == "money" %} class="num"{% endif %}>{{ heading }}</th>
+                            {% endfor %}
+                            <th class="actions-col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr data-id="{{ row.id }}" data-amount="{{ row.amount }}"
+                            data-search="{{ row.search }}" data-record='{{ row["values"]|tojson }}'>
+                            {% for field, heading, fmt in ui.columns %}
+                                {% set value = row.cells[field] %}
+                                {% if fmt == "money" %}
+                                <td class="num">₱{{ "{:,.2f}".format(row.amount) }}</td>
+                                {% elif value %}
+                                <td{% if fmt == "date" %} class="nowrap"{% endif %}>{{ value }}</td>
+                                {% else %}
+                                <td><span class="empty">—</span></td>
+                                {% endif %}
+                            {% endfor %}
+                            <td class="row-actions">
+                                <button class="link-btn" type="button" data-action="edit">Edit</button>
+                                <button class="link-btn link-danger" type="button" data-action="delete">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if not rows %}
+            <div class="empty-state">
+                <p><strong>No {{ ledger.label|lower }} records yet.</strong></p>
+                <p>Add one with <em>+ Add record</em>, or bring in the treasurer's spreadsheet with <em>Import file</em>.</p>
+            </div>
+            {% endif %}
+            <p id="no-results" class="empty-state" hidden>No records match your search.</p>
+        </section>
+
+        {% if ledger_key == "membership_fees" %}
+        <section class="card ledger-card">
+            <div class="ledger-toolbar">
+                <div>
+                    <h2>Dues status</h2>
+                    <p class="muted">What each member owes per quarter, from the imported membership-fee sheets. Only quarter totals are published.</p>
+                </div>
+                <input type="search" id="dues-search" class="ledger-search" placeholder="Filter by name, period or status" aria-label="Filter dues">
+            </div>
+            <div class="table-responsive">
+                <table class="ledger-table" id="dues-table">
+                    <thead><tr><th>Period</th><th>Member</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for due in dues %}
+                        <tr data-search="{{ (due.year ~ '-' ~ due.quarter ~ ' ' ~ due.membership_id ~ ' ' ~ (due.member.full_name if due.member else '') ~ ' ' ~ due.status)|lower }}">
+                            <td class="nowrap">{{ due.year }}-{{ due.quarter }}</td>
+                            <td>{{ due.member.full_name if due.member else due.membership_id }}</td>
+                            <td class="num">₱{{ "{:,.2f}".format(due.amount_due) }}</td>
+                            <td class="num">₱{{ "{:,.2f}".format(due.amount_paid) }}</td>
+                            <td class="num">₱{{ "{:,.2f}".format(due.balance) }}</td>
+                            <td><span class="pill pill-{{ due.status }}">{{ due.status|capitalize }}</span></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if not dues %}
+            <div class="empty-state"><p>No dues imported yet. Import a quarterly membership-fee sheet with <em>Import file</em>.</p></div>
+            {% endif %}
+        </section>
+        {% endif %}
+    </main>
+
+    <!-- Add / edit -->
+    <dialog id="record-dialog" class="ledger-dialog" aria-labelledby="record-dialog-title">
+        <form method="POST" id="record-form" action="{{ add_url }}">
+            <header class="dialog-header">
+                <h2 id="record-dialog-title">Add {{ ledger.noun }}</h2>
+                <button class="dialog-x" type="button" data-close aria-label="Close">×</button>
+            </header>
+            <div class="dialog-body form-grid">
+                {% for f in ui.fields %}{{ render_field(f) }}{% endfor %}
+            </div>
+            <footer class="dialog-footer">
+                <span class="muted"><span class="req">*</span> required</span>
+                <button class="btn btn-secondary" type="button" data-close>Cancel</button>
+                <button class="btn btn-primary" type="submit" id="record-submit">Save</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <!-- Delete -->
+    <dialog id="delete-dialog" class="ledger-dialog ledger-dialog-small" aria-labelledby="delete-dialog-title">
+        <form method="POST" id="delete-form">
+            <header class="dialog-header">
+                <h2 id="delete-dialog-title">Delete this {{ ledger.noun }}?</h2>
+                <button class="dialog-x" type="button" data-close aria-label="Close">×</button>
+            </header>
+            <div class="dialog-body">
+                <p id="delete-summary" class="delete-summary"></p>
+                <p class="muted">This permanently removes the record. The Google Sheet copy and the public figures update automatically.</p>
+            </div>
+            <footer class="dialog-footer">
+                <button class="btn btn-secondary" type="button" data-close>Keep it</button>
+                <button class="btn btn-danger" type="submit">Delete record</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <!-- Import -->
+    <dialog id="import-dialog" class="ledger-dialog" aria-labelledby="import-dialog-title">
+        <form method="POST" action="{{ import_url }}" enctype="multipart/form-data">
+            <header class="dialog-header">
+                <h2 id="import-dialog-title">Import {{ ledger.label|lower }}</h2>
+                <button class="dialog-x" type="button" data-close aria-label="Close">×</button>
+            </header>
+            <div class="dialog-body">
+                {% if ledger_key == "membership_fees" %}
+                <p>Upload a quarterly sheet exactly as the treasurer keeps it (Last_Name, First_Name, Year, Date, Amount, Status, Balance…). Members are matched by name; PAID rows become payments and every row updates the dues status.</p>
+                {% else %}
+                <p>Upload the treasurer's sheet as it is. Columns like Date, Activity, Amount, Payment_Method and Reference_Number are recognized, and values like "P 3,000.00", "N/A" or 08/23/26 are cleaned.</p>
+                {% endif %}
+                <p class="muted">Nothing is saved until you review the preview and press Confirm.</p>
+                <div class="form-field">
+                    <label for="import_file">CSV or Excel (.xlsx) file</label>
+                    <input type="file" id="import_file" name="file" required
+                           accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                </div>
+                {% if ledger_key == "membership_fees" %}
+                <div class="form-field">
+                    <label for="import_quarter">Quarter of this sheet</label>
+                    <select id="import_quarter" name="quarter">
+                        <option value="">Detect from file name (e.g. "…_Q2.csv")</option>
+                        <option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>
+                    </select>
+                </div>
+                {% endif %}
+                <details class="field-hint">
+                    <summary>Accepted columns</summary>
+                    <p>Required: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}.</p>
+                </details>
+            </div>
+            <footer class="dialog-footer">
+                <button class="btn btn-secondary" type="button" data-close>Cancel</button>
+                <button class="btn btn-primary" type="submit">Upload and preview</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <script>
+        window.LEDGER = {
+            noun: {{ ledger.noun|tojson }},
+            addUrl: {{ add_url|tojson }},
+            editUrl: {{ edit_url_pattern|tojson }},
+            deleteUrl: {{ delete_url_pattern|tojson }},
+            statusUrl: {{ (url_for('finance_sheet_status', ledger=ledger_key) if sheets_mirror_enabled else "")|tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+</body>
+</html>
