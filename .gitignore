@@ -11,3 +11,6 @@ instance/
 *.sql
 migration_output/
 !migrations/*.sql
+
+# Impeccable design checker local cache
+.impeccable/hook.cache.json

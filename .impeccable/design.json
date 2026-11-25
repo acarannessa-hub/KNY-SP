@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-25T12:58:46+00:00",
+  "title": "Design System: Kaya Natin! Youth – Candelaria",
+  "extensions": {
+    "colorMeta": {
+      "civic-purple": {
+        "role": "primary",
+        "displayName": "Civic Purple",
+        "canonical": "#7562b5",
+        "tonalRamp": [
+          "#1d182d",
+          "#352c51",
+          "#4c4076",
+          "#63539a",
+          "#9181c4",
+          "#b3a9d6",
+          "#d6d0e9",
+          "#f1eff8"
+        ]
+      },
+      "civic-purple-deep": {
+        "role": "primary",
+        "displayName": "Civic Purple Deep",
+        "canonical": "#5d4b9a",
+        "tonalRamp": [
+          "#171326",
+          "#2a2245",
+          "#3c3164",
+          "#4f4083",
+          "#7d6fae",
+          "#a69cc7",
+          "#cec9e1",
+          "#efedf5"
+        ]
+      },
+      "lagoon-cyan": {
+        "role": "secondary",
+        "displayName": "Lagoon Cyan",
+        "canonical": "#55b8c7",
+        "tonalRamp": [
+          "#152e32",
+          "#26535a",
+          "#377881",
+          "#489ca9",
+          "#77c6d2",
+          "#a2d8e0",
+          "#cceaee",
+          "#eef8f9"
+        ]
+      },
+      "lagoon-cyan-deep": {
+        "role": "secondary",
+        "displayName": "Lagoon Cyan Deep",
+        "canonical": "#31818c",
+        "tonalRamp": [
+          "#0c2023",
+          "#163a3f",
+          "#20545b",
+          "#2a6e77",
+          "#5a9aa3",
+          "#8ebac0",
+          "#c1d9dc",
+          "#eaf2f4"
+        ]
+      },
+      "field-green": {
+        "role": "tertiary",
+        "displayName": "Field Green",
+        "canonical": "#82b96b",
+        "tonalRamp": [
+          "#202e1b",
+          "#3a5330",
+          "#547846",
+          "#6e9d5b",
+          "#9bc789",
+          "#bad8ae",
+          "#daead3",
+          "#f2f8f0"
+        ]
+      },
+      "field-green-deep": {
+        "role": "tertiary",
+        "displayName": "Field Green Deep",
+        "canonical": "#5b8a49",
+        "tonalRamp": [
+          "#172212",
+          "#293e21",
+          "#3b5a2f",
+          "#4d753e",
+          "#7ca16d",
+          "#a5bf9b",
+          "#cedcc8",
+          "#eff3ed"
+        ]
+      },
+      "sunlit-yellow": {
+        "role": "tertiary",
+        "displayName": "Sunlit Yellow",
+        "canonical": "#d8cf65",
+        "tonalRamp": [
+          "#363419",
+          "#615d2d",
+          "#8c8742",
+          "#b8b056",
+          "#e0d984",
+          "#eae5aa",
+          "#f3f1d1",
+          "#fbfaf0"
+        ]
+      },
+      "lavender-wash": {
+        "role": "neutral",
+        "displayName": "Lavender Wash",
+        "canonical": "#e9e3f5",
+        "tonalRamp": [
+          "#3a393d",
+          "#69666e",
+          "#97949f",
+          "#c6c1d0",
+          "#ede9f7",
+          "#f3f0fa",
+          "#f8f7fc",
+          "#fdfcfe"
+        ]
+      },
+      "lagoon-wash": {
+        "role": "neutral",
+        "displayName": "Lagoon Wash",
+        "canonical": "#e2f2f3",
+        "tonalRamp": [
+          "#383c3d",
+          "#666d6d",
+          "#939d9e",
+          "#c0cecf",
+          "#e8f5f5",
+          "#eff8f8",
+          "#f6fbfb",
+          "#fcfefe"
+        ]
+      },
+      "field-wash": {
+        "role": "neutral",
+        "displayName": "Field Wash",
+        "canonical": "#e7f2e2",
+        "tonalRamp": [
+          "#3a3c38",
+          "#686d66",
+          "#969d93",
+          "#c4cec0",
+          "#ecf5e8",
+          "#f2f8ef",
+          "#f8fbf6",
+          "#fdfefc"
+        ]
+      },
+      "ink-slate": {
+        "role": "neutral",
+        "displayName": "Ink Slate",
+        "canonical": "#30323d",
+        "tonalRamp": [
+          "#0c0c0f",
+          "#16161b",
+          "#1f2028",
+          "#292a34",
+          "#595b64",
+          "#8d8e94",
+          "#c1c2c5",
+          "#eaeaec"
+        ]
+      },
+      "quiet-slate": {
+        "role": "neutral",
+        "displayName": "Quiet Slate",
+        "canonical": "#68717d",
+        "tonalRamp": [
+          "#1a1c1f",
+          "#2f3338",
+          "#444951",
+          "#58606a",
+          "#868d97",
+          "#acb1b8",
+          "#d2d4d8",
+          "#f0f1f2"
+        ]
+      },
+      "desk-white": {
+        "role": "neutral",
+        "displayName": "Desk White",
+        "canonical": "#f7f8fa",
+        "tonalRamp": [
+          "#3e3e3e",
+          "#6f7070",
+          "#a1a1a2",
+          "#d2d3d4",
+          "#f9f9fb",
+          "#fbfbfc",
+          "#fdfdfe",
+          "#fefefe"
+        ]
+      },
+      "paper-white": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#404040",
+          "#737373",
+          "#a6a6a6",
+          "#d9d9d9",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "alert-rose-ink": {
+        "role": "neutral",
+        "displayName": "Alert Rose Ink",
+        "canonical": "#7d3640",
+        "tonalRamp": [
+          "#1f0e10",
+          "#38181d",
+          "#51232a",
+          "#6a2e36",
+          "#975e66",
+          "#b89096",
+          "#d8c3c6",
+          "#f2ebec"
+        ]
+      },
+      "alert-rose-wash": {
+        "role": "neutral",
+        "displayName": "Alert Rose Wash",
+        "canonical": "#f5e5e8",
+        "tonalRamp": [
+          "#3d393a",
+          "#6e6768",
+          "#9f9597",
+          "#d0c3c5",
+          "#f7eaed",
+          "#faf1f2",
+          "#fcf7f8",
+          "#fefcfd"
+        ]
+      },
+      "caution-amber-ink": {
+        "role": "neutral",
+        "displayName": "Caution Amber Ink",
+        "canonical": "#6b4a0b",
+        "tonalRamp": [
+          "#1b1203",
+          "#302105",
+          "#463007",
+          "#5b3f09",
+          "#896e3c",
+          "#ae9b79",
+          "#d3c9b6",
+          "#f0ede7"
+        ]
+      },
+      "caution-amber-wash": {
+        "role": "neutral",
+        "displayName": "Caution Amber Wash",
+        "canonical": "#fbf0d9",
+        "tonalRamp": [
+          "#3f3c36",
+          "#716c62",
+          "#a39c8d",
+          "#d5ccb8",
+          "#fcf3e1",
+          "#fdf7ea",
+          "#fefaf4",
+          "#fffefb"
+        ]
+      },
+      "success-ink": {
+        "role": "neutral",
+        "displayName": "Success Ink",
+        "canonical": "#315c37",
+        "tonalRamp": [
+          "#0c170e",
+          "#162919",
+          "#203c24",
+          "#2a4e2f",
+          "#5a7d5f",
+          "#8ea591",
+          "#c1cec3",
+          "#eaefeb"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles in Civic Purple Deep."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Dialog, card and section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Paragraphs and table cells."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Buttons, navigation, row actions."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase stat labels, column headers, pills."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 10px 28px rgba(48, 50, 61, 0.08)",
+        "purpose": "Cards, header row, summary tiles."
+      },
+      {
+        "name": "card-lift",
+        "value": "0 16px 34px rgba(48, 50, 61, 0.13)",
+        "purpose": "Interactive card hover."
+      },
+      {
+        "name": "header",
+        "value": "0 8px 24px rgba(48, 50, 61, 0.06)",
+        "purpose": "Sticky top bar (with 8px backdrop blur)."
+      },
+      {
+        "name": "button-lift",
+        "value": "0 5px 12px rgba(93, 75, 154, 0.2)",
+        "purpose": "Button hover."
+      },
+      {
+        "name": "dialog",
+        "value": "0 24px 60px rgba(48, 50, 61, 0.28)",
+        "purpose": "Modal dialogs over a rgba(48,50,61,0.45) backdrop."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "0.18s ease",
+        "purpose": "Hover color, shadow and 1-2px lift on clickable elements."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "container",
+        "value": "1160px"
+      },
+      {
+        "name": "header",
+        "value": "1200px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single most important action on a screen.",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary { font-family: 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; min-height: 42px; padding: 10px 16px; font-size: 14px; font-weight: 700; color: #fff; border: 1px solid transparent; border-radius: 8px; background: linear-gradient(135deg, #7562b5, #55b8c7); cursor: pointer; transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease; } .ds-btn-primary:hover { background: linear-gradient(135deg, #5d4b9a, #7562b5); box-shadow: 0 5px 12px rgba(93,75,154,0.2); transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 3px solid rgba(85,184,199,0.65); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Supporting actions such as Cancel, Import file and Members.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { font-family: 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; min-height: 42px; padding: 10px 16px; font-size: 14px; font-weight: 700; color: #5d4b9a; border: 1px solid transparent; border-radius: 8px; background: #e9e3f5; cursor: pointer; transition: background 0.18s ease, transform 0.18s ease; } .ds-btn-secondary:hover { background: #e2f2f3; transform: translateY(-1px); } .ds-btn-secondary:focus-visible { outline: 3px solid rgba(85,184,199,0.65); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmations: delete, reject, deactivate.",
+      "html": "<button class=\"ds-btn-danger\">Delete record</button>",
+      "css": ".ds-btn-danger { font-family: 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; min-height: 42px; padding: 10px 16px; font-size: 14px; font-weight: 700; color: #7d3640; border: 1px solid transparent; border-radius: 8px; background: #f5e5e8; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; } .ds-btn-danger:hover { background: #a94f5a; color: #fff; } .ds-btn-danger:focus-visible { outline: 3px solid rgba(85,184,199,0.65); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Form fields with the label above.",
+      "html": "<label class=\"ds-field\"><span>Email for notifications</span><input class=\"ds-input\" placeholder=\"name@example.com\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #30323d; } .ds-input { min-height: 44px; padding: 10px 12px; font: 400 16px 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; color: #30323d; border: 1px solid rgba(48,50,61,0.1); border-radius: 8px; background: #fff; transition: border-color 0.18s ease, box-shadow 0.18s ease; } .ds-input:focus { border-color: #55b8c7; outline: 0; box-shadow: 0 0 0 3px rgba(85,184,199,0.18); }"
+    },
+    {
+      "name": "Status Pills",
+      "kind": "chip",
+      "refersTo": "pill-paid",
+      "description": "Every status is a wash background with a deep ink of the same hue.",
+      "html": "<span class=\"ds-pill ds-pill-paid\">Paid</span> <span class=\"ds-pill ds-pill-partial\">Waiting</span> <span class=\"ds-pill ds-pill-unpaid\">Unpaid</span> <span class=\"ds-pill ds-pill-deferred\">Expired</span>",
+      "css": ".ds-pill { display: inline-block; padding: 3px 10px; font: 800 12px 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; border-radius: 999px; } .ds-pill-paid { background: #e7f2e2; color: #315c37; } .ds-pill-partial { background: #e2f2f3; color: #1f5f69; } .ds-pill-unpaid { background: #f5e5e8; color: #7d3640; } .ds-pill-deferred { background: #fbf0d9; color: #6b4a0b; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White container for sections; lifts on hover only when clickable.",
+      "html": "<article class=\"ds-card\"><h3>Fundraising</h3><p>Track funds raised through organizational fundraising activities.</p></article>",
+      "css": ".ds-card { max-width: 320px; padding: 26px; font-family: 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; background: rgba(255,255,255,0.97); border: 1px solid rgba(48,50,61,0.1); border-radius: 12px; box-shadow: 0 10px 28px rgba(48,50,61,0.08); transition: transform 0.18s ease, box-shadow 0.18s ease; } .ds-card:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(48,50,61,0.13); } .ds-card h3 { margin: 0 0 8px; font-size: 20px; color: #5d4b9a; } .ds-card p { margin: 0; color: #68717d; line-height: 1.6; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Sticky white bar with the KNY mark, bold links and a gradient Logout pill.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-brand\"><span class=\"ds-mark\">KNY</span>Kaya Natin! Youth</span><span class=\"ds-links\"><a href=\"#\">Manage Finances</a><a href=\"#\">Members</a><a href=\"#\">Exports</a><a href=\"#\" class=\"ds-logout\">Logout</a></span></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 20px; font-family: 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; background: rgba(255,255,255,0.97); border-bottom: 1px solid rgba(48,50,61,0.1); box-shadow: 0 8px 24px rgba(48,50,61,0.06); } .ds-brand { display: inline-flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 800; color: #5d4b9a; } .ds-mark { width: 46px; height: 46px; display: grid; place-items: center; font-size: 12px; color: #fff; border-radius: 12px; background: linear-gradient(135deg, #7562b5, #55b8c7, #82b96b); } .ds-links { display: flex; gap: 4px; } .ds-links a { padding: 9px 12px; font-size: 14px; font-weight: 700; color: #30323d; text-decoration: none; border-radius: 8px; transition: background 0.18s ease; } .ds-links a:hover { background: #e9e3f5; color: #5d4b9a; } .ds-links a.ds-logout { color: #fff; background: linear-gradient(135deg, #7562b5, #55b8c7); }"
+    },
+    {
+      "name": "Ledger Table",
+      "kind": "custom",
+      "refersTo": "table-header",
+      "description": "The portal's signature table: lavender header with filter carets, right-aligned money.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Date ▾</th><th>Activity ▾</th><th class=\"num\">Amount ▾</th><th></th></tr></thead><tbody><tr><td>2026-06-06</td><td>Sample Fun Run</td><td class=\"num\">₱2,300.00</td><td><button class=\"ds-link\">Edit</button></td></tr><tr><td>2026-08-21</td><td>Sample Anniversary</td><td class=\"num\">₱298.00</td><td><button class=\"ds-link\">Edit</button></td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; font: 400 14px 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; color: #30323d; background: #fff; } .ds-table th { padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 800; letter-spacing: 0.035em; text-transform: uppercase; color: #5d4b9a; background: #e9e3f5; } .ds-table td { padding: 11px 14px; border-top: 1px solid rgba(48,50,61,0.08); } .ds-table tbody tr:nth-child(even) td { background: #faf9fd; } .ds-table .num { text-align: right; font-variant-numeric: tabular-nums; } .ds-link { padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: #5d4b9a; font: 700 14px 'Segoe UI', Aptos, Arial, Helvetica, sans-serif; cursor: pointer; } .ds-link:hover { background: #e9e3f5; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Bright Civic Desk",
+    "overview": "**Creative North Star: \"The Bright Civic Desk\"**\n\nA cheerful but businesslike workspace. The organization's four official colors bring youthful energy, but they sit on a clean, efficient desk: near-white surfaces, slate text, generous whitespace and orderly tables. Color guides the eye to what matters (the main action, a status, a total) and never competes with the numbers. The same world serves two audiences. The public site is open and welcoming for neighbors and sponsors checking where money goes. The officers' portal is a calm place where volunteers record, review and approve records between activities.\n\nSurfaces are friendly and soft: rounded corners, gentle ambient shadows, and a small lift on hover tell people what is clickable without shouting. Density is moderate. Tables carry most of the portal's information, with sticky purple-tinted headers, right-aligned tabular figures and quiet row stripes. Forms open in centered dialogs rather than inline accordions.",
+    "keyCharacteristics": [
+      "Four official brand colors (purple, cyan, green, yellow), led by purple, on near-white.",
+      "Slate ink, never pure black; muted slate for secondary text.",
+      "Soft, lifted cards (12px radius, ambient shadow) and 8px-rounded controls.",
+      "Status is always a tinted pill: green wash for good, rose for problems, amber for caution, cyan for in-between.",
+      "One system font stack (Segoe UI / Aptos), with bold weights doing the hierarchy work."
+    ],
+    "rules": [
+      {
+        "name": "The Official Four Rule",
+        "body": "Purple, cyan, green and yellow are the organization's official colors. Keep them; don't introduce a new hue for decoration. New states use the existing washes and inks.",
+        "section": "colors"
+      },
+      {
+        "name": "The Wash-Not-Fill Rule",
+        "body": "Status and secondary emphasis use a pale wash with a deep ink of the same hue (for example #315c37 on #e7f2e2). Saturated fills are reserved for the primary action and the brand gradient.",
+        "section": "colors"
+      },
+      {
+        "name": "The Numbers Line Up Rule",
+        "body": "Money and counts always use tabular numerals, right-aligned in tables, with ₱ and two decimals.",
+        "section": "typography"
+      },
+      {
+        "name": "The Gentle Lift Rule",
+        "body": "Only things you can click lift on hover (1px for buttons, 2px for cards). Static content never moves.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** lead with Civic Purple (#7562b5) and reserve the purple-to-cyan gradient for the single most important action on a screen, the Logout pill and the brand mark.",
+      "**Do** show every status as a wash-and-ink pill from the existing set.",
+      "**Do** right-align money in tables with tabular numerals, ₱ and two decimals.",
+      "**Do** put add, edit and confirm forms in dialogs with Cancel on the left and the action on the right.",
+      "**Do** keep page titles in Civic Purple Deep and descriptions in Quiet Slate.",
+      "**Do** use the 8 / 12 / 16px radius ladder and the 1px slate hairline for borders."
+    ],
+    "donts": [
+      "**Don't** add hues outside the official four plus the neutral and status palette.",
+      "**Don't** use pure black text or pure gray borders; use Ink Slate and the slate hairline.",
+      "**Don't** set yellow (#d8cf65) as text or as a large fill; it is a highlight only.",
+      "**Don't** make static content move on hover; only clickable elements lift.",
+      "**Don't** go back to inline expand-to-edit forms in tables; use the dialog pattern."
+    ]
+  }
+}
