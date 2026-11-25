@@ -31,6 +31,19 @@
                         <input type="date" id="fundraising_date" name="fundraising_date" required>
                     </div>
                     <div class="form-field">
+                        <label for="activity">Activity / Event</label>
+                        <input type="text" id="activity" name="activity" placeholder="e.g. Wraps of Joy 2025" maxlength="255">
+                    </div>
+                    <div class="form-field">
+                        <label for="income_type">Income Type</label>
+                        <input type="text" id="income_type" name="income_type" list="income_type_options" placeholder="Donation, Registration Fee, ..." maxlength="50">
+                        <datalist id="income_type_options"><option value="Donation"><option value="Registration Fee"><option value="Sponsorship"><option value="Event Proceeds"></datalist>
+                    </div>
+                    <div class="form-field">
+                        <label for="payer">Account No. / Name (private)</label>
+                        <input type="text" id="payer" name="payer" placeholder="Never shown publicly" maxlength="255">
+                    </div>
+                    <div class="form-field">
                         <label for="amount">Amount</label>
                         <input type="number" id="amount" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
                     </div>
@@ -55,7 +68,8 @@
 
         <section class="card form-card">
             <h2>Import Fundraising Records from CSV or Excel</h2>
-            <p>Required columns: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}. Dates as YYYY-MM-DD or MM/DD/YYYY. Rows with errors or duplicates are skipped and listed after the import.</p>
+            <p>Upload the treasurer's sheet as it is: columns such as Date, Activity, Amount, Payment_Method and Reference_Number are recognized automatically, and values like "P 3,000.00", "N/A" or 08/23/26 are cleaned. You will see a preview before anything is saved.</p>
+            <p class="muted">Required: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}.</p>
             <form method="POST" action="{{ url_for('import_financial_records', ledger_key='fundraising') }}" enctype="multipart/form-data">
                 <div class="form-field">
                     <label for="import_file">CSV or Excel (.xlsx) file</label>

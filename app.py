@@ -31,6 +31,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from functools import wraps
 from dotenv import load_dotenv
 from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from models import (
         db,
@@ -41,12 +42,14 @@ from models import (
     MembershipFee,
     Attendance,
     Expense,
-    ExportRequest
+    ExportRequest,
+    Due
 )
 import supabase_auth
 import google_sheets
 from services.finance import LEDGERS
 from services.finance import ingestion as finance_ingestion
+from services.finance import membership_import as finance_membership_import
 from services.finance import records as finance_records
 from services.finance import sheets_mirror as finance_sheets_mirror
 
@@ -2027,7 +2030,51 @@ def _delete_record(ledger_key, record_id):
     return _back_to_ledger(ledger_key)
 
 
+IMPORT_TOKEN_MAX_AGE = 3600   # seconds a preview stays valid
+
+
+def _import_serializer():
+    return URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="finance-import")
+
+
+def _import_overrides(form):
+    """Reviewer answers from the preview page, keyed by row number."""
+    overrides = {}
+    for name, value in form.items():
+        for prefix, key in (("fix_date_", "date"), ("fix_amount_", "amount"),
+                            ("create_member_", "create_member"),
+                            ("treat_as_paid_", "treat_as_paid")):
+            if name.startswith(prefix) and name[len(prefix):].isdigit():
+                row = int(name[len(prefix):])
+                if key in ("create_member", "treat_as_paid"):
+                    overrides.setdefault(row, {})[key] = value == "1"
+                elif value.strip():
+                    overrides.setdefault(row, {})[key] = value.strip()
+    return overrides
+
+
+def _render_import_preview(ledger_key, payload, token, overrides=None):
+    try:
+        preview = finance_records.analyze_upload(
+            ledger_key, payload["headers"], payload["rows"],
+            payload.get("quarter"), overrides,
+        )
+    except finance_ingestion.IngestionError as error:
+        flash(str(error), "danger")
+        return _back_to_ledger(ledger_key)
+    return render_template(
+        "import_preview.html",
+        preview=preview,
+        ledger=LEDGERS[ledger_key],
+        ledger_key=ledger_key,
+        filename=payload.get("filename", ""),
+        token=token,
+        overrides=overrides or {},
+    )
+
+
 def _import_records(ledger_key):
+    """Step 1: read the upload and show a preview. Nothing is saved."""
     uploaded_file = request.files.get("file")
     if not uploaded_file or not uploaded_file.filename:
         flash("Choose a CSV or Excel (.xlsx) file to import.", "danger")
@@ -2035,24 +2082,74 @@ def _import_records(ledger_key):
 
     data = uploaded_file.read(finance_ingestion.MAX_UPLOAD_BYTES + 1)
     try:
-        report = finance_records.import_file(
-            ledger_key, uploaded_file.filename, data
+        headers, rows = finance_ingestion.read_table(uploaded_file.filename, data)
+    except finance_ingestion.IngestionError as error:
+        flash(str(error), "danger")
+        return _back_to_ledger(ledger_key)
+
+    quarter = (request.form.get("quarter") or "").strip().upper() or \
+        finance_membership_import.quarter_from_filename(uploaded_file.filename)
+    payload = {
+        "ledger": ledger_key,
+        "quarter": quarter,
+        "filename": uploaded_file.filename,
+        "headers": headers,
+        "rows": rows,
+    }
+    token = _import_serializer().dumps(payload)
+    return _render_import_preview(ledger_key, payload, token)
+
+
+@app.route("/financial/<ledger_key>/import/confirm", methods=["POST"])
+@login_required
+@encoder_required
+def confirm_financial_import(ledger_key):
+    """Step 2: re-check with the reviewer's answers, or save."""
+    if ledger_key not in LEDGERS:
+        abort(404)
+    token = request.form.get("token", "")
+    try:
+        payload = _import_serializer().loads(token, max_age=IMPORT_TOKEN_MAX_AGE)
+    except SignatureExpired:
+        flash("This preview expired. Upload the file again.", "danger")
+        return _back_to_ledger(ledger_key)
+    except BadSignature:
+        abort(400)
+    if payload.get("ledger") != ledger_key:
+        abort(400)
+
+    overrides = _import_overrides(request.form)
+    if request.form.get("action") != "confirm":
+        return _render_import_preview(ledger_key, payload, token, overrides)
+
+    try:
+        report = finance_records.confirm_upload(
+            ledger_key, payload["headers"], payload["rows"],
+            payload.get("quarter"), overrides,
         )
     except finance_ingestion.IngestionError as error:
         flash(str(error), "danger")
         return _back_to_ledger(ledger_key)
 
-    if report.added:
+    if report.error:
+        flash(report.error, "danger")
+        return _back_to_ledger(ledger_key)
+
+    parts = [f"{report.added} record(s) imported into {LEDGERS[ledger_key].label}"]
+    if report.dues_saved:
+        parts.append(f"{report.dues_saved} dues status line(s) saved")
+    if report.members_created:
+        parts.append(f"{report.members_created} new member(s) created (check their IDs on the Members page)")
+    flash("Import complete: " + "; ".join(parts) + ".", "success")
+    not_imported = report.left_for_review + report.skipped
+    if not_imported or report.duplicates:
         flash(
-            f"Imported {report.added} of {report.total_rows} row(s) into "
-            f"{LEDGERS[ledger_key].label}.",
-            "success"
+            f"Not imported: {report.left_for_review} row(s) still needing review, "
+            f"{report.skipped} row(s) with errors, {report.duplicates} duplicate(s). "
+            "Fix them in the spreadsheet and upload it again; rows already "
+            "imported are recognized and not added twice.",
+            "warning"
         )
-    if report.problems:
-        details = " ".join(report.problems[:10])
-        if len(report.problems) > 10:
-            details += f" Plus {len(report.problems) - 10} more row(s)."
-        flash(f"Skipped {len(report.problems)} row(s). {details}", "danger")
     if report.mirror_warning:
         flash(report.mirror_warning, "warning")
     return _back_to_ledger(ledger_key)
@@ -2130,11 +2227,15 @@ def membership_fees():
     all_members = Member.query.order_by(
         Member.membership_id
     ).all()
+    dues = Due.query.order_by(
+        Due.year.desc(), Due.quarter.desc(), Due.status, Due.membership_id
+    ).all()
     return _ledger_page(
         "membership_fees",
         "membership_fees.html",
         members=members,
-        all_members=all_members
+        all_members=all_members,
+        dues=dues
     )
 
 

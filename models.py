@@ -164,6 +164,21 @@ class Fundraising(db.Model):
         nullable=False
     )
 
+    # Event / project the money was raised for (public)
+    activity = db.Column(
+        db.String(255)
+    )
+
+    # Donation, Registration Fee, Sponsorship, Event Proceeds, ... (public)
+    income_type = db.Column(
+        db.String(50)
+    )
+
+    # Donor / payer name or account (PRIVATE: never published)
+    payer = db.Column(
+        db.String(255)
+    )
+
     amount = db.Column(
         db.Numeric(12, 2),
         nullable=False
@@ -210,6 +225,16 @@ class Sponsorship(db.Model):
         nullable=False
     )
 
+    # Individual / Business / Organization
+    sponsor_type = db.Column(
+        db.String(50)
+    )
+
+    # Event / project the sponsorship was for ("Purpose" in the spreadsheet)
+    activity = db.Column(
+        db.String(255)
+    )
+
     amount = db.Column(
         db.Numeric(12, 2),
         nullable=False
@@ -254,6 +279,12 @@ class MembershipFee(db.Model):
             onupdate="CASCADE"
         ),
         nullable=False
+    )
+
+    # Dues period: the year the quarter belongs to (may differ from the
+    # payment date, e.g. a 2025-Q4 fee paid in 2026)
+    year = db.Column(
+        db.Integer
     )
 
     quarter = db.Column(
@@ -383,6 +414,11 @@ class Expense(db.Model):
         nullable=False
     )
 
+    # Event / project the expense belongs to (public)
+    activity = db.Column(
+        db.String(255)
+    )
+
     category = db.Column(
         db.String(100),
         nullable=False
@@ -413,6 +449,83 @@ class Expense(db.Model):
         db.DateTime(timezone=True),
         server_default=db.func.current_timestamp()
     )
+
+# ==================================================
+# DUES  (what each member owes per year + quarter)
+#
+# Filled from the treasurer's membership-fee sheets (Status / Balance).
+# Payments themselves stay in membership_fees; this table records the
+# obligation and its status, which is what unpaid-dues analytics need.
+# ==================================================
+
+class Due(db.Model):
+
+    __tablename__ = "dues"
+    __table_args__ = (
+        UniqueConstraint(
+            "membership_id", "year", "quarter",
+            name="uq_dues_member_period"
+        ),
+    )
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    membership_id = db.Column(
+        db.String(64),
+        db.ForeignKey(
+            "members.membership_id",
+            ondelete="RESTRICT",
+            onupdate="CASCADE"
+        ),
+        nullable=False,
+        index=True
+    )
+
+    year = db.Column(
+        db.Integer,
+        nullable=False
+    )
+
+    quarter = db.Column(
+        db.String(2),
+        nullable=False
+    )
+
+    amount_due = db.Column(
+        db.Numeric(12, 2),
+        nullable=False,
+        default=0
+    )
+
+    amount_paid = db.Column(
+        db.Numeric(12, 2),
+        nullable=False,
+        default=0
+    )
+
+    balance = db.Column(
+        db.Numeric(12, 2),
+        nullable=False,
+        default=0
+    )
+
+    # paid / partial / unpaid / deferred
+    status = db.Column(
+        db.String(20),
+        nullable=False
+    )
+
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        server_default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp()
+    )
+
+    member = db.relationship("Member")
+
 
 class ExportRequest(db.Model):
     __tablename__ = "export_requests"

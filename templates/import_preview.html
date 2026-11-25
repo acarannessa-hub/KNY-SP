@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Import - {{ ledger.label }} - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+    <style>
+        .import-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 20px; }
+        .import-summary div { background: #fff; border: 1px solid #e3def0; border-radius: 10px; padding: 12px 14px; }
+        .import-summary strong { display: block; font-size: 1.6rem; color: #5d4b9a; }
+        .import-summary span { font-size: .85rem; color: #555; }
+        .import-section { margin-bottom: 22px; }
+        .import-section h2 { display: flex; gap: 10px; align-items: baseline; }
+        .import-section h2 small { font-size: .85rem; font-weight: 400; color: #666; }
+        .problem { color: #7d3640; font-size: .9rem; margin: 2px 0; }
+        .fix-input { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+        .fix-input input[type=date], .fix-input input[type=number] { max-width: 180px; }
+        .corrections { font-size: .82rem; color: #555; margin: 0; padding-left: 18px; }
+        .muted { color: #777; font-size: .9rem; }
+        .sticky-actions { position: sticky; bottom: 0; background: #faf9fd; border-top: 1px solid #e3def0; padding: 12px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container">
+        <a class="back" href="{{ url_for(ledger_key) }}">← Back to {{ ledger.label }}</a>
+        <header class="page-heading">
+            <h1>Review import: {{ ledger.label }}</h1>
+            <p>
+                File <strong>{{ filename }}</strong>{% if preview.quarter %}, dues period <strong>{{ preview.quarter }}</strong>{% endif %}.
+                Nothing has been saved yet. Fix what you can below, press <em>Check again</em>,
+                then <em>Confirm import</em> to save the ready rows.
+            </p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="import-summary" aria-label="Import summary">
+            <div><strong>{{ preview.ready|length }}</strong><span>ready to import</span></div>
+            <div><strong>{{ preview.review|length }}</strong><span>need your input</span></div>
+            <div><strong>{{ preview.skipped|length }}</strong><span>have errors (skipped)</span></div>
+            <div><strong>{{ preview.duplicates|length }}</strong><span>duplicates (skipped)</span></div>
+            {% if preview.dues %}<div><strong>{{ preview.dues|length }}</strong><span>dues status lines{% if preview.dues_updates %} ({{ preview.dues_updates }} update existing){% endif %}</span></div>{% endif %}
+            {% if preview.new_members %}<div><strong>{{ preview.new_members|length }}</strong><span>new members to create</span></div>{% endif %}
+        </section>
+
+        <form method="POST" action="{{ url_for('confirm_financial_import', ledger_key=ledger_key) }}">
+            <input type="hidden" name="token" value="{{ token }}">
+
+            {% if preview.review %}
+            <section class="card records-card import-section">
+                <h2>Needs your input <small>these rows are not imported until fixed</small></h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Row</th><th>Date</th><th>Record</th><th>Details</th><th class="num">Amount</th><th>What to do</th></tr></thead>
+                        <tbody>
+                        {% for item in preview.review %}
+                            {% set fix = overrides.get(item.row, {}) %}
+                            <tr>
+                                <td>{{ item.row }}</td>
+                                <td>{{ item.display.date }}</td>
+                                <td>{{ item.display.label }}</td>
+                                <td>{{ item.display.detail }}</td>
+                                <td class="num">{{ item.display.amount }}</td>
+                                <td>
+                                    {% for kind, message in item.problems %}
+                                        <p class="problem">{{ message }}</p>
+                                        <div class="fix-input">
+                                        {% if kind == "date" %}
+                                            <label for="fix_date_{{ item.row }}">Date</label>
+                                            <input type="date" id="fix_date_{{ item.row }}" name="fix_date_{{ item.row }}" value="{{ fix.get('date', '') }}">
+                                        {% elif kind == "amount" %}
+                                            <label for="fix_amount_{{ item.row }}">Amount</label>
+                                            <input type="number" step="0.01" min="0.01" id="fix_amount_{{ item.row }}" name="fix_amount_{{ item.row }}" value="{{ fix.get('amount', '') }}">
+                                        {% elif kind == "member" %}
+                                            <label><input type="checkbox" name="create_member_{{ item.row }}" value="1" {% if fix.get('create_member') %}checked{% endif %}> Create this member</label>
+                                        {% elif kind == "conflict" %}
+                                            <label><input type="checkbox" name="treat_as_paid_{{ item.row }}" value="1" {% if fix.get('treat_as_paid') %}checked{% endif %}> Record as PAID</label>
+                                        {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+
+            {% if preview.ready %}
+            <section class="card records-card import-section">
+                <h2>Ready to import <small>{{ preview.ready|selectattr('corrections')|list|length }} with automatic corrections</small></h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Row</th><th>Date</th><th>Record</th><th>Details</th><th class="num">Amount</th><th>Cleaned automatically</th></tr></thead>
+                        <tbody>
+                        {% for item in preview.ready %}
+                            <tr>
+                                <td>{{ item.row }}</td>
+                                <td>{{ item.display.date }}</td>
+                                <td>{{ item.display.label }}</td>
+                                <td>{{ item.display.detail }}</td>
+                                <td class="num">{{ item.display.amount }}</td>
+                                <td>
+                                    {% if item.corrections %}
+                                    <ul class="corrections">{% for change in item.corrections %}<li>{{ change }}</li>{% endfor %}</ul>
+                                    {% else %}<span class="muted">—</span>{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+
+            {% if preview.new_members %}
+            <section class="card import-section">
+                <h2>New members</h2>
+                <p class="muted">These people will be added to Members with a generated ID (KNYC-YYYY-NNN). You can edit their IDs on the Members page afterwards.</p>
+                <p>{{ preview.new_members|join(", ") }}</p>
+            </section>
+            {% endif %}
+
+            {% if preview.skipped or preview.duplicates %}
+            <section class="card records-card import-section">
+                <h2>Not imported</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Row</th><th>Reason</th></tr></thead>
+                        <tbody>
+                        {% for item in preview.skipped %}<tr><td>{{ item.row }}</td><td>{{ item.reason }}</td></tr>{% endfor %}
+                        {% for item in preview.duplicates %}<tr><td>{{ item.row }}</td><td>Duplicate: {{ item.reason }}</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+
+            <div class="sticky-actions">
+                <button class="btn btn-secondary" type="submit" name="action" value="check">Check again</button>
+                <button class="btn btn-primary" type="submit" name="action" value="confirm"
+                    {% if not preview.ready and not preview.dues %}disabled{% endif %}>
+                    Confirm import ({{ preview.ready|length }} row{{ "" if preview.ready|length == 1 else "s" }})
+                </button>
+                <a href="{{ url_for(ledger_key) }}">Cancel</a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>

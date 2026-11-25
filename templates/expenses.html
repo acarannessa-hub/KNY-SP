@@ -31,6 +31,10 @@
                         <input type="date" id="expense_date" name="expense_date" required>
                     </div>
                     <div class="form-field">
+                        <label for="activity">Activity / Event</label>
+                        <input type="text" id="activity" name="activity" placeholder="e.g. Wraps of Joy 2025" maxlength="255">
+                    </div>
+                    <div class="form-field">
                         <label for="category">Category</label>
                         <input type="text" id="category" name="category" placeholder="Expense category" required>
                     </div>
@@ -63,7 +67,8 @@
 
         <section class="card form-card">
             <h2>Import Expenses from CSV or Excel</h2>
-            <p>Required columns: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}. Dates as YYYY-MM-DD or MM/DD/YYYY. Rows with errors or duplicates are skipped and listed after the import.</p>
+            <p>Upload the treasurer's sheet as it is: columns such as Date, Activity, Amount, Payment_Method and Reference_Number are recognized automatically, and values like "P 3,000.00", "N/A" or 08/23/26 are cleaned. You will see a preview before anything is saved.</p>
+            <p class="muted">Required: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}.</p>
             <form method="POST" action="{{ url_for('import_financial_records', ledger_key='expenses') }}" enctype="multipart/form-data">
                 <div class="form-field">
                     <label for="import_file">CSV or Excel (.xlsx) file</label>

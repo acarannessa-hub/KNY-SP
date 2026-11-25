@@ -59,9 +59,45 @@ PAYMENT_METHOD_ALIASES = {
     "deposit": "Bank Deposit",
     "check": "Check",
     "cheque": "Check",
+    "maribank": "MariBank",
+    "mari bank": "MariBank",
+    "bpi": "BPI",
+    "landbank": "Landbank",
+    "land bank": "Landbank",
+    "gotyme": "GoTyme Bank",
+    "gotyme bank": "GoTyme Bank",
+    "go tyme": "GoTyme Bank",
 }
 
-_CURRENCY_PREFIX = re.compile(r"^(php|₱)\s*", re.IGNORECASE)
+INCOME_TYPE_ALIASES = {
+    "donation": "Donation",
+    "donations": "Donation",
+    "registration fee": "Registration Fee",
+    "registration fees": "Registration Fee",
+    "registration": "Registration Fee",
+    "sponsorship": "Sponsorship",
+    "sponsorships": "Sponsorship",
+    "event proceeds": "Event Proceeds",
+    "proceeds": "Event Proceeds",
+    "sales": "Event Proceeds",
+}
+
+SPONSOR_TYPE_ALIASES = {
+    "individual": "Individual",
+    "person": "Individual",
+    "business": "Business",
+    "company": "Business",
+    "organization": "Organization",
+    "organisation": "Organization",
+    "org": "Organization",
+    "government": "Government",
+}
+
+# Values spreadsheets use for "nothing here".
+PLACEHOLDERS = {"n/a", "na", "n.a.", "n.a", "n.d", "n.d.", "nd", "none", "-", "--", "null"}
+
+_CURRENCY_PREFIX = re.compile(r"^(php|₱|p)\s*(?=[\d.,\s])", re.IGNORECASE)
+_TWO_DIGIT_YEAR = re.compile(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$")
 _DATETIME_TEXT = re.compile(r"^(\d{4}-\d{2}-\d{2})[ T]\d{1,2}:\d{2}")
 _QUARTER = re.compile(r"^Q?([1-4])$")
 
@@ -84,10 +120,20 @@ def collapse(value):
     return re.sub(r"\s+", " ", str(value)).strip()
 
 
-def parse_amount(value):
+def is_placeholder(text):
+    return text.casefold() in PLACEHOLDERS
+
+
+def present(value):
+    """collapse(), with spreadsheet placeholders (N/A, N.D, -) treated as empty."""
+    text = collapse(value)
+    return "" if is_placeholder(text) else text
+
+
+def parse_amount(value, allow_zero=False):
     if isinstance(value, bool):
         raise FieldError("must be a number, like 1500 or 1,500.00.")
-    text = collapse(value)
+    text = present(value)
     if not text:
         raise FieldError("is required.")
     text = _CURRENCY_PREFIX.sub("", text).replace(",", "").replace(" ", "")
@@ -97,8 +143,8 @@ def parse_amount(value):
         raise FieldError("must be a number, like 1500 or 1,500.00.")
     if not amount.is_finite():
         raise FieldError("must be a number, like 1500 or 1,500.00.")
-    if amount <= 0:
-        raise FieldError("must be greater than zero.")
+    if amount < 0 or (amount == 0 and not allow_zero):
+        raise FieldError("must be greater than zero." if not allow_zero else "cannot be negative.")
     if amount != amount.quantize(Decimal("0.01")):
         raise FieldError("can have at most 2 decimal places.")
     if amount > MAX_AMOUNT:
@@ -112,12 +158,16 @@ def parse_date(value, today):
     elif isinstance(value, date):
         parsed = value
     else:
-        text = collapse(value)
+        text = present(value)
         if not text:
             raise FieldError("is required.")
         match = _DATETIME_TEXT.match(text)
         if match:
             text = match.group(1)
+        short = _TWO_DIGIT_YEAR.match(text)
+        if short:
+            # 08/23/26 -> 08/23/2026 (Python's %Y would read "26" as year 26)
+            text = f"{short.group(1)}/{short.group(2)}/20{short.group(3)}"
         parsed = None
         for fmt in DATE_FORMATS:
             try:
@@ -138,21 +188,44 @@ def parse_date(value, today):
 
 
 def parse_quarter(value):
-    match = _QUARTER.match(collapse(value).upper())
+    match = _QUARTER.match(present(value).upper())
     if not match:
         raise FieldError("must be Q1, Q2, Q3, or Q4.")
     return f"Q{match.group(1)}"
 
 
+def parse_year(value, today):
+    text = present(value)
+    if not text:
+        return None
+    if not re.fullmatch(r"\d{4}", text):
+        raise FieldError("must be a 4-digit year such as 2026.")
+    year = int(text)
+    if year < EARLIEST_DATE.year or year > today.year + 1:
+        raise FieldError(f"must be between {EARLIEST_DATE.year} and {today.year + 1}.")
+    return year
+
+
+def normalize_choice(value, aliases):
+    """Known spellings -> canonical; unknown -> title case if typed all one case."""
+    text = present(value)
+    if not text:
+        return ""
+    known = aliases.get(text.casefold())
+    if known:
+        return known
+    return text.title() if (text.islower() or text.isupper()) else text
+
+
 def normalize_payment_method(value):
-    text = collapse(value)
+    text = present(value)
     return PAYMENT_METHOD_ALIASES.get(text.casefold(), text)
 
 
 def normalize_category(value, known_categories=None):
     """Reuse an existing spelling when one matches ignoring case, so
     'food', 'FOOD' and 'Food ' all become the category already on file."""
-    text = collapse(value)
+    text = present(value)
     if not text:
         return text
     if known_categories:
@@ -210,6 +283,12 @@ def clean_record(
         except FieldError as error:
             errors.append(f"{field.label} {error}")
 
+    # Dues year defaults to the year of the payment date.
+    if "year" in cleaned and cleaned["year"] is None:
+        paid_on = cleaned.get(ledger.date_field)
+        if paid_on:
+            cleaned["year"] = paid_on.year
+
     return cleaned, errors
 
 
@@ -222,9 +301,11 @@ def _clean_field(field, value, today, members, known_categories, require_active_
         return parse_amount(value)
     if kind == "quarter":
         return parse_quarter(value)
+    if kind == "year":
+        return parse_year(value, today)
 
     if kind == "member":
-        text = collapse(value)
+        text = present(value)
         if not text:
             raise FieldError("is required.")
         found = (members or {}).get(text.casefold())
@@ -237,12 +318,18 @@ def _clean_field(field, value, today, members, known_categories, require_active_
 
     if kind == "longtext":
         text = normalize_longtext(value)
+        if is_placeholder(text):
+            text = ""
     elif kind == "payment_method":
         text = normalize_payment_method(value)
     elif kind == "category":
         text = normalize_category(value, known_categories)
+    elif kind == "income_type":
+        text = normalize_choice(value, INCOME_TYPE_ALIASES)
+    elif kind == "sponsor_type":
+        text = normalize_choice(value, SPONSOR_TYPE_ALIASES)
     else:
-        text = collapse(value)
+        text = present(value)
 
     if not text:
         if field.required:

@@ -449,6 +449,12 @@ def replace_tab(tab, values):
     _create_tab_if_missing(tab, len(values), len(values[0]))
     status = header_status(tab)
     if status == "mismatch":
+        # A tab this app wrote with an OLDER column layout starts with
+        # "record_id"; it is safe to rewrite with the new layout.
+        first = _clean(_call(lambda: _worksheet(tab).row_values(1)))
+        if first and first[0] == "record_id":
+            status = "ok"
+    if status == "mismatch":
         raise _config_error(
             f"Tab '{tab}' has content that does not start with the KNY-SP "
             "header row, so it was not overwritten. Clear the tab (or create "
@@ -477,7 +483,8 @@ def replace_derived_tab(tab, values):
     first = _clean(_call(lambda: worksheet.row_values(1)))
 
     if any(first):
-        if first[:len(expected)] != expected:
+        # Same first column = this app's table, possibly an older layout.
+        if first[:len(expected)] != expected and first[0] != expected[0]:
             raise _config_error(
                 f"Tab '{tab}' has content that does not start with the "
                 "expected header row, so it was not overwritten. Clear the "

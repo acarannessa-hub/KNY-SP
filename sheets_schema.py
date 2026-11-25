@@ -50,33 +50,33 @@ TABS = {
         "db_table": "fundraising",
         "date_field": "fundraising_date",
         "fields": [
-            "fundraising_date", "amount", "payment_method",
-            "reference_no", "notes",
+            "fundraising_date", "activity", "income_type", "amount",
+            "payment_method", "reference_no", "payer", "notes",
         ],
         "key_core": ["fundraising_date", "amount", "reference_no"],
-        "key_fallback": ["payment_method", "notes"],
+        "key_fallback": ["income_type", "payer", "payment_method", "notes"],
     },
     "sponsorships": {
         "db_table": "sponsorships",
         "date_field": "sponsorship_date",
         "fields": [
-            "sponsorship_date", "sponsor_name", "amount",
-            "payment_method", "reference_no", "notes",
+            "sponsorship_date", "sponsor_name", "sponsor_type", "activity",
+            "amount", "payment_method", "reference_no", "notes",
         ],
         "key_core": [
             "sponsorship_date", "sponsor_name", "amount", "reference_no",
         ],
-        "key_fallback": ["payment_method", "notes"],
+        "key_fallback": ["activity", "payment_method", "notes"],
     },
     "membership_fees": {
         "db_table": "membership_fees",
         "date_field": "payment_date",
         "fields": [
-            "membership_id", "quarter", "payment_date", "amount",
+            "membership_id", "year", "quarter", "payment_date", "amount",
             "payment_method", "reference_no", "notes",
         ],
         "key_core": [
-            "membership_id", "quarter", "payment_date", "amount",
+            "membership_id", "year", "quarter", "payment_date", "amount",
             "reference_no",
         ],
         "key_fallback": ["payment_method", "notes"],
@@ -85,11 +85,11 @@ TABS = {
         "db_table": "expenses",
         "date_field": "expense_date",
         "fields": [
-            "expense_date", "category", "description", "amount",
+            "expense_date", "activity", "category", "description", "amount",
             "payment_method", "reference_no", "notes",
         ],
         "key_core": ["expense_date", "category", "amount", "reference_no"],
-        "key_fallback": ["description", "payment_method", "notes"],
+        "key_fallback": ["activity", "description", "payment_method", "notes"],
     },
 }
 

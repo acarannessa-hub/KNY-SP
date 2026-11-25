@@ -14,6 +14,12 @@ Field kinds
     quarter         Q1-Q4
     payment_method  free text, common spellings unified (GCash, Cash, ...)
     category        expense category, matched to existing spellings
+    income_type     Donation / Registration Fee / Sponsorship / Event Proceeds ...
+    sponsor_type    Individual / Business / Organization
+    year            dues year (defaults to the payment date's year)
+
+Privacy: `payer` (fundraising), `sponsor_name`, reference numbers and notes
+are private; services/finance/public_dataset.py never publishes them.
 """
 
 from dataclasses import dataclass
@@ -56,6 +62,7 @@ _PAYMENT_METHOD = Field("payment_method", "Payment method", "payment_method", ma
 _REFERENCE_NO = Field("reference_no", "Reference number", "text", max_length=100)
 _NOTES = Field("notes", "Notes", "longtext", max_length=2000)
 _AMOUNT = Field("amount", "Amount", "amount", required=True)
+_ACTIVITY = Field("activity", "Activity", "text", max_length=255)
 
 
 LEDGERS = {
@@ -67,9 +74,12 @@ LEDGERS = {
         date_field="fundraising_date",
         fields=(
             Field("fundraising_date", "Date", "date", required=True),
+            _ACTIVITY,
+            Field("income_type", "Income type", "income_type", max_length=50),
             _AMOUNT,
             _PAYMENT_METHOD,
             _REFERENCE_NO,
+            Field("payer", "Account no. / name", "text", max_length=255),
             _NOTES,
         ),
     ),
@@ -82,6 +92,8 @@ LEDGERS = {
         fields=(
             Field("sponsorship_date", "Date", "date", required=True),
             Field("sponsor_name", "Sponsor name", "text", required=True, max_length=150),
+            Field("sponsor_type", "Sponsor type", "sponsor_type", max_length=50),
+            _ACTIVITY,
             _AMOUNT,
             _PAYMENT_METHOD,
             _REFERENCE_NO,
@@ -96,6 +108,7 @@ LEDGERS = {
         date_field="payment_date",
         fields=(
             Field("membership_id", "Membership ID", "member", required=True, max_length=64),
+            Field("year", "Dues year", "year"),
             Field("quarter", "Quarter", "quarter", required=True),
             Field("payment_date", "Payment date", "date", required=True),
             _AMOUNT,
@@ -112,6 +125,7 @@ LEDGERS = {
         date_field="expense_date",
         fields=(
             Field("expense_date", "Date", "date", required=True),
+            _ACTIVITY,
             Field("category", "Category", "category", required=True, max_length=100),
             Field("description", "Description", "longtext", max_length=2000),
             _AMOUNT,

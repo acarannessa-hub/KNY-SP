@@ -35,6 +35,16 @@
                         <input type="text" id="sponsor_name" name="sponsor_name" placeholder="Sponsor name" required>
                     </div>
                     <div class="form-field">
+                        <label for="sponsor_type">Sponsor Type</label>
+                        <select id="sponsor_type" name="sponsor_type">
+                            <option value="">Select type</option><option>Individual</option><option>Business</option><option>Organization</option><option>Government</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="activity">Purpose / Activity</label>
+                        <input type="text" id="activity" name="activity" placeholder="e.g. KNYC 2nd Anniversary" maxlength="255">
+                    </div>
+                    <div class="form-field">
                         <label for="amount">Amount</label>
                         <input type="number" id="amount" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
                     </div>
@@ -59,7 +69,8 @@
 
         <section class="card form-card">
             <h2>Import Sponsorships from CSV or Excel</h2>
-            <p>Required columns: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}. Dates as YYYY-MM-DD or MM/DD/YYYY. Rows with errors or duplicates are skipped and listed after the import.</p>
+            <p>Upload the treasurer's sheet as it is: columns such as Date, Activity, Amount, Payment_Method and Reference_Number are recognized automatically, and values like "P 3,000.00", "N/A" or 08/23/26 are cleaned. You will see a preview before anything is saved.</p>
+            <p class="muted">Required: {{ import_required_columns|join(", ") }}. Optional: {{ import_optional_columns|join(", ") }}.</p>
             <form method="POST" action="{{ url_for('import_financial_records', ledger_key='sponsorships') }}" enctype="multipart/form-data">
                 <div class="form-field">
                     <label for="import_file">CSV or Excel (.xlsx) file</label>

@@ -72,6 +72,9 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(cleaned, {
             "fundraising_date": date(2026, 11, 2),
+            "activity": None,
+            "income_type": None,
+            "payer": None,
             "amount": Decimal("2500.00"),
             "payment_method": "GCash",
             "reference_no": "REF 001",
@@ -248,8 +251,8 @@ class PublicDatasetTests(unittest.TestCase):
         self.assertEqual(table[0], public_dataset.PUBLIC_HEADERS)
         self.assertEqual([row[0] for row in table[1:]], ["2026-01-05", "2026-02-10", "2026-03-31"])
         self.assertEqual(table[1], ["2026-01-05", 2026, "2026-Q1", "2026-01", "Income",
-                                    "Sponsorships", "Sponsorships", 5000.0, 5000.0])
-        self.assertEqual(table[3][4:], ["Expense", "Expenses", "Food", 300.5, -300.5])
+                                    "Sponsorships", "Sponsorship", "", 5000.0, 5000.0])
+        self.assertEqual(table[3][4:], ["Expense", "Expenses", "Food", "", 300.5, -300.5])
         flat = " ".join(str(cell) for row in table for cell in row)
         for private in self.PRIVATE_VALUES:
             self.assertNotIn(private, flat)
