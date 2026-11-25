@@ -30,6 +30,8 @@ KIND_LABELS = {
     "test": "Test email",
     "password_reset": "Password reset link",
     "account_invite": "Account invitation",
+    "export_request": "Export request (to admins)",
+    "export_decision": "Export decision",
     "password_changed": "Password changed notice",
 }
 

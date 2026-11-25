@@ -8,11 +8,17 @@
 </head>
 <body>
     {% include "private_header.html" %}
-    <main class="private-container">
-        <a class="back" href="{{ url_for('financial_management') }}">← Back to Financial Management</a>
-        <header class="page-heading">
-            <h1>Financial Export Requests</h1>
-            <p>Review and process export requests submitted by other portal users.</p>
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('exports_page') }}">← Back to Exports</a>
+        <header class="ledger-header">
+            <div>
+                <h1>Export Requests</h1>
+                <p>Encoders and viewers must ask before exporting anything with personal data. Approve to let them download it for a limited number of days, or reject with a reason. They're emailed either way, and every decision and download is in the Audit Log.</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Waiting</dt><dd>{{ pending|length }}</dd></div>
+                <div><dt>All requests</dt><dd>{{ rows|length }}</dd></div>
+            </dl>
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -21,70 +27,106 @@
             {% endfor %}
         {% endwith %}
 
-        <section class="card records-card">
-            <div class="card-heading table-card-header">
-                <div>
-                    <h2>All Requests</h2>
-                    <p>Approved requests can be downloaded by their requester or an administrator.</p>
+        <section class="card ledger-card" aria-label="Export requests">
+            <div class="ledger-toolbar">
+                <div class="filter-status">
+                    <span class="muted">Use the ▾ on a column heading to sort or filter.</span>
+                    <span id="ledger-showing" class="filter-count" hidden></span>
+                    <button type="button" class="link-btn" id="clear-filters" hidden>Clear filters</button>
                 </div>
             </div>
             <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th><th>Requesting User</th><th>Email</th><th>Membership ID</th><th>Table</th><th>Date Range</th><th>Format</th><th>Status</th><th>Requested</th><th>Processed</th><th>Admin</th><th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for export_request in export_requests %}
-                        <tr>
-                            <td>{{ export_request.id }}</td>
-                            <td>{{ export_request.requester.member.full_name }}</td>
-                            <td>{{ export_request.requester.email }}</td>
-                            <td>{{ export_request.requester.member.membership_id }}</td>
-                            <td>{{ "All Financial Records" if export_request.table_name == "all" else export_request.table_name|replace("_", " ")|title }}</td>
-                            <td>{{ export_request.start_date.isoformat() if export_request.start_date else "Beginning" }} – {{ export_request.end_date.isoformat() if export_request.end_date else "Present" }}</td>
-                            <td>{{ export_request.export_format|upper }}</td>
-                            <td>
-                                <span class="status-badge{% if export_request.status != 'approved' %} inactive{% endif %}">
-                                    {{ export_request.status|capitalize }}
-                                </span>
-                            </td>
-                            <td>{{ export_request.requested_at.strftime("%Y-%m-%d %H:%M") if export_request.requested_at else "—" }}</td>
-                            <td>
-                                {% if export_request.approved_at %}
-                                {{ export_request.approved_at.strftime("%Y-%m-%d %H:%M") }}
-                                {% elif export_request.rejected_at %}
-                                {{ export_request.rejected_at.strftime("%Y-%m-%d %H:%M") }}
-                                {% else %}
-                                —
-                                {% endif %}
-                            </td>
-                            <td>{{ export_request.processed_by.member.full_name if export_request.processed_by else "—" }}</td>
-                            <td>
-                                {% if export_request.status == "pending" %}
-                                <div class="table-actions">
-                                    <form method="POST" action="{{ url_for('approve_export_request', request_id=export_request.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button class="btn btn-small btn-primary" type="submit">Approve</button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('reject_export_request', request_id=export_request.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button class="btn btn-small btn-danger" type="submit">Reject</button>
-                                    </form>
-                                </div>
-                                {% elif export_request.status == "approved" %}
-                                <a class="btn btn-small btn-secondary" href="{{ url_for('download_approved_export', request_id=export_request.id) }}">Download</a>
-                                {% else %}
-                                <span>Processed</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="12">No export requests have been submitted.</td></tr>
+                <table class="ledger-table filterable" id="requests-table">
+                    <thead><tr>
+                        {% for heading, kind in [("Requested", "date"), ("Who", "text"), ("What", "text"), ("Period", "text"), ("Format", "text"), ("Status", "text")] %}
+                        <th data-kind="{{ kind }}"><button type="button" class="col-filter" aria-haspopup="true" aria-expanded="false">{{ heading }}<span class="caret" aria-hidden="true">▾</span></button></th>
                         {% endfor %}
+                        <th class="actions-col"><span class="sr-only">Actions</span></th>
+                    </tr></thead>
+                    <tbody>
+                    {% for row in rows %}
+                    {% set r = row.req %}
+                    {% set when = local(r.requested_at).strftime("%Y-%m-%d %H:%M") if r.requested_at else "" %}
+                    {% set status_label = {"ready": "Approved", "pending": "Waiting", "expired": "Expired", "rejected": "Rejected"}.get(row.state, row.state|capitalize) %}
+                    <tr>
+                        <td class="nowrap" data-value="{{ when }}">{{ when }}</td>
+                        <td data-value="{{ row.name }}">{{ row.name }}<br><span class="muted">{{ r.requester.email if r.requester else "" }}</span></td>
+                        <td data-value="{{ row.label }}">{{ row.label }}{% if r.purpose %}<br><span class="muted">Purpose: {{ r.purpose }}</span>{% endif %}</td>
+                        <td data-value="{{ row.period }}">{{ row.period }}</td>
+                        <td data-value="{{ r.export_format|upper }}">{{ r.export_format|upper }}</td>
+                        <td data-value="{{ status_label }}">
+                            <span class="pill {{ {'ready': 'pill-paid', 'pending': 'pill-partial', 'expired': 'pill-deferred'}.get(row.state, 'pill-unpaid') }}">{{ status_label }}</span>
+                            {% if row.state in ["ready", "expired"] %}<br><span class="muted">{{ "until" if row.state == "ready" else "ended" }} {{ local(row.expires).strftime("%b %d") }} · {{ r.download_count or 0 }} download(s)</span>{% endif %}
+                            {% if r.processed_by %}<br><span class="muted">by {{ r.processed_by.email }}</span>{% endif %}
+                            {% if r.decision_note %}<br><span class="muted">“{{ r.decision_note }}”</span>{% endif %}
+                        </td>
+                        <td class="row-actions">
+                            {% if row.state == "pending" %}
+                            <button class="btn btn-small btn-primary" type="button" data-open="approve-{{ r.id }}">Approve</button>
+                            <button class="btn btn-small btn-secondary" type="button" data-open="reject-{{ r.id }}">Reject</button>
+
+                            <dialog id="approve-{{ r.id }}" class="ledger-dialog ledger-dialog-small" aria-labelledby="approve-title-{{ r.id }}">
+                                <form method="POST" action="{{ url_for('approve_export_request', request_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <header class="dialog-header"><h2 id="approve-title-{{ r.id }}">Approve this export?</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body">
+                                        <p><strong>{{ row.name }}</strong> gets <strong>{{ row.label }}</strong> ({{ row.period }}) as {{ r.export_format|upper }}.</p>
+                                        {% if r.purpose %}<p class="muted">Purpose: {{ r.purpose }}</p>{% endif %}
+                                        <div class="form-field">
+                                            <label for="days-{{ r.id }}">They can download it for</label>
+                                            <select id="days-{{ r.id }}" name="days">
+                                                {% for d in [1, 3, 7, 14, 30] if d <= max_days %}<option value="{{ d }}" {% if d == default_days %}selected{% endif %}>{{ d }} day{{ "s" if d > 1 else "" }}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="note-a-{{ r.id }}">Note to them (optional)</label>
+                                            <input id="note-a-{{ r.id }}" name="note" maxlength="1000" placeholder="e.g. Please delete it after the meeting.">
+                                        </div>
+                                    </div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-primary" type="submit">Approve</button></footer>
+                                </form>
+                            </dialog>
+
+                            <dialog id="reject-{{ r.id }}" class="ledger-dialog ledger-dialog-small" aria-labelledby="reject-title-{{ r.id }}">
+                                <form method="POST" action="{{ url_for('reject_export_request', request_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <header class="dialog-header"><h2 id="reject-title-{{ r.id }}">Reject this export?</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body">
+                                        <p>{{ row.name }} asked for {{ row.label }} ({{ row.period }}).</p>
+                                        <div class="form-field">
+                                            <label for="note-r-{{ r.id }}">Reason <span class="req" aria-hidden="true">*</span></label>
+                                            <input id="note-r-{{ r.id }}" name="note" maxlength="1000" required minlength="3" placeholder="e.g. Please ask the treasurer for the summary instead.">
+                                        </div>
+                                    </div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-danger" type="submit">Reject</button></footer>
+                                </form>
+                            </dialog>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% if not rows %}<div class="empty-state"><p>No export requests yet.</p></div>{% endif %}
+            <p id="no-results" class="empty-state" hidden>No requests match these filters. <button type="button" class="link-btn" data-clear-filters>Clear filters</button></p>
         </section>
     </main>
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+    <script>
+        (function () {
+            var table = document.getElementById("requests-table");
+            if (!window.KNYCFilterGrid || !table.tBodies[0].rows.length) { return; }
+            var grid = new window.KNYCFilterGrid(table, function (visible, total, filtered) {
+                var showing = document.getElementById("ledger-showing");
+                showing.hidden = !filtered;
+                showing.textContent = "Showing " + visible.length + " of " + total;
+                document.getElementById("clear-filters").hidden = !filtered;
+                document.getElementById("no-results").hidden = !(filtered && visible.length === 0);
+            });
+            document.querySelectorAll("#clear-filters, [data-clear-filters]").forEach(function (b) {
+                b.addEventListener("click", function () { grid.clear(); });
+            });
+        })();
+    </script>
 </body>
 </html>

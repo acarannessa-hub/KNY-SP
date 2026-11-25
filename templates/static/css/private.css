@@ -1538,3 +1538,12 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .inline-password-form input { flex: 1 1 220px; width: auto; }
 .choice-list legend { font-weight: 600; margin-bottom: 4px; }
 .choice-list input[type="password"] { margin-top: 6px; }
+
+/* ---------------- exports ---------------- */
+.export-form { max-width: none; }
+.dataset-list { border: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.dataset-list legend { font-weight: 600; margin-bottom: 8px; }
+.dataset-option { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #e3ddef; border-radius: 10px; cursor: pointer; font-weight: normal; background: #fff; }
+.dataset-option:has(input:checked) { border-color: var(--private-purple-dark); background: #f7f4fd; }
+.dataset-option input[type="radio"] { width: 18px; height: 18px; min-height: 0; flex: 0 0 auto; margin: 3px 0 0; padding: 0; box-shadow: none; accent-color: var(--private-purple-dark); }
+.dataset-option .pill { margin-left: 6px; font-size: 0.7rem; }

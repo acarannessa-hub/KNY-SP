@@ -62,6 +62,7 @@ from services.notifications import mailer as notify_mailer
 from services.notifications import messages as notify_messages
 from services.notifications import service as notify
 from services import accounts
+from services import exports
 
 
 # ==================================================
@@ -1524,19 +1525,12 @@ def financial_management():
     expenses = Expense.query.order_by(
         Expense.expense_date.desc()
     ).all()
-    export_requests = ExportRequest.query.filter_by(
-        user_id=current_user.id
-    ).order_by(
-        ExportRequest.requested_at.desc()
-    ).all()
-
     return render_template(
         "financial_management.html",
         fundraising=fundraising,
         sponsorships=sponsorships,
         membership_fees=membership_fees,
         expenses=expenses,
-        export_requests=export_requests,
         user=current_user,
         sheets_mirror_enabled=finance_sheets_mirror.is_enabled(),
         sheets_robot_email=(
@@ -2084,11 +2078,14 @@ AUDIT_ACTION_LABELS = {
     "restore": "Restored", "resync": "Sheet resync", "member_create": "Member created",
     "cancel": "Cancelled", "email": "Emails sent", "password_reset": "Password reset",
     "password_set": "Password set by admin", "reset_link": "Reset link sent",
+    "export": "Exported", "request": "Export requested", "approve": "Approved",
+    "reject": "Rejected", "download": "Downloaded",
 }
 AUDIT_ENTITY_LABELS = {
     **{key: ledger.label for key, ledger in LEDGERS.items()},
     "members": "Members", "sheet": "Google Sheet",
     "event": "Meeting / event", "notification": "Notifications", "account": "Account",
+    "export": "Export",
 }
 AUDIT_PAGE_SIZE = 500
 
@@ -2188,466 +2185,279 @@ def daily_reminders():
     return {"ok": True, "reminders": _run_reminders_safely()}
 
 # ==================================================
-# FINANCIAL EXPORT REQUESTS
+# EXPORT MANAGEMENT
+#
+# Who gets what:
+#   * Monthly summary (totals only): any logged-in user downloads at once.
+#   * Anything with personal data: admins download after re-entering their
+#     password; everyone else sends a request with a purpose, an admin
+#     approves (the download then works for a limited number of days) or
+#     rejects with a reason, and the requester is emailed either way.
+# Every export, approval, rejection and download is in the audit log.
+# The file-building lives in services/exports.py.
 # ==================================================
 
-FINANCIAL_EXPORT_TABLES = {
-    "fundraising": ("Fundraising", Fundraising, Fundraising.fundraising_date),
-    "sponsorships": ("Sponsorships", Sponsorship, Sponsorship.sponsorship_date),
-    "membership_fees": ("Membership Fees", MembershipFee, MembershipFee.payment_date),
-    "expenses": ("Expenses", Expense, Expense.expense_date),
-}
-FINANCIAL_EXPORT_FORMATS = {"csv", "pdf"}
+EXPORT_DEFAULT_DAYS = 7
+EXPORT_MAX_DAYS = 30
 
 
-def _validated_export_options(form):
-    table_name = (form.get("table_name") or "").strip()
-    export_format = (form.get("export_format") or "").strip().lower()
-    if table_name not in {*FINANCIAL_EXPORT_TABLES, "all"}:
-        raise ValueError("Select a valid financial table.")
-    if export_format not in FINANCIAL_EXPORT_FORMATS:
-        raise ValueError("Select CSV or PDF as the export format.")
+def _export_options(form):
+    """(dataset_key, fmt, start, end) or raises ValueError with a friendly message."""
+    dataset_key = (form.get("dataset") or form.get("table_name") or "").strip()
+    fmt = (form.get("export_format") or "").strip().lower()
+    if dataset_key not in exports.DATASETS:
+        raise ValueError("Choose what to export.")
+    if exports.DATASETS[dataset_key].admin_only and current_user.role != "admin":
+        raise ValueError("Only administrators can export that.")
+    if fmt not in exports.FORMATS:
+        raise ValueError("Choose Excel, CSV or PDF.")
+    start = end = None
+    if exports.DATASETS[dataset_key].uses_dates:
+        try:
+            start_value = (form.get("start_date") or "").strip()
+            end_value = (form.get("end_date") or "").strip()
+            start = datetime.strptime(start_value, "%Y-%m-%d").date() if start_value else None
+            end = datetime.strptime(end_value, "%Y-%m-%d").date() if end_value else None
+        except ValueError as error:
+            raise ValueError("Enter valid dates (or leave them blank for everything).") from error
+        if start and end and start > end:
+            raise ValueError("The start date is after the end date.")
+    return dataset_key, fmt, start, end
 
-    start_value = (form.get("start_date") or "").strip()
-    end_value = (form.get("end_date") or "").strip()
+
+def _export_summary(dataset_key, fmt, start, end):
+    period = exports._period_label(start, end) if exports.DATASETS[dataset_key].uses_dates else "current"
+    return f"{exports.DATASETS[dataset_key].label} ({period}) as {fmt.upper()}"
+
+
+def _send_export(dataset_key, fmt, start, end):
+    sections = exports.build(dataset_key, start, end)
+    meta = exports.Meta(
+        dataset=exports.DATASETS[dataset_key], start=start, end=end,
+        generated_by=current_user.email,
+        generated_at=notify_messages.local(datetime.now(timezone.utc)).strftime("%Y-%m-%d %H:%M"),
+    )
+    data, mimetype, ext = exports.render(sections, fmt, meta)
+    return Response(data, mimetype=mimetype, headers={
+        "Content-Disposition": f"attachment; filename={exports.filename(meta, ext)}",
+        "Cache-Control": "no-store",
+    })
+
+
+def _expires(export_request):
+    if export_request.expires_at is not None:
+        return notify_messages.as_utc(export_request.expires_at)
+    if export_request.approved_at is not None:
+        return notify_messages.as_utc(export_request.approved_at) + timedelta(days=EXPORT_DEFAULT_DAYS)
+    return None
+
+
+def _request_state(export_request, now):
+    if export_request.status == "approved":
+        expires = _expires(export_request)
+        return "expired" if expires and expires <= now else "ready"
+    return export_request.status
+
+
+def _request_rows(requests_list):
+    now = datetime.now(timezone.utc)
+    rows = []
+    for r in requests_list:
+        dataset = exports.DATASETS.get(r.table_name)
+        rows.append({
+            "req": r,
+            "label": dataset.label if dataset else r.table_name.replace("_", " ").title(),
+            "period": (exports._period_label(r.start_date, r.end_date)
+                       if not dataset or dataset.uses_dates else "Current"),
+            "state": _request_state(r, now),
+            "expires": _expires(r),
+            "name": r.requester.member.full_name if r.requester and r.requester.member else (r.requester.email if r.requester else ""),
+        })
+    return rows
+
+
+def _email_export(kind, profile, subject, body):
     try:
-        start_date = datetime.strptime(start_value, "%Y-%m-%d").date() if start_value else None
-        end_date = datetime.strptime(end_value, "%Y-%m-%d").date() if end_value else None
-    except ValueError as error:
-        raise ValueError("Enter valid start and end dates.") from error
-    if start_date and end_date and start_date > end_date:
-        raise ValueError("Start date cannot be later than end date.")
-    return table_name, export_format, start_date, end_date
+        item = notify.Outgoing(member=profile.member, email=profile.email, subject=subject, body=body,
+                               name=profile.member.full_name if profile.member else profile.email)
+        notify.send_batch(kind, [item], sent_by="export management")
+    except Exception:   # an email problem must never block the export workflow
+        db.session.rollback()
+        app.logger.exception("Export email failed.")
 
 
-def _financial_export_rows(table_name, start_date, end_date):
-    tables = (
-        FINANCIAL_EXPORT_TABLES
-        if table_name == "all"
-        else {table_name: FINANCIAL_EXPORT_TABLES[table_name]}
-    )
-    sections = []
-    for key, (label, model, date_column) in tables.items():
-        query = model.query
-        if start_date:
-            query = query.filter(date_column >= start_date)
-        if end_date:
-            query = query.filter(date_column <= end_date)
-        records = query.order_by(date_column, model.id).all()
-        rows = []
-        for record in records:
-            row = {
-                "category": label,
-                "date": getattr(record, date_column.key).isoformat(),
-                "membership_id": "",
-                "member_name": "",
-                "org_role": "",
-                "description": "",
-                "amount": record.amount,
-                "payment_method": record.payment_method or "",
-                "reference_no": record.reference_no or "",
-                "notes": record.notes or "",
-            }
-            if key == "membership_fees":
-                row["membership_id"] = record.member.membership_id
-                row["member_name"] = record.member.full_name
-                row["org_role"] = record.member.org_role
-                row["description"] = record.quarter
-            elif key == "sponsorships":
-                row["description"] = record.sponsor_name
-            elif key == "expenses":
-                row["description"] = " - ".join(
-                    part for part in (
-                        record.category,
-                        record.description
-                    )
-                    if part
-                )
-            rows.append(row)
-        sections.append((key, label, rows))
-    return sections
-
-
-def _generate_financial_export(table_name, export_format, start_date, end_date):
-    sections = _financial_export_rows(table_name, start_date, end_date)
-    generated_on = date.today().isoformat()
-    title = (
-        "All Financial Records"
-        if table_name == "all"
-        else FINANCIAL_EXPORT_TABLES[table_name][0]
-    )
-    filename_prefix = "financial" if table_name == "all" else table_name
-    filename = f"{filename_prefix}_export_{generated_on}.{export_format}"
-    period = (
-        f"{start_date.isoformat() if start_date else 'Beginning'} to "
-        f"{end_date.isoformat() if end_date else 'Present'}"
-    )
-
-    if export_format == "csv":
-        output = io.StringIO(newline="")
-        writer = csv.writer(output)
-        writer.writerow([
-            "Category",
-            "Date",
-            "Membership_ID",
-            "Member_Name",
-            "Org_Role",
-            "Description",
-            "Amount",
-            "Payment_Method",
-            "Reference_No",
-            "Notes"
-        ])
-        for _, _, rows in sections:
-            for row in rows:
-                writer.writerow([
-                    row["category"],
-                    row["date"],
-                    row["membership_id"],
-                    row["member_name"],
-                    row["org_role"],
-                    row["description"],
-                    f"{row['amount']:.2f}",
-                    row["payment_method"],
-                    row["reference_no"],
-                    row["notes"]
-                ])
-        return Response(
-            "\ufeff" + output.getvalue(),
-            mimetype="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER
-    from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.platypus import (
-        Paragraph,
-        SimpleDocTemplate,
-        Spacer,
-        Table,
-        TableStyle
-    )
-
-    from xml.sax.saxutils import escape
-
-    pdf_buffer = io.BytesIO()
-    document = SimpleDocTemplate(
-        pdf_buffer,
-        pagesize=landscape(letter),
-        leftMargin=0.4 * inch,
-        rightMargin=0.4 * inch,
-        topMargin=0.45 * inch,
-        bottomMargin=0.45 * inch
-    )
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "FinancialExportTitle",
-        parent=styles["Title"],
-        alignment=TA_CENTER,
-        textColor=colors.HexColor("#5d4b9a")
-    )
-    cell_style = ParagraphStyle(
-        "FinancialExportCell",
-        parent=styles["BodyText"],
-        fontSize=7,
-        leading=8
-    )
-    story = [
-        Paragraph("Organization Name (customize here)", styles["Heading2"]),
-        Paragraph(escape(title), title_style),
-        Paragraph(
-            f"Date range: {escape(period)} &nbsp;&nbsp; "
-            f"Generated: {generated_on}",
-            styles["Normal"]
-        ),
-        Spacer(1, 12)
-    ]
-    grand_total = Decimal("0")
-    category_totals = {}
-    for _, label, rows in sections:
-        story.append(Paragraph(escape(label), styles["Heading2"]))
-        data = [[
-            "Date", "Member / Payee", "Org Role", "Description",
-            "Amount", "Payment", "Reference", "Notes"
-        ]]
-        if not rows:
-            data.append(["No records found for this date range.", "", "", "", "", "", "", ""])
-        total = Decimal("0")
-        for row in rows:
-            amount = Decimal(row["amount"])
-            total += amount
-            payee = row["member_name"] or row["description"]
-            data.append([
-                row["date"],
-                Paragraph(escape(payee), cell_style),
-                Paragraph(escape(row["org_role"]), cell_style),
-                Paragraph(escape(row["description"]), cell_style),
-                f"{amount:,.2f}",
-                Paragraph(escape(row["payment_method"]), cell_style),
-                Paragraph(escape(row["reference_no"]), cell_style),
-                Paragraph(escape(row["notes"]), cell_style)
-            ])
-        category_totals[label] = total
-        grand_total += total if label != "Expenses" else -total
-        data.append(["", "", "", "Total", f"{total:,.2f}", "", "", ""])
-        report_table = Table(
-            data,
-            repeatRows=1,
-            colWidths=[
-                0.78 * inch, 1.35 * inch, 1.0 * inch, 1.9 * inch,
-                0.85 * inch, 0.95 * inch, 1.1 * inch, 2.1 * inch
-            ]
-        )
-        table_style = [
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#5d4b9a")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 7),
-            ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d9d6e3")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#e9e3f5")),
-            ("FONTNAME", (3, -1), (4, -1), "Helvetica-Bold"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4)
-        ]
-        if len(data) > 2:
-            table_style.append((
-                "ROWBACKGROUNDS",
-                (0, 1),
-                (-1, -2),
-                [colors.white, colors.HexColor("#f4f2f8")]
-            ))
-        report_table.setStyle(TableStyle(table_style))
-        story.extend((report_table, Spacer(1, 10)))
-
-    if table_name == "all":
-        summary = " | ".join(
-            f"{label}: {amount:,.2f}"
-            for label, amount in category_totals.items()
-        )
-        story.append(Paragraph(
-            f"Category totals — {escape(summary)}",
-            styles["Heading3"]
-        ))
-        story.append(Paragraph(
-            f"Net total (income less expenses): {grand_total:,.2f}",
-            styles["Heading3"]
-        ))
-
-    document.build(story)
-    pdf_buffer.seek(0)
-    return Response(
-        pdf_buffer.getvalue(),
-        mimetype="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
-
-
-@app.route(
-    "/financial/export/request",
-    methods=["POST"]
-)
+@app.route("/exports", methods=["GET", "POST"])
 @login_required
-def request_export():
+def exports_page():
+    if request.method == "POST":
+        try:
+            dataset_key, fmt, start, end = _export_options(request.form)
+        except ValueError as error:
+            flash(str(error), "danger")
+            return redirect(url_for("exports_page"))
+        summary = _export_summary(dataset_key, fmt, start, end)
 
-    try:
-        table_name, export_format, start_date, end_date = (
-            _validated_export_options(request.form)
-        )
-    except ValueError as error:
-        flash(str(error), "danger")
-        return redirect(url_for("financial_management"))
+        if exports.needs_approval(dataset_key, current_user.role):
+            purpose = (request.form.get("purpose") or "").strip()
+            if len(purpose) < 5:
+                flash("Say briefly what the export is for, so an admin can approve it.", "danger")
+                return redirect(url_for("exports_page"))
+            export_request = ExportRequest(
+                user_id=current_user.id, table_name=dataset_key, start_date=start, end_date=end,
+                export_format=fmt, status="pending", purpose=purpose[:1000],
+            )
+            db.session.add(export_request)
+            db.session.flush()
+            finance_records.audit("request", "export", actor=current_user, record_id=export_request.id,
+                                  summary=f"Requested {summary}. Purpose: {purpose[:300]}")
+            db.session.commit()
+            for admin in Profile.query.filter_by(role="admin", status="active"):
+                subject, body = notify_messages.export_requested(
+                    notify.first_name(admin.member) if admin.member else "admin",
+                    current_user.email, summary, purpose, url_for("manage_export_requests", _external=True))
+                _email_export("export_request", admin, subject, body)
+            flash("Request sent. An administrator will review it, and you'll get an email when it's decided.", "success")
+            return redirect(url_for("exports_page"))
 
-    if current_user.role == "admin":
-        session.pop("verified_admin_export", None)
-        session["admin_export_request"] = {
-            "table_name": table_name,
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "export_format": export_format
-        }
-        return redirect(url_for("verify_admin_export"))
+        if current_user.role == "admin" and exports.DATASETS[dataset_key].personal:
+            try:
+                ok = password_is_correct(current_user, request.form.get("password", ""))
+            except supabase_auth.AuthError as error:
+                flash(str(error), "danger")
+                return redirect(url_for("exports_page"))
+            if not ok:
+                flash("Incorrect password. Exports with personal data need your password.", "danger")
+                return redirect(url_for("exports_page"))
 
-    export_request = ExportRequest(
-        user_id=current_user.id,
-        table_name=table_name,
-        start_date=start_date,
-        end_date=end_date,
-        export_format=export_format,
-        status="pending"
+        finance_records.audit("export", "export", actor=current_user, summary=f"Downloaded {summary}")
+        db.session.commit()
+        return _send_export(dataset_key, fmt, start, end)
+
+    mine = ExportRequest.query.filter_by(user_id=current_user.id).order_by(
+        ExportRequest.requested_at.desc()).limit(50).all()
+    pending = (ExportRequest.query.filter_by(status="pending").count()
+               if current_user.role == "admin" else 0)
+    return render_template(
+        "exports.html",
+        datasets=exports.datasets_for(current_user.role),
+        formats=exports.FORMATS,
+        my_requests=_request_rows(mine),
+        pending=pending,
+        local=notify_messages.local,
     )
-    db.session.add(export_request)
-    db.session.commit()
-    flash(
-        "Export request submitted and is waiting for administrator approval.",
-        "success"
-    )
-    return redirect(url_for("financial_management"))
 
 
 @app.route("/admin/export-requests")
 @login_required
 @admin_required
 def manage_export_requests():
-
-    requests = ExportRequest.query.order_by(
-        ExportRequest.requested_at.desc()
-    ).all()
+    all_requests = ExportRequest.query.order_by(ExportRequest.requested_at.desc()).limit(500).all()
+    rows = _request_rows(all_requests)
     return render_template(
         "manage_export_requests.html",
-        export_requests=requests
+        rows=rows,
+        pending=[r for r in rows if r["state"] == "pending"],
+        default_days=EXPORT_DEFAULT_DAYS,
+        max_days=EXPORT_MAX_DAYS,
+        local=notify_messages.local,
     )
 
 
-def _process_export_request(request_id, status):
-    export_request = ExportRequest.query.filter_by(
-        id=request_id
-    ).with_for_update().first_or_404()
+def _decide(request_id, approve):
+    export_request = ExportRequest.query.filter_by(id=request_id).with_for_update().first_or_404()
     if export_request.status != "pending":
-        flash("This export request has already been processed.", "danger")
+        flash("This request was already decided.", "danger")
         return redirect(url_for("manage_export_requests"))
+    note = (request.form.get("note") or "").strip()[:1000]
+    now = datetime.now(timezone.utc)
+    dataset = exports.DATASETS.get(export_request.table_name)
+    summary = _export_summary(export_request.table_name, export_request.export_format,
+                              export_request.start_date, export_request.end_date) if dataset else export_request.table_name
+    requester = export_request.requester
 
-    export_request.status = status
-    export_request.admin_id = current_user.id
-    if status == "approved":
-        export_request.approved_at = datetime.now(timezone.utc)
-        export_request.rejected_at = None
-        flash("Export request approved.", "success")
+    if approve:
+        try:
+            days = int(request.form.get("days") or EXPORT_DEFAULT_DAYS)
+        except ValueError:
+            days = EXPORT_DEFAULT_DAYS
+        days = max(1, min(days, EXPORT_MAX_DAYS))
+        export_request.status = "approved"
+        export_request.approved_at = now
+        export_request.expires_at = now + timedelta(days=days)
+        action, verb = "approve", "Approved"
     else:
-        export_request.rejected_at = datetime.now(timezone.utc)
-        export_request.approved_at = None
-        flash("Export request rejected.", "success")
+        if len(note) < 3:
+            flash("Give a short reason for rejecting, so the requester knows why.", "danger")
+            return redirect(url_for("manage_export_requests"))
+        export_request.status = "rejected"
+        export_request.rejected_at = now
+        action, verb = "reject", "Rejected"
+    export_request.admin_id = current_user.id
+    export_request.decision_note = note or None
+    finance_records.audit(action, "export", actor=current_user, record_id=export_request.id,
+                          summary=f"{verb} {requester.email if requester else ''}'s request: {summary}"
+                                  + (f". Note: {note}" if note else ""))
     db.session.commit()
+
+    if requester is not None:
+        subject, body = notify_messages.export_decided(
+            notify.first_name(requester.member) if requester.member else "there",
+            approve, summary, note,
+            notify_messages.when_text(export_request.expires_at) if approve else "",
+            url_for("exports_page", _external=True))
+        _email_export("export_decision", requester, subject, body)
+    flash(f"{verb}. {requester.email if requester else 'The requester'} has been emailed.", "success")
     return redirect(url_for("manage_export_requests"))
 
 
-@app.route(
-    "/admin/export-requests/<int:request_id>/approve",
-    methods=["POST"]
-)
+@app.route("/admin/export-requests/<int:request_id>/approve", methods=["POST"])
 @login_required
 @admin_required
 def approve_export_request(request_id):
-    return _process_export_request(request_id, "approved")
+    return _decide(request_id, True)
 
 
-@app.route(
-    "/admin/export-requests/<int:request_id>/reject",
-    methods=["POST"]
-)
+@app.route("/admin/export-requests/<int:request_id>/reject", methods=["POST"])
 @login_required
 @admin_required
 def reject_export_request(request_id):
-    return _process_export_request(request_id, "rejected")
+    return _decide(request_id, False)
 
-# ==================================================
-# ADMIN EXPORT CREDENTIAL VERIFICATION
-# ==================================================
 
-@app.route(
-    "/financial/export/verify",
-    methods=["GET", "POST"]
-)
+@app.route("/exports/requests/<int:request_id>/download")
 @login_required
-def verify_admin_export():
-
-    if current_user.role != "admin":
+def download_approved_export(request_id):
+    export_request = db.get_or_404(ExportRequest, request_id)
+    if current_user.role != "admin" and export_request.user_id != current_user.id:
         abort(403)
-
-    export_data = session.get("admin_export_request")
-    if not export_data:
-        flash("Export request expired. Please submit a new request.", "danger")
-        return redirect(url_for("financial_management"))
-
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        if not password:
-            flash("Please enter your password.", "danger")
-            return redirect(url_for("verify_admin_export"))
-        try:
-            password_correct = password_is_correct(
-                current_user,
-                password
-            )
-        except supabase_auth.AuthError as error:
-            flash(str(error), "danger")
-            return redirect(url_for("verify_admin_export"))
-
-        if not password_correct:
-            flash("Incorrect password.", "danger")
-            return redirect(url_for("verify_admin_export"))
-
-        session["verified_admin_export"] = True
-        return redirect(url_for("download_financial_export"))
-
-    return render_template(
-        "verify_export.html"
-    )
+    state = _request_state(export_request, datetime.now(timezone.utc))
+    if state != "ready" or export_request.table_name not in exports.DATASETS:
+        flash("This export isn't available: it is pending, rejected or expired. Send a new request.", "danger")
+        return redirect(url_for("exports_page"))
+    export_request.download_count = (export_request.download_count or 0) + 1
+    export_request.last_downloaded_at = datetime.now(timezone.utc)
+    summary = _export_summary(export_request.table_name, export_request.export_format,
+                              export_request.start_date, export_request.end_date)
+    finance_records.audit("download", "export", actor=current_user, record_id=export_request.id,
+                          summary=f"Downloaded approved request #{export_request.id}: {summary}")
+    db.session.commit()
+    return _send_export(export_request.table_name, export_request.export_format,
+                        export_request.start_date, export_request.end_date)
 
 
-# ==================================================
-# FINANCIAL EXPORT DOWNLOAD
-# ==================================================
-
-@app.route(
-    "/financial/export/download"
-)
+# Old addresses from before Export Management moved to its own page.
+@app.route("/financial/export/request", methods=["POST"])
+@app.route("/financial/export/verify", methods=["GET", "POST"])
+@app.route("/financial/export/download")
 @login_required
-def download_financial_export():
-
-    if current_user.role != "admin":
-        abort(403)
-
-    export_data = session.get("admin_export_request")
-    if not export_data:
-        flash("No export request found.", "danger")
-        return redirect(url_for("financial_management"))
-    if not session.get("verified_admin_export"):
-        flash("Please verify your password before downloading.", "danger")
-        return redirect(url_for("verify_admin_export"))
-
-    try:
-        table_name, export_format, start_date, end_date = (
-            _validated_export_options(export_data)
-        )
-    except ValueError:
-        session.pop("admin_export_request", None)
-        session.pop("verified_admin_export", None)
-        flash("The export request is invalid. Please submit it again.", "danger")
-        return redirect(url_for("financial_management"))
-
-    response = _generate_financial_export(
-        table_name, export_format, start_date, end_date
-    )
-    session.pop("admin_export_request", None)
-    session.pop("verified_admin_export", None)
-    return response
+def legacy_export_routes():
+    return redirect(url_for("exports_page"))
 
 
 @app.route("/financial/export-requests/<int:request_id>/download")
 @login_required
-def download_approved_export(request_id):
-
-    export_request = ExportRequest.query.get_or_404(request_id)
-    if (
-        current_user.role != "admin"
-        and export_request.user_id != current_user.id
-    ):
-        abort(403)
-    if export_request.status != "approved":
-        abort(403)
-
-    return _generate_financial_export(
-        export_request.table_name,
-        export_request.export_format,
-        export_request.start_date,
-        export_request.end_date
-    )
+def legacy_download_approved_export(request_id):
+    return redirect(url_for("download_approved_export", request_id=request_id))
 
 # ==================================================
 # RUN APPLICATION

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exports - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <header class="ledger-header">
+            <div>
+                <h1>Exports</h1>
+                <p>Download the organization's records as Excel, CSV or PDF.
+                {% if current_user.role == "admin" %}Exports with personal data ask for your password, and every export is recorded in the Audit Log.{% else %}The monthly summary downloads straight away; anything with personal data is sent to an administrator for approval first.{% endif %}</p>
+            </div>
+            {% if current_user.role == "admin" %}
+            <dl class="ledger-stats">
+                <div><dt>Waiting for review</dt><dd>{{ pending }}</dd></div>
+            </dl>
+            {% endif %}
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        {% if current_user.role == "admin" and pending %}
+        <div class="message warning">{{ pending }} export request(s) are waiting for your decision. <a href="{{ url_for('manage_export_requests') }}">Review requests</a></div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('exports_page') }}" class="card form-card export-form" id="export-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h2>New export</h2>
+
+            <fieldset class="dataset-list">
+                <legend>What to export</legend>
+                {% for d in datasets %}
+                <label class="dataset-option">
+                    <input type="radio" name="dataset" value="{{ d.key }}" {% if loop.first %}checked{% endif %}
+                           data-dates="{{ 1 if d.uses_dates else 0 }}"
+                           data-approval="{{ 1 if (d.personal and current_user.role != 'admin') else 0 }}"
+                           data-password="{{ 1 if (d.personal and current_user.role == 'admin') else 0 }}">
+                    <span>
+                        <strong>{{ d.label }}</strong>
+                        {% if d.personal %}<span class="pill pill-unpaid">Personal data</span>{% else %}<span class="pill pill-paid">No personal data</span>{% endif %}
+                        <br><span class="muted">{{ d.description }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </fieldset>
+
+            <div class="form-grid">
+                <div class="form-field" data-date-field>
+                    <label for="start_date">From</label>
+                    <input type="date" id="start_date" name="start_date">
+                </div>
+                <div class="form-field" data-date-field>
+                    <label for="end_date">To</label>
+                    <input type="date" id="end_date" name="end_date">
+                </div>
+                <div class="form-field">
+                    <label for="export_format">Format</label>
+                    <select id="export_format" name="export_format">
+                        {% for value, label in formats.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-field form-field-full" data-date-field>
+                    <small class="field-hint">Leave the dates blank to export everything.
+                        <button type="button" class="link-btn" data-range="month">This month</button> ·
+                        <button type="button" class="link-btn" data-range="quarter">This quarter</button> ·
+                        <button type="button" class="link-btn" data-range="year">This year</button></small>
+                </div>
+                <div class="form-field form-field-full" data-approval-field hidden>
+                    <label for="purpose">What is it for? <span class="req" aria-hidden="true">*</span></label>
+                    <input id="purpose" name="purpose" maxlength="1000" placeholder="e.g. Quarterly report for the general assembly">
+                    <small class="field-hint">An administrator reviews the request. You'll get an email when it's approved, then download it here.</small>
+                </div>
+                <div class="form-field" data-password-field hidden>
+                    <label for="password">Your password <span class="req" aria-hidden="true">*</span></label>
+                    <input type="password" id="password" name="password" autocomplete="current-password">
+                    <small class="field-hint">Required for exports with personal data.</small>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit" id="export-submit">Download</button>
+            </div>
+        </form>
+
+        <section class="card ledger-card">
+            <div class="ledger-toolbar">
+                <h2>My requests</h2>
+                {% if current_user.role == "admin" %}<a class="btn btn-secondary" href="{{ url_for('manage_export_requests') }}">All requests</a>{% endif %}
+            </div>
+            {% if my_requests %}
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead><tr><th>Requested</th><th>What</th><th>Period</th><th>Format</th><th>Status</th><th class="actions-col"><span class="sr-only">Download</span></th></tr></thead>
+                    <tbody>
+                    {% for row in my_requests %}
+                    {% set r = row.req %}
+                    <tr>
+                        <td class="nowrap">{{ local(r.requested_at).strftime("%Y-%m-%d %H:%M") if r.requested_at else "" }}</td>
+                        <td>{{ row.label }}{% if r.purpose %}<br><span class="muted">{{ r.purpose }}</span>{% endif %}</td>
+                        <td>{{ row.period }}</td>
+                        <td>{{ formats.get(r.export_format, r.export_format|upper) }}</td>
+                        <td>
+                            {% if row.state == "ready" %}<span class="pill pill-paid">Approved</span><br><span class="muted">until {{ local(row.expires).strftime("%b %d, %H:%M") }}</span>
+                            {% elif row.state == "pending" %}<span class="pill pill-partial">Waiting</span>
+                            {% elif row.state == "expired" %}<span class="pill pill-deferred">Expired</span>
+                            {% else %}<span class="pill pill-unpaid">Not approved</span>{% endif %}
+                            {% if r.decision_note %}<br><span class="muted">“{{ r.decision_note }}”</span>{% endif %}
+                        </td>
+                        <td class="row-actions">
+                            {% if row.state == "ready" %}<a class="btn btn-small btn-primary" href="{{ url_for('download_approved_export', request_id=r.id) }}">Download</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><p>No requests yet.{% if current_user.role == "admin" %} As an admin you download directly; requests come from encoders and viewers.{% endif %}</p></div>
+            {% endif %}
+        </section>
+    </main>
+    <script>
+        (function () {
+            var form = document.getElementById("export-form");
+            var submit = document.getElementById("export-submit");
+            function update() {
+                var chosen = form.querySelector("input[name=dataset]:checked");
+                if (!chosen) { return; }
+                var dates = chosen.dataset.dates === "1";
+                var approval = chosen.dataset.approval === "1";
+                var password = chosen.dataset.password === "1";
+                form.querySelectorAll("[data-date-field]").forEach(function (el) { el.hidden = !dates; });
+                form.querySelector("[data-approval-field]").hidden = !approval;
+                form.querySelector("[data-password-field]").hidden = !password;
+                document.getElementById("purpose").required = approval;
+                document.getElementById("password").required = password;
+                submit.textContent = approval ? "Send request" : "Download";
+            }
+            form.querySelectorAll("input[name=dataset]").forEach(function (r) { r.addEventListener("change", update); });
+            update();
+
+            function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+            form.querySelectorAll("[data-range]").forEach(function (b) {
+                b.addEventListener("click", function () {
+                    var now = new Date(), start, end;
+                    if (b.dataset.range === "month") { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth() + 1, 0); }
+                    else if (b.dataset.range === "quarter") { var q = Math.floor(now.getMonth() / 3) * 3; start = new Date(now.getFullYear(), q, 1); end = new Date(now.getFullYear(), q + 3, 0); }
+                    else { start = new Date(now.getFullYear(), 0, 1); end = new Date(now.getFullYear(), 11, 31); }
+                    document.getElementById("start_date").value = iso(start);
+                    document.getElementById("end_date").value = iso(end);
+                });
+            });
+            // a download doesn't leave the page; clear the password afterwards
+            form.addEventListener("submit", function () {
+                setTimeout(function () { document.getElementById("password").value = ""; }, 500);
+            });
+        })();
+    </script>
+</body>
+</html>

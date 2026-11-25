@@ -602,6 +602,12 @@ class ExportRequest(db.Model):
         nullable=True
     )
 
+    purpose = db.Column(db.Text)            # why the requester needs it
+    decision_note = db.Column(db.Text)      # admin's note / reason for rejecting
+    expires_at = db.Column(db.DateTime(timezone=True))
+    download_count = db.Column(db.Integer, nullable=False, default=0)
+    last_downloaded_at = db.Column(db.DateTime(timezone=True))
+
     requester = db.relationship(
         "Profile",
         foreign_keys=[user_id]

@@ -172,6 +172,33 @@ def account_invite(first_name, link, email, role_label, hours):
     return subject, body
 
 
+def export_requested(first_name, requester_email, summary, purpose, review_url):
+    subject = f"Export request from {requester_email}"
+    body = (
+        f"Hi {first_name},\n\n"
+        f"{requester_email} asked to export: {summary}.\n\n"
+        f"Purpose: {purpose}\n\n"
+        f"Review it here: {review_url}\n\n"
+        f"{_sign_off()}"
+    )
+    return subject, body
+
+
+def export_decided(first_name, approved, summary, note, expires_text, exports_url):
+    if approved:
+        subject = "Your export request was approved"
+        body = (f"Hi {first_name},\n\nYour request to export {summary} was approved.\n\n"
+                f"Download it from the Exports page before {expires_text}: {exports_url}")
+    else:
+        subject = "Your export request was not approved"
+        body = f"Hi {first_name},\n\nYour request to export {summary} was not approved."
+    if note:
+        body += f"\n\nNote from the administrator: {note}"
+    body += ("\n\nThe file may contain personal data. Use it only for organization business "
+             "and delete it when you no longer need it.\n\n" if approved else "\n\n") + _sign_off()
+    return subject, body
+
+
 def password_changed(first_name, how):
     subject = f"Your {ORG_NAME} password was changed"
     body = (
