@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('financial_management') }}">← Back to Financial Management</a>
+
+        <header class="ledger-header">
+            <div>
+                <h1>Audit Log</h1>
+                <p>Every change to the financial records: who made it, when, and what the record looked like before and after. Entries cannot be edited or deleted, and deleted records can be restored from here.</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Entries</dt><dd>{{ total }}</dd></div>
+            </dl>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="card ledger-card" aria-label="Audit log entries">
+            <div class="ledger-toolbar">
+                <div class="filter-status">
+                    <span class="muted">Use the ▾ on a column heading to sort or filter.{% if total > page_size %} Showing the latest {{ page_size }} of {{ total }} entries.{% endif %}</span>
+                    <span id="ledger-showing" class="filter-count" hidden></span>
+                    <button type="button" class="link-btn" id="clear-filters" hidden>Clear filters</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="ledger-table filterable audit-table" id="audit-table">
+                    <thead><tr>
+                        {% for heading, kind in [("When", "date"), ("Who", "text"), ("Action", "text"), ("Ledger", "text"), ("Record", "text")] %}
+                        <th data-kind="{{ kind }}"><button type="button" class="col-filter" aria-haspopup="true" aria-expanded="false">{{ heading }}<span class="caret" aria-hidden="true">▾</span></button></th>
+                        {% endfor %}
+                        <th class="actions-col"><span class="sr-only">Details</span></th>
+                    </tr></thead>
+                    <tbody>
+                    {% for row in rows %}
+                        {% set e = row.entry %}
+                        <tr>
+                            <td class="nowrap" data-value="{{ row.when.strftime('%Y-%m-%d %H:%M') if row.when else '' }}">
+                                {{ row.when.strftime("%Y-%m-%d %H:%M") if row.when else "" }}
+                            </td>
+                            <td data-value="{{ e.user_email or 'system' }}">{{ e.user_email or "system" }}</td>
+                            <td data-value="{{ row.action }}"><span class="pill pill-action-{{ e.action }}">{{ row.action }}</span>{% if row.restored %} <span class="pill pill-paid">Restored</span>{% endif %}</td>
+                            <td data-value="{{ row.entity }}">{{ row.entity }}</td>
+                            <td data-value="{{ e.summary or '' }}">{{ e.summary or "" }}</td>
+                            <td class="row-actions">
+                                {% if row.changes or row.snapshot %}
+                                <button class="link-btn" type="button" data-open="audit-{{ e.id }}">Details</button>
+                                <dialog id="audit-{{ e.id }}" class="ledger-dialog" aria-labelledby="audit-title-{{ e.id }}">
+                                    <header class="dialog-header">
+                                        <h2 id="audit-title-{{ e.id }}">{{ row.action }} · {{ row.entity }}</h2>
+                                        <button class="dialog-x" type="button" data-close aria-label="Close">×</button>
+                                    </header>
+                                    <div class="dialog-body audit-detail-body">
+                                        <p class="muted">{{ row.when.strftime("%Y-%m-%d %H:%M") if row.when else "" }} by {{ e.user_email or "system" }}</p>
+                                        {% if row.changes %}
+                                        <table class="audit-diff">
+                                            <thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
+                                            <tbody>
+                                            {% for label, old, new in row.changes %}
+                                                <tr><td>{{ label }}</td><td class="audit-old">{{ old if old not in (None, "") else "—" }}</td><td class="audit-new">{{ new if new not in (None, "") else "—" }}</td></tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                        {% else %}
+                                        <p><strong>{{ "Record as it was when deleted:" if e.action == "delete" else "Record as saved:" }}</strong></p>
+                                        <dl class="audit-snapshot">
+                                            {% for key, value in row.snapshot.items() if key != "id" and value not in (None, "") %}
+                                            <div><dt>{{ key.replace("_", " ")|capitalize }}</dt><dd>{{ value }}</dd></div>
+                                            {% endfor %}
+                                        </dl>
+                                        {% endif %}
+                                    </div>
+                                    <footer class="dialog-footer">
+                                        <button class="btn btn-secondary" type="button" data-close>Close</button>
+                                    </footer>
+                                </dialog>
+                                {% endif %}
+                                {% if row.can_restore %}
+                                <form method="POST" action="{{ url_for('restore_audit_entry', entry_id=e.id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="link-btn" type="submit">Restore</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if not rows %}
+            <div class="empty-state"><p>No changes recorded yet. Adding, editing, deleting or importing financial records will appear here.</p></div>
+            {% endif %}
+            <p id="no-results" class="empty-state" hidden>No entries match these filters. <button type="button" class="link-btn" data-clear-filters>Clear filters</button></p>
+        </section>
+    </main>
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+    <script>
+        // Filters for the audit table reuse the ledger dropdowns.
+        (function () {
+            var table = document.getElementById("audit-table");
+            if (!table || !window.KNYCFilterGrid) { return; }
+            var grid = new window.KNYCFilterGrid(table, function (visible, total, filtered) {
+                var showing = document.getElementById("ledger-showing");
+                showing.hidden = !filtered;
+                showing.textContent = "Showing " + visible.length + " of " + total;
+                document.getElementById("clear-filters").hidden = !filtered;
+                document.getElementById("no-results").hidden = !(filtered && visible.length === 0);
+            });
+            document.querySelectorAll("#clear-filters, [data-clear-filters]").forEach(function (b) {
+                b.addEventListener("click", function () { grid.clear(); });
+            });
+        })();
+    </script>
+</body>
+</html>

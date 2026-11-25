@@ -64,10 +64,10 @@
                             <td>
                                 {% if export_request.status == "pending" %}
                                 <div class="table-actions">
-                                    <form method="POST" action="{{ url_for('approve_export_request', request_id=export_request.id) }}">
+                                    <form method="POST" action="{{ url_for('approve_export_request', request_id=export_request.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="btn btn-small btn-primary" type="submit">Approve</button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('reject_export_request', request_id=export_request.id) }}">
+                                    <form method="POST" action="{{ url_for('reject_export_request', request_id=export_request.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="btn btn-small btn-danger" type="submit">Reject</button>
                                     </form>
                                 </div>

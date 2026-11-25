@@ -50,7 +50,7 @@
             {% if preview.new_members %}<div><strong>{{ preview.new_members|length }}</strong><span>new members to create</span></div>{% endif %}
         </section>
 
-        <form method="POST" action="{{ url_for('confirm_financial_import', ledger_key=ledger_key) }}">
+        <form method="POST" action="{{ url_for('confirm_financial_import', ledger_key=ledger_key) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="token" value="{{ token }}">
 
             {% if preview.review %}

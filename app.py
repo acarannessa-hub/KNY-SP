@@ -3,6 +3,7 @@ import hmac
 import io
 import json
 import os
+import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -44,7 +45,8 @@ from models import (
     Attendance,
     Expense,
     ExportRequest,
-    Due
+    Due,
+    AuditLog
 )
 import supabase_auth
 import google_sheets
@@ -93,10 +95,21 @@ app.jinja_loader = ChoiceLoader(
 # CONFIGURATION
 # ==================================================
 
-app.config["SECRET_KEY"] = os.getenv(
-    "SECRET_KEY",
-    "development-secret-key"
-)
+ON_VERCEL = bool(os.getenv("VERCEL"))
+
+_secret_key = (os.getenv("SECRET_KEY") or "").strip()
+if not _secret_key:
+    if ON_VERCEL:
+        # A known default key would let anyone forge login sessions.
+        raise RuntimeError("SECRET_KEY must be set in the Vercel environment variables.")
+    _secret_key = "development-secret-key"   # local development only
+app.config["SECRET_KEY"] = _secret_key
+
+# Session cookie: not readable by JavaScript, not sent on cross-site requests
+# (first line of defence against CSRF), HTTPS-only when deployed.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = ON_VERCEL
 
 def _database_url():
     """Supabase Postgres connection string (use the TRANSACTION POOLER one,
@@ -276,6 +289,56 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 login_manager.login_view = "login"
+
+
+# ==================================================
+# CSRF PROTECTION
+#
+# Every POST must carry the per-session token that only pages from this site
+# can read (templates add it with {{ csrf_token() }}). A form submitted from
+# another website cannot know the token, so it is refused.
+# ==================================================
+
+CSRF_SESSION_KEY = "_csrf_token"
+CSRF_FIELD = "csrf_token"
+CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+
+def csrf_token():
+    token = session.get(CSRF_SESSION_KEY)
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session[CSRF_SESSION_KEY] = token
+    return token
+
+
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+def _safe_back_url():
+    """Where to send someone whose form was refused: the page they came
+    from if it is on this site, otherwise a sensible default."""
+    referrer = request.referrer or ""
+    if referrer.startswith(request.host_url):
+        return referrer
+    return url_for("dashboard") if current_user.is_authenticated else url_for("login")
+
+
+@app.before_request
+def csrf_protect():
+    if request.method in CSRF_SAFE_METHODS:
+        return None
+    expected = session.get(CSRF_SESSION_KEY)
+    sent = request.form.get(CSRF_FIELD) or request.headers.get("X-CSRF-Token", "")
+    if expected and sent and hmac.compare_digest(str(sent), str(expected)):
+        return None
+    app.logger.warning("CSRF check failed for %s %s", request.method, request.path)
+    flash(
+        "That form could not be submitted because it expired or did not come "
+        "from this site. Please try again.",
+        "danger"
+    )
+    return redirect(_safe_back_url(), code=303)
 
 
 # ==================================================
@@ -2141,23 +2204,23 @@ def _ledger_page(ledger_key, template="ledger.html", **extra):
 
 
 def _add_record(ledger_key):
-    outcome = finance_records.create(ledger_key, request.form)
+    outcome = finance_records.create(ledger_key, request.form, actor=current_user)
     noun = LEDGERS[ledger_key].noun
     _flash_outcome(outcome, f"{noun.capitalize()} added.")
     return _back_to_ledger(ledger_key)
 
 
 def _edit_record(ledger_key, record_id):
-    outcome = finance_records.update(ledger_key, record_id, request.form)
+    outcome = finance_records.update(ledger_key, record_id, request.form, actor=current_user)
     noun = LEDGERS[ledger_key].noun
     _flash_outcome(outcome, f"{noun.capitalize()} updated.")
     return _back_to_ledger(ledger_key)
 
 
 def _delete_record(ledger_key, record_id):
-    outcome = finance_records.delete(ledger_key, record_id)
+    outcome = finance_records.delete(ledger_key, record_id, actor=current_user)
     noun = LEDGERS[ledger_key].noun
-    _flash_outcome(outcome, f"{noun.capitalize()} deleted.")
+    _flash_outcome(outcome, f"{noun.capitalize()} deleted. Administrators can restore it from the Audit Log.")
     return _back_to_ledger(ledger_key)
 
 
@@ -2257,6 +2320,7 @@ def confirm_financial_import(ledger_key):
         report = finance_records.confirm_upload(
             ledger_key, payload["headers"], payload["rows"],
             payload.get("quarter"), overrides,
+            actor=current_user, filename=payload.get("filename", ""),
         )
     except finance_ingestion.IngestionError as error:
         flash(str(error), "danger")
@@ -2476,11 +2540,83 @@ def resync_finance_sheet():
     results = finance_records.resync_all()
     failed = [(label, message) for label, ok, message in results if not ok]
     synced = [label for label, ok, _ in results if ok]
+    finance_records.audit(
+        "resync", "sheet", actor=current_user,
+        summary="Resynced Google Sheet: " + (", ".join(synced) or "nothing")
+        + (f"; failed: {', '.join(label for label, _ in failed)}" if failed else ""),
+    )
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception("Could not write the resync audit entry.")
     if synced:
         flash("Google Sheet updated: " + ", ".join(synced) + ".", "success")
     for label, message in failed:
         flash(f"{label} could not be synced: {message}", "danger")
     return redirect(url_for("financial_management"))
+
+
+# ==================================================
+# AUDIT LOG (admin)
+# ==================================================
+
+AUDIT_ACTION_LABELS = {
+    "create": "Added", "update": "Edited", "delete": "Deleted", "import": "Imported",
+    "restore": "Restored", "resync": "Sheet resync", "member_create": "Member created",
+}
+AUDIT_ENTITY_LABELS = {
+    **{key: ledger.label for key, ledger in LEDGERS.items()},
+    "members": "Members", "sheet": "Google Sheet",
+}
+AUDIT_PAGE_SIZE = 500
+
+
+@app.route("/admin/audit-log")
+@login_required
+@admin_required
+def audit_log():
+    entries = AuditLog.query.order_by(
+        AuditLog.occurred_at.desc(), AuditLog.id.desc()
+    ).limit(AUDIT_PAGE_SIZE).all()
+    restored = {
+        related for (related,) in db.session.query(AuditLog.related_id)
+        .filter(AuditLog.action == "restore", AuditLog.related_id.isnot(None))
+    }
+    rows = []
+    for entry in entries:
+        changes = []
+        if entry.before and entry.after:
+            for key in entry.after:
+                if key != "id" and entry.before.get(key) != entry.after.get(key):
+                    changes.append((key.replace("_", " ").capitalize(),
+                                    entry.before.get(key), entry.after.get(key)))
+        rows.append({
+            "entry": entry,
+            "when": entry.occurred_at,
+            "action": AUDIT_ACTION_LABELS.get(entry.action, entry.action),
+            "entity": AUDIT_ENTITY_LABELS.get(entry.entity, entry.entity),
+            "changes": changes,
+            "snapshot": entry.before if entry.action == "delete" else entry.after,
+            "can_restore": (entry.action == "delete" and entry.entity in LEDGERS
+                            and entry.before and entry.id not in restored),
+            "restored": entry.id in restored,
+        })
+    return render_template(
+        "audit_log.html",
+        rows=rows,
+        total=AuditLog.query.count(),
+        page_size=AUDIT_PAGE_SIZE,
+    )
+
+
+@app.route("/admin/audit-log/<int:entry_id>/restore", methods=["POST"])
+@login_required
+@admin_required
+def restore_audit_entry(entry_id):
+    outcome = finance_records.restore(entry_id, actor=current_user)
+    _flash_outcome(outcome, "Record restored.")
+    return redirect(url_for("audit_log"))
 
 
 # ==================================================

@@ -1,6 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from sqlalchemy import UniqueConstraint, Uuid
+from sqlalchemy import JSON, UniqueConstraint, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
+
+# JSONB on Supabase/PostgreSQL, plain JSON elsewhere (local tests use SQLite)
+JSONType = JSON().with_variant(JSONB(), "postgresql")
 
 db = SQLAlchemy()
 
@@ -525,6 +529,77 @@ class Due(db.Model):
     )
 
     member = db.relationship("Member")
+
+
+# ==================================================
+# AUDIT LOG  (append-only history of financial changes)
+#
+# One row per change: who, when, what, and the record before / after.
+# A deleted record's full contents stay here, so it can be restored.
+# The database refuses UPDATE and DELETE on this table (see
+# migrations/2026-11-25_audit_log.sql), so history cannot be rewritten.
+# ==================================================
+
+class AuditLog(db.Model):
+
+    __tablename__ = "audit_log"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    occurred_at = db.Column(
+        db.DateTime(timezone=True),
+        server_default=db.func.current_timestamp(),
+        nullable=False,
+        index=True
+    )
+
+    # Who did it. user_id is kept even if the account is later removed;
+    # the email is a snapshot taken at the time of the change.
+    user_id = db.Column(
+        Uuid
+    )
+
+    user_email = db.Column(
+        db.String(150)
+    )
+
+    # create / update / delete / import / restore / resync / member_create
+    action = db.Column(
+        db.String(20),
+        nullable=False,
+        index=True
+    )
+
+    # fundraising / sponsorships / membership_fees / expenses / members / sheet
+    entity = db.Column(
+        db.String(40),
+        nullable=False,
+        index=True
+    )
+
+    record_id = db.Column(
+        db.String(64)
+    )
+
+    summary = db.Column(
+        db.Text
+    )
+
+    before = db.Column(
+        JSONType
+    )
+
+    after = db.Column(
+        JSONType
+    )
+
+    # e.g. a restore points at the delete entry it undid
+    related_id = db.Column(
+        db.Integer
+    )
 
 
 class ExportRequest(db.Model):

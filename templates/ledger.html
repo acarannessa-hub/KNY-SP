@@ -168,7 +168,7 @@
 
     <!-- Add / edit -->
     <dialog id="record-dialog" class="ledger-dialog" aria-labelledby="record-dialog-title">
-        <form method="POST" id="record-form" action="{{ add_url }}">
+        <form method="POST" id="record-form" action="{{ add_url }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <header class="dialog-header">
                 <h2 id="record-dialog-title">Add {{ ledger.noun }}</h2>
                 <button class="dialog-x" type="button" data-close aria-label="Close">×</button>
@@ -186,7 +186,7 @@
 
     <!-- Delete -->
     <dialog id="delete-dialog" class="ledger-dialog ledger-dialog-small" aria-labelledby="delete-dialog-title">
-        <form method="POST" id="delete-form">
+        <form method="POST" id="delete-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <header class="dialog-header">
                 <h2 id="delete-dialog-title">Delete this {{ ledger.noun }}?</h2>
                 <button class="dialog-x" type="button" data-close aria-label="Close">×</button>
@@ -204,7 +204,7 @@
 
     <!-- Import -->
     <dialog id="import-dialog" class="ledger-dialog" aria-labelledby="import-dialog-title">
-        <form method="POST" action="{{ import_url }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ import_url }}" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <header class="dialog-header">
                 <h2 id="import-dialog-title">Import {{ ledger.label|lower }}</h2>
                 <button class="dialog-x" type="button" data-close aria-label="Close">×</button>

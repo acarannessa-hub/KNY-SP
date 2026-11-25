@@ -175,7 +175,7 @@
             {% if sheets_robot_email %}
             <p>The sheet must be shared as <strong>Editor</strong> with: <code>{{ sheets_robot_email }}</code></p>
             {% endif %}
-            <form method="POST" action="{{ url_for('resync_finance_sheet') }}">
+            <form method="POST" action="{{ url_for('resync_finance_sheet') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn btn-secondary" type="submit">Resync Google Sheet</button>
             </form>
             {% else %}
@@ -232,7 +232,7 @@
     <div id="exportModal" class="modal">
         <div class="modal-content">
             <h2>Request Financial Export</h2>
-            <form method="POST" action="{{ url_for('request_export') }}">
+            <form method="POST" action="{{ url_for('request_export') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-field">
                     <label for="table_name">Financial Table</label>
                     <select id="table_name" name="table_name" required>

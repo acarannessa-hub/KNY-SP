@@ -23,7 +23,7 @@
 
         <section class="card form-card">
             <h2>Add Organization Member</h2>
-            <form method="POST" action="{{ url_for('add_member') }}">
+            <form method="POST" action="{{ url_for('add_member') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-grid record-form-grid">
                     <div class="form-field">
                         <label for="membership_id">Membership ID</label>
@@ -82,7 +82,7 @@
                             <td>
                                 <details>
                                     <summary><span class="btn btn-small btn-secondary">Edit Member</span></summary>
-                                    <form method="POST" action="{{ url_for('edit_member', member_id=member.id) }}" class="edit-form">
+                                    <form method="POST" action="{{ url_for('edit_member', member_id=member.id) }}" class="edit-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <div class="edit-grid">
                                             <div class="form-field">
                                                 <label for="membership_id_{{ member.id }}">Membership ID</label>

@@ -23,7 +23,7 @@
                 {% endfor %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('verify_admin_export') }}">
+            <form method="POST" action="{{ url_for('verify_admin_export') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-field">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>

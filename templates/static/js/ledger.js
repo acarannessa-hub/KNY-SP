@@ -77,8 +77,9 @@
         var grid = this;
         grid.table = tableEl;
         grid.onChange = onChange || function () {};
-        grid.headers = Array.prototype.slice.call(tableEl.querySelectorAll("thead th"));
-        grid.rows = Array.prototype.slice.call(tableEl.querySelectorAll("tbody tr")).filter(function (row) {
+        // Only this table's own heading row and body rows (not nested tables).
+        grid.headers = Array.prototype.slice.call(tableEl.tHead.rows[0].cells);
+        grid.rows = Array.prototype.slice.call(tableEl.tBodies[0].rows).filter(function (row) {
             return row.cells.length && row.cells[0].hasAttribute("data-value");
         });
         grid.filters = {};      // column index -> Set of allowed values
@@ -263,6 +264,7 @@
     }
     var duesTable = $("dues-table");
     if (duesTable) { new FilterGrid(duesTable); }
+    window.KNYCFilterGrid = FilterGrid;     // reused by the audit log page
 
     // ---------------- member picker (membership fees) ----------------
     var memberSearch = $("member_search");

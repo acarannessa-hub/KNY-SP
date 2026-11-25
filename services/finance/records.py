@@ -27,7 +27,7 @@ from decimal import Decimal
 from sqlalchemy.exc import SQLAlchemyError
 
 import google_sheets as gs
-from models import db, Due, Expense, Fundraising, Member, MembershipFee, Sponsorship
+from models import db, AuditLog, Due, Expense, Fundraising, Member, MembershipFee, Sponsorship
 
 from . import cleaning, ingestion, membership_import, public_dataset, sheets_mirror
 from .ledgers import LEDGERS
@@ -282,6 +282,56 @@ def resync_all():
 
 
 # --------------------------------------------------
+# Audit trail (written in the SAME transaction as the change)
+# --------------------------------------------------
+def _json_value(value):
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return f"{value:.2f}"
+    return value
+
+
+def snapshot(ledger_key, record):
+    data = {name: _json_value(getattr(record, name)) for name in LEDGERS[ledger_key].field_names}
+    data["id"] = record.id
+    return data
+
+
+def describe(ledger_key, values):
+    """'Expense record · 2026-08-22 · ₱408.00 · Sample Anniversary'"""
+    ledger = LEDGERS[ledger_key]
+    parts = [ledger.noun.capitalize(), str(values.get(ledger.date_field) or "")]
+    amount = values.get("amount")
+    if amount not in (None, ""):
+        parts.append(f"₱{Decimal(str(amount)):,.2f}")
+    who = (values.get("activity") or values.get("sponsor_name")
+           or values.get("membership_id") or values.get("category"))
+    if who:
+        parts.append(str(who))
+    return " · ".join(p for p in parts if p)
+
+
+def audit(action, entity, *, actor=None, record_id=None, summary="",
+          before=None, after=None, related_id=None):
+    entry = AuditLog(
+        user_id=getattr(actor, "id", None),
+        user_email=getattr(actor, "email", None),
+        action=action,
+        entity=entity,
+        record_id=None if record_id is None else str(record_id),
+        summary=summary[:2000] if summary else None,
+        before=before,
+        after=after,
+        related_id=related_id,
+    )
+    db.session.add(entry)
+    return entry
+
+
+# --------------------------------------------------
 # Single-record writes
 # --------------------------------------------------
 def _commit():
@@ -294,7 +344,7 @@ def _commit():
         return False
 
 
-def create(ledger_key, raw):
+def create(ledger_key, raw, actor=None):
     cleaned, errors = _clean(ledger_key, raw, require_active_member=True)
     if errors:
         return Outcome(False, errors)
@@ -303,12 +353,21 @@ def create(ledger_key, raw):
 
     record = MODELS[ledger_key](**cleaned)
     db.session.add(record)
+    try:
+        db.session.flush()          # assigns record.id for the log
+    except SQLAlchemyError:
+        db.session.rollback()
+        log.exception("Financial record insert failed")
+        return Outcome(False, [SAVE_FAILED])
+    after = snapshot(ledger_key, record)
+    audit("create", ledger_key, actor=actor, record_id=record.id,
+          summary=describe(ledger_key, after), after=after)
     if not _commit():
         return Outcome(False, [SAVE_FAILED])
     return Outcome(True, record=record, mirror_warning=safe_mirror(ledger_key))
 
 
-def update(ledger_key, record_id, raw):
+def update(ledger_key, record_id, raw, actor=None):
     record = db.session.get(MODELS[ledger_key], record_id)
     if record is None:
         return Outcome(False, ["That record no longer exists."])
@@ -325,21 +384,63 @@ def update(ledger_key, record_id, raw):
     if is_duplicate(ledger_key, cleaned, exclude_id=record.id):
         return Outcome(False, [_duplicate_message(ledger_key, cleaned)])
 
+    before = snapshot(ledger_key, record)
     for name, value in cleaned.items():
         setattr(record, name, value)
+    after = snapshot(ledger_key, record)
+    if before == after:
+        return Outcome(True, record=record)      # nothing changed: no log, no sync
+    changed = [LEDGERS[ledger_key].field(k).label for k in after if k != "id" and before.get(k) != after.get(k)]
+    audit("update", ledger_key, actor=actor, record_id=record.id,
+          summary=describe(ledger_key, after) + " — changed: " + ", ".join(changed),
+          before=before, after=after)
     if not _commit():
         return Outcome(False, [SAVE_FAILED])
     return Outcome(True, record=record, mirror_warning=safe_mirror(ledger_key))
 
 
-def delete(ledger_key, record_id):
+def delete(ledger_key, record_id, actor=None):
     record = db.session.get(MODELS[ledger_key], record_id)
     if record is None:
         return Outcome(False, ["That record no longer exists."])
+    before = snapshot(ledger_key, record)
+    audit("delete", ledger_key, actor=actor, record_id=record.id,
+          summary=describe(ledger_key, before), before=before)
     db.session.delete(record)
     if not _commit():
         return Outcome(False, ["The record could not be deleted. Please try again."])
     return Outcome(True, mirror_warning=safe_mirror(ledger_key))
+
+
+def restore(entry_id, actor=None):
+    """Re-create a deleted record from its audit-log snapshot."""
+    entry = db.session.get(AuditLog, entry_id)
+    if entry is None or entry.action != "delete" or entry.entity not in LEDGERS or not entry.before:
+        return Outcome(False, ["Only deleted financial records can be restored."])
+    if AuditLog.query.filter_by(action="restore", related_id=entry.id).first():
+        return Outcome(False, ["This record was already restored."])
+    ledger_key = entry.entity
+    raw = {k: v for k, v in entry.before.items() if k != "id"}
+    cleaned, errors = _clean(ledger_key, raw, require_active_member=False)
+    if errors:
+        return Outcome(False, ["The record could not be restored: " + " ".join(errors)])
+    if is_duplicate(ledger_key, cleaned):
+        return Outcome(False, ["An identical record already exists, so nothing was restored."])
+    record = MODELS[ledger_key](**cleaned)
+    db.session.add(record)
+    try:
+        db.session.flush()
+    except SQLAlchemyError:
+        db.session.rollback()
+        log.exception("Restore failed")
+        return Outcome(False, [SAVE_FAILED])
+    after = snapshot(ledger_key, record)
+    audit("restore", ledger_key, actor=actor, record_id=record.id,
+          summary=describe(ledger_key, after) + f" (restored from deleted record #{entry.record_id})",
+          after=after, related_id=entry.id)
+    if not _commit():
+        return Outcome(False, [SAVE_FAILED])
+    return Outcome(True, record=record, mirror_warning=safe_mirror(ledger_key))
 
 
 # --------------------------------------------------
@@ -590,7 +691,7 @@ def _new_membership_id(taken):
     return f"{prefix}{number:03d}"
 
 
-def confirm_upload(ledger_key, headers, rows, quarter=None, overrides=None):
+def confirm_upload(ledger_key, headers, rows, quarter=None, overrides=None, actor=None, filename=""):
     """Re-run the analysis with the reviewer's answers and save the ready rows."""
     preview = analyze_upload(ledger_key, headers, rows, quarter, overrides)
     report = ImportReport(
@@ -607,15 +708,28 @@ def confirm_upload(ledger_key, headers, rows, quarter=None, overrides=None):
             taken.add(new_id)
             id_map[placeholder] = new_id
             db.session.add(Member(membership_id=new_id, **spec))
+            audit("member_create", "members", actor=actor, record_id=new_id,
+                  summary=f"Member {spec['first_name']} {spec['last_name']} created during import of {filename}",
+                  after={"membership_id": new_id, **spec})
         db.session.flush()
         report.members_created = len(id_map)
 
     model = MODELS[ledger_key]
+    new_records = []
     for cleaned in preview.records:
         if ledger_key == "membership_fees":
             cleaned = {**cleaned, "membership_id": id_map.get(cleaned["membership_id"], cleaned["membership_id"])}
-        db.session.add(model(**cleaned))
+        record = model(**cleaned)
+        db.session.add(record)
+        new_records.append(record)
         report.added += 1
+    if new_records:
+        db.session.flush()
+        for record in new_records:
+            after = snapshot(ledger_key, record)
+            audit("import", ledger_key, actor=actor, record_id=record.id,
+                  summary=describe(ledger_key, after) + (f" (from {filename})" if filename else ""),
+                  after=after)
 
     for due in preview.dues:
         membership_id = id_map.get(due["membership_id"], due["membership_id"])
@@ -632,6 +746,11 @@ def confirm_upload(ledger_key, headers, rows, quarter=None, overrides=None):
         report.dues_saved += 1
 
     if report.added or report.dues_saved or report.members_created:
+        audit("import", ledger_key, actor=actor,
+              summary=(f"Imported {filename or 'a file'}: {report.added} record(s) added, "
+                       f"{report.dues_saved} dues line(s) saved, {report.members_created} member(s) created, "
+                       f"{report.left_for_review} left for review, {report.skipped} with errors, "
+                       f"{report.duplicates} duplicate(s)"))
         if not _commit():
             return ImportReport(error="The import could not be saved. Nothing was changed.")
         report.mirror_warning = safe_mirror(ledger_key, include_dues=bool(preview.dues))

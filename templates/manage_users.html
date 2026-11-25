@@ -27,7 +27,7 @@
         <section class="card add-user" id="add-user-form">
             <h2>Add New User</h2>
             <p>Select an existing member; their name and organization role remain in the member directory.</p>
-            <form method="POST" action="{{ url_for('add_user') }}">
+            <form method="POST" action="{{ url_for('add_user') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-grid record-form-grid">
                     <div class="form-field form-field-full">
                         <label for="new_membership_id">Member</label>
@@ -145,7 +145,7 @@
                                 <div class="user-actions">
                                     <details>
                                         <summary><span class="btn btn-small btn-secondary">Edit Details</span></summary>
-                                        <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}" class="edit-form">
+                                        <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}" class="edit-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <div class="edit-grid">
                                                 <div class="form-field">
                                                     <label for="edit_member_{{ account.id }}">Member</label>
@@ -180,12 +180,12 @@
                                             <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
                                         </form>
                                     </details>
-                                    <form method="POST" action="{{ url_for('toggle_user_status', user_id=account.id) }}">
+                                    <form method="POST" action="{{ url_for('toggle_user_status', user_id=account.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="btn btn-small btn-secondary" type="submit">
                                             {{ "Deactivate" if account.status == "active" else "Activate" }}
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('reset_password', user_id=account.id) }}">
+                                    <form method="POST" action="{{ url_for('reset_password', user_id=account.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="btn btn-small btn-secondary" type="submit">Reset Password</button>
                                     </form>
                                 </div>
