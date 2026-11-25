@@ -29,35 +29,240 @@
         });
     });
 
-    // ---------------- search + live totals ----------------
+    // ---------------- column dropdowns: sort + filter ----------------
     var table = $("ledger-table");
-    var rows = table ? Array.prototype.slice.call(table.querySelectorAll("tbody tr[data-id]")) : [];
-    var search = $("ledger-search");
+    var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var BLANK = "(blank)";
 
-    function applySearch() {
-        var query = (search.value || "").trim().toLowerCase();
-        var shown = 0, total = 0;
-        rows.forEach(function (row) {
-            var hit = !query || row.dataset.search.indexOf(query) !== -1;
-            row.hidden = !hit;
-            if (hit) { shown += 1; total += parseFloat(row.dataset.amount) || 0; }
-        });
-        $("stat-count").textContent = shown;
-        $("stat-total").textContent = peso.format(total);
-        $("ledger-showing").textContent = query ? "Showing " + shown + " of " + rows.length : "";
-        $("no-results").hidden = !(query && shown === 0 && rows.length);
+    function filterKey(kind, raw) {
+        if (!raw) { return BLANK; }
+        if (kind === "date") {
+            var m = /^(\d{4})-(\d{2})/.exec(raw);
+            return m ? m[1] + "-" + m[2] : raw;          // dates are grouped by month
+        }
+        return raw;
     }
-    if (search) { search.addEventListener("input", applySearch); }
+    function keyLabel(kind, key) {
+        if (kind === "date" && /^\d{4}-\d{2}$/.test(key)) {
+            return MONTHS[parseInt(key.slice(5), 10) - 1] + " " + key.slice(0, 4);
+        }
+        return key;
+    }
 
-    var duesSearch = $("dues-search");
-    if (duesSearch) {
-        duesSearch.addEventListener("input", function () {
-            var query = duesSearch.value.trim().toLowerCase();
-            document.querySelectorAll("#dues-table tbody tr").forEach(function (row) {
-                row.hidden = query && row.dataset.search.indexOf(query) === -1;
+    var menu = document.createElement("div");
+    menu.className = "col-menu";
+    menu.hidden = true;
+    menu.setAttribute("role", "dialog");
+    menu.setAttribute("aria-label", "Sort and filter");
+    document.body.appendChild(menu);
+    var openState = null;     // {grid, col, button}
+
+    function closeMenu(restoreFocus) {
+        if (!openState) { return; }
+        var button = openState.button;
+        button.setAttribute("aria-expanded", "false");
+        menu.hidden = true;
+        openState = null;
+        if (restoreFocus) { button.focus(); }
+    }
+    document.addEventListener("click", function (event) {
+        if (openState && !menu.contains(event.target) && !openState.button.contains(event.target)) { closeMenu(false); }
+    });
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && openState) { closeMenu(true); }
+    });
+    window.addEventListener("resize", function () { closeMenu(false); });
+
+    function FilterGrid(tableEl, onChange) {
+        var grid = this;
+        grid.table = tableEl;
+        grid.onChange = onChange || function () {};
+        grid.headers = Array.prototype.slice.call(tableEl.querySelectorAll("thead th"));
+        grid.rows = Array.prototype.slice.call(tableEl.querySelectorAll("tbody tr")).filter(function (row) {
+            return row.cells.length && row.cells[0].hasAttribute("data-value");
+        });
+        grid.filters = {};      // column index -> Set of allowed values
+        grid.sort = null;       // {col, dir}
+        grid.headers.forEach(function (th, col) {
+            var button = th.querySelector(".col-filter");
+            if (!button) { return; }
+            button.addEventListener("click", function (event) {
+                event.stopPropagation();
+                if (openState && openState.button === button) { closeMenu(true); return; }
+                grid.openMenu(col, button);
             });
         });
     }
+
+    FilterGrid.prototype.kind = function (col) { return this.headers[col].dataset.kind || "text"; };
+    FilterGrid.prototype.cellRaw = function (row, col) {
+        var cell = row.cells[col];
+        return cell ? (cell.getAttribute("data-value") || "") : "";
+    };
+    FilterGrid.prototype.rowKey = function (row, col) { return filterKey(this.kind(col), this.cellRaw(row, col)); };
+    FilterGrid.prototype.passes = function (row, skipCol) {
+        var grid = this;
+        return Object.keys(grid.filters).every(function (col) {
+            return +col === skipCol || grid.filters[col].has(grid.rowKey(row, +col));
+        });
+    };
+
+    FilterGrid.prototype.apply = function () {
+        var grid = this;
+        var visible = [];
+        grid.rows.forEach(function (row) {
+            var show = grid.passes(row, -1);
+            row.hidden = !show;
+            if (show) { visible.push(row); }
+        });
+        if (grid.sort) {
+            var col = grid.sort.col, dir = grid.sort.dir, kind = grid.kind(col);
+            var body = grid.table.tBodies[0];
+            grid.rows.slice().sort(function (a, b) {
+                var x = grid.cellRaw(a, col), y = grid.cellRaw(b, col);
+                var cmp = kind === "money" ? (parseFloat(x) || 0) - (parseFloat(y) || 0)
+                    : x.localeCompare(y, undefined, { numeric: true, sensitivity: "base" });
+                return dir === "asc" ? cmp : -cmp;
+            }).forEach(function (row) { body.appendChild(row); });
+        }
+        grid.headers.forEach(function (th, col) {
+            th.classList.toggle("is-filtered", Object.prototype.hasOwnProperty.call(grid.filters, col));
+            var sorted = !!grid.sort && grid.sort.col === col;
+            th.classList.toggle("is-sorted", sorted);
+            th.setAttribute("aria-sort", sorted ? (grid.sort.dir === "asc" ? "ascending" : "descending") : "none");
+        });
+        grid.onChange(visible, grid.rows.length, Object.keys(grid.filters).length > 0);
+    };
+
+    FilterGrid.prototype.clear = function () {
+        this.filters = {};
+        this.apply();
+    };
+
+    FilterGrid.prototype.openMenu = function (col, button) {
+        var grid = this, kind = grid.kind(col);
+        if (openState) { openState.button.setAttribute("aria-expanded", "false"); }
+        openState = { grid: grid, col: col, button: button };
+        button.setAttribute("aria-expanded", "true");
+        menu.innerHTML = "";
+
+        function addButton(label, cls, parent, onClick) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = cls;
+            b.textContent = label;
+            b.addEventListener("click", onClick);
+            parent.appendChild(b);
+            return b;
+        }
+        var labels = kind === "money" ? ["Smallest → largest", "Largest → smallest"]
+            : kind === "date" ? ["Oldest → newest", "Newest → oldest"] : ["A → Z", "Z → A"];
+        addButton("Sort " + labels[0], "col-menu-item", menu, function () { grid.sort = { col: col, dir: "asc" }; grid.apply(); closeMenu(true); });
+        addButton("Sort " + labels[1], "col-menu-item", menu, function () { grid.sort = { col: col, dir: "desc" }; grid.apply(); closeMenu(true); });
+
+        if (kind !== "money") {
+            // values in this column, counted over rows that pass the OTHER columns' filters
+            var counts = {};
+            grid.rows.forEach(function (row) {
+                if (grid.passes(row, col)) {
+                    var key = grid.rowKey(row, col);
+                    counts[key] = (counts[key] || 0) + 1;
+                }
+            });
+            var keys = Object.keys(counts).sort(function (a, b) {
+                if (a === BLANK) { return 1; }
+                if (b === BLANK) { return -1; }
+                return kind === "date" ? b.localeCompare(a)
+                    : a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+            });
+            var current = grid.filters[col];
+            menu.appendChild(document.createElement("hr"));
+
+            var finder = null;
+            if (keys.length > 8) {
+                finder = document.createElement("input");
+                finder.type = "search";
+                finder.className = "col-menu-search";
+                finder.placeholder = "Find a value…";
+                finder.setAttribute("aria-label", "Find a value");
+                menu.appendChild(finder);
+            }
+            var bulk = document.createElement("div");
+            bulk.className = "col-menu-bulk";
+            menu.appendChild(bulk);
+            var list = document.createElement("div");
+            list.className = "col-menu-list";
+            menu.appendChild(list);
+
+            var boxes = keys.map(function (key) {
+                var label = document.createElement("label");
+                label.className = "col-menu-option";
+                var box = document.createElement("input");
+                box.type = "checkbox";
+                box.value = key;
+                box.checked = !current || current.has(key);
+                var text = document.createElement("span");
+                text.textContent = keyLabel(kind, key);
+                var count = document.createElement("span");
+                count.className = "col-menu-count";
+                count.textContent = counts[key];
+                label.appendChild(box);
+                label.appendChild(text);
+                label.appendChild(count);
+                list.appendChild(label);
+                return box;
+            });
+
+            function commit() {
+                var chosen = boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+                if (chosen.length === boxes.length) { delete grid.filters[col]; }
+                else { grid.filters[col] = new Set(chosen); }
+                grid.apply();
+            }
+            function setVisible(checked) {
+                boxes.forEach(function (b) { if (!b.parentNode.hidden) { b.checked = checked; } });
+                commit();
+            }
+            addButton("Select all", "link-btn", bulk, function () { setVisible(true); });
+            addButton("Clear", "link-btn", bulk, function () { setVisible(false); });
+            list.addEventListener("change", commit);
+            if (finder) {
+                finder.addEventListener("input", function () {
+                    var q = finder.value.trim().toLowerCase();
+                    boxes.forEach(function (b) {
+                        b.parentNode.hidden = !!q && b.parentNode.textContent.toLowerCase().indexOf(q) === -1;
+                    });
+                });
+            }
+        }
+
+        // place under the heading, kept inside the window
+        menu.hidden = false;
+        var rect = button.getBoundingClientRect();
+        var maxLeft = window.scrollX + document.documentElement.clientWidth - menu.offsetWidth - 12;
+        menu.style.left = Math.max(window.scrollX + 12, Math.min(rect.left + window.scrollX, maxLeft)) + "px";
+        menu.style.top = (rect.bottom + window.scrollY + 6) + "px";
+        var first = menu.querySelector("input, button");
+        if (first) { first.focus(); }
+    };
+
+    if (table) {
+        var ledgerGrid = new FilterGrid(table, function (visible, totalRows, filtered) {
+            var total = visible.reduce(function (sum, row) { return sum + (parseFloat(row.dataset.amount) || 0); }, 0);
+            $("stat-count").textContent = visible.length;
+            $("stat-total").textContent = peso.format(total);
+            var showing = $("ledger-showing");
+            showing.hidden = !filtered;
+            showing.textContent = "Showing " + visible.length + " of " + totalRows;
+            $("clear-filters").hidden = !filtered;
+            $("no-results").hidden = !(filtered && visible.length === 0);
+        });
+        document.querySelectorAll("#clear-filters, [data-clear-filters]").forEach(function (button) {
+            button.addEventListener("click", function () { ledgerGrid.clear(); });
+        });
+    }
+    var duesTable = $("dues-table");
+    if (duesTable) { new FilterGrid(duesTable); }
 
     // ---------------- member picker (membership fees) ----------------
     var memberSearch = $("member_search");
@@ -107,7 +312,7 @@
                 var parts = [];
                 Array.prototype.forEach.call(row.cells, function (cell, index) {
                     var text = cell.textContent.trim();
-                    var label = headings[index] ? headings[index].textContent.trim() : "";
+                    var label = headings[index] ? headings[index].textContent.replace("▾", "").trim() : "";
                     if (text && text !== "—" && label && index < row.cells.length - 1) {
                         parts.push(label + ": " + text);
                     }

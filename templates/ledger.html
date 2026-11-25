@@ -75,9 +75,11 @@
 
         <section class="card ledger-card" aria-label="{{ ledger.label }} records">
             <div class="ledger-toolbar">
-                <input type="search" id="ledger-search" class="ledger-search"
-                       placeholder="Search by date, activity, name, amount…" aria-label="Search records">
-                <span id="ledger-showing" class="muted"></span>
+                <div class="filter-status">
+                    <span class="muted">Use the ▾ on a column heading to sort or filter.</span>
+                    <span id="ledger-showing" class="filter-count" hidden></span>
+                    <button type="button" class="link-btn" id="clear-filters" hidden>Clear filters</button>
+                </div>
                 <div class="toolbar-actions">
                     <button class="btn btn-secondary" type="button" data-open="import-dialog">Import file</button>
                     <button class="btn btn-primary" type="button" data-action="add">+ Add record</button>
@@ -85,11 +87,13 @@
             </div>
 
             <div class="table-responsive">
-                <table id="ledger-table" class="ledger-table">
+                <table id="ledger-table" class="ledger-table filterable" data-stats="1">
                     <thead>
                         <tr>
                             {% for field, heading, fmt in ui.columns %}
-                            <th{% if fmt == "money" %} class="num"{% endif %}>{{ heading }}</th>
+                            <th data-kind="{{ fmt or 'text' }}"{% if fmt == "money" %} class="num"{% endif %}>
+                                <button type="button" class="col-filter" aria-haspopup="true" aria-expanded="false">{{ heading }}<span class="caret" aria-hidden="true">▾</span></button>
+                            </th>
                             {% endfor %}
                             <th class="actions-col"><span class="sr-only">Actions</span></th>
                         </tr>
@@ -101,11 +105,11 @@
                             {% for field, heading, fmt in ui.columns %}
                                 {% set value = row.cells[field] %}
                                 {% if fmt == "money" %}
-                                <td class="num">₱{{ "{:,.2f}".format(row.amount) }}</td>
+                                <td class="num" data-value="{{ row.amount }}">₱{{ "{:,.2f}".format(row.amount) }}</td>
                                 {% elif value %}
-                                <td{% if fmt == "date" %} class="nowrap"{% endif %}>{{ value }}</td>
+                                <td data-value="{{ value }}"{% if fmt == "date" %} class="nowrap"{% endif %}>{{ value }}</td>
                                 {% else %}
-                                <td><span class="empty">—</span></td>
+                                <td data-value=""><span class="empty">—</span></td>
                                 {% endif %}
                             {% endfor %}
                             <td class="row-actions">
@@ -123,7 +127,7 @@
                 <p>Add one with <em>+ Add record</em>, or bring in the treasurer's spreadsheet with <em>Import file</em>.</p>
             </div>
             {% endif %}
-            <p id="no-results" class="empty-state" hidden>No records match your search.</p>
+            <p id="no-results" class="empty-state" hidden>No records match these filters. <button type="button" class="link-btn" data-clear-filters>Clear filters</button></p>
         </section>
 
         {% if ledger_key == "membership_fees" %}
@@ -133,20 +137,23 @@
                     <h2>Dues status</h2>
                     <p class="muted">What each member owes per quarter, from the imported membership-fee sheets. Only quarter totals are published.</p>
                 </div>
-                <input type="search" id="dues-search" class="ledger-search" placeholder="Filter by name, period or status" aria-label="Filter dues">
             </div>
             <div class="table-responsive">
-                <table class="ledger-table" id="dues-table">
-                    <thead><tr><th>Period</th><th>Member</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+                <table class="ledger-table filterable" id="dues-table">
+                    <thead><tr>
+                        {% for heading, kind in [("Period", "text"), ("Member", "text"), ("Due", "money"), ("Paid", "money"), ("Balance", "money"), ("Status", "text")] %}
+                        <th data-kind="{{ kind }}"{% if kind == "money" %} class="num"{% endif %}><button type="button" class="col-filter" aria-haspopup="true" aria-expanded="false">{{ heading }}<span class="caret" aria-hidden="true">▾</span></button></th>
+                        {% endfor %}
+                    </tr></thead>
                     <tbody>
                     {% for due in dues %}
-                        <tr data-search="{{ (due.year ~ '-' ~ due.quarter ~ ' ' ~ due.membership_id ~ ' ' ~ (due.member.full_name if due.member else '') ~ ' ' ~ due.status)|lower }}">
-                            <td class="nowrap">{{ due.year }}-{{ due.quarter }}</td>
-                            <td>{{ due.member.full_name if due.member else due.membership_id }}</td>
-                            <td class="num">₱{{ "{:,.2f}".format(due.amount_due) }}</td>
-                            <td class="num">₱{{ "{:,.2f}".format(due.amount_paid) }}</td>
-                            <td class="num">₱{{ "{:,.2f}".format(due.balance) }}</td>
-                            <td><span class="pill pill-{{ due.status }}">{{ due.status|capitalize }}</span></td>
+                        <tr data-row>
+                            <td class="nowrap" data-value="{{ due.year }}-{{ due.quarter }}">{{ due.year }}-{{ due.quarter }}</td>
+                            <td data-value="{{ due.member.full_name if due.member else due.membership_id }}">{{ due.member.full_name if due.member else due.membership_id }}</td>
+                            <td class="num" data-value="{{ due.amount_due }}">₱{{ "{:,.2f}".format(due.amount_due) }}</td>
+                            <td class="num" data-value="{{ due.amount_paid }}">₱{{ "{:,.2f}".format(due.amount_paid) }}</td>
+                            <td class="num" data-value="{{ due.balance }}">₱{{ "{:,.2f}".format(due.balance) }}</td>
+                            <td data-value="{{ due.status|capitalize }}"><span class="pill pill-{{ due.status }}">{{ due.status|capitalize }}</span></td>
                         </tr>
                     {% endfor %}
                     </tbody>
