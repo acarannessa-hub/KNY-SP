@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email History &amp; Setup - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <header class="ledger-header">
+            <div>
+                <h1>Email History &amp; Setup</h1>
+                <p>Every email the website has tried to send: to whom, what it said, and whether it was delivered to Gmail.</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Sent (last 24 h)</dt><dd>{{ sent_today }}</dd></div>
+                <div><dt>Members with email</dt><dd>{{ reachable_count }}</dd></div>
+            </dl>
+        </header>
+
+        {% include "_notify_top.html" %}
+
+        <section class="card form-card" id="setup">
+            <h2>Email connection</h2>
+            {% if email_ready %}
+            <p><span class="pill pill-paid">Connected</span> Emails are sent from <strong>{{ sender }}</strong>. Gmail allows about 500 emails a day.</p>
+            <form method="POST" action="{{ url_for('send_test_email') }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-secondary" type="submit">Send a test email to me</button>
+            </form>
+            {% else %}
+            <p><span class="pill pill-unpaid">Not connected</span> To send emails, connect a Gmail account (free):</p>
+            <ol class="setup-steps">
+                <li>Use the organization's Gmail account (or create one). In that Google Account, turn on <strong>2-Step Verification</strong>.</li>
+                <li>Go to <strong>Google Account → Security → App passwords</strong>, create one named “KNYC website”, and copy the 16-letter password.</li>
+                <li>In <strong>Vercel → kny-sp → Settings → Environment Variables</strong>, add <code>SMTP_USER</code> = the Gmail address and <code>SMTP_PASSWORD</code> = the app password. Then redeploy.</li>
+                <li>Come back here and press <strong>Send a test email to me</strong>.</li>
+            </ol>
+            {% endif %}
+            {% if missing %}
+            <details class="missing-emails">
+                <summary>{{ missing|length }} active member(s) have no email and won't receive anything</summary>
+                <p>{% for m in missing %}{{ m.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+                <a class="btn btn-small btn-secondary" href="{{ url_for('manage_members') }}">Add emails on the Members page</a>
+            </details>
+            {% endif %}
+        </section>
+
+        <section class="card ledger-card" aria-label="Email history">
+            <div class="ledger-toolbar">
+                <h2>Email history</h2>
+                <div class="filter-status">
+                    <span class="muted">Use the ▾ on a column heading to sort or filter.{% if total > page_size %} Showing the latest {{ page_size }} of {{ total }}.{% endif %}</span>
+                    <span id="ledger-showing" class="filter-count" hidden></span>
+                    <button type="button" class="link-btn" id="clear-filters" hidden>Clear filters</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="ledger-table filterable" id="history-table">
+                    <thead><tr>
+                        {% for heading, kind in [("When", "date"), ("Type", "text"), ("To", "text"), ("Subject", "text"), ("Result", "text"), ("Sent by", "text")] %}
+                        <th data-kind="{{ kind }}"><button type="button" class="col-filter" aria-haspopup="true" aria-expanded="false">{{ heading }}<span class="caret" aria-hidden="true">▾</span></button></th>
+                        {% endfor %}
+                        <th class="actions-col"><span class="sr-only">Details</span></th>
+                    </tr></thead>
+                    <tbody>
+                    {% for e in entries %}
+                    {% set when = local(e.created_at).strftime("%Y-%m-%d %H:%M") if e.created_at else "" %}
+                    {% set result = "Sent" if e.status == "sent" else ("Not sent" if e.status == "failed" else "Skipped") %}
+                    <tr>
+                        <td class="nowrap" data-value="{{ when }}">{{ when }}</td>
+                        <td data-value="{{ kind_labels.get(e.kind, e.kind) }}">{{ kind_labels.get(e.kind, e.kind) }}</td>
+                        <td data-value="{{ e.recipient_name or e.recipient_email }}">{{ e.recipient_name or "" }}<br><span class="muted">{{ e.recipient_email or "" }}</span></td>
+                        <td data-value="{{ e.subject }}">{{ e.subject }}</td>
+                        <td data-value="{{ result }}"><span class="pill {{ 'pill-paid' if e.status == 'sent' else 'pill-unpaid' }}">{{ result }}</span></td>
+                        <td data-value="{{ e.sent_by or '' }}">{{ e.sent_by or "" }}</td>
+                        <td class="row-actions">
+                            <button class="link-btn" type="button" data-open="mail-{{ e.id }}">View</button>
+                            <dialog id="mail-{{ e.id }}" class="ledger-dialog" aria-labelledby="mail-title-{{ e.id }}">
+                                <header class="dialog-header"><h2 id="mail-title-{{ e.id }}">{{ e.subject }}</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                <div class="dialog-body">
+                                    <p class="muted">To {{ e.recipient_name or "" }} &lt;{{ e.recipient_email }}&gt; · {{ when }} · by {{ e.sent_by or "—" }}</p>
+                                    {% if e.error %}<div class="message danger">{{ e.error }}</div>{% endif %}
+                                    <pre class="email-body">{{ e.body or "" }}</pre>
+                                </div>
+                                <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Close</button></footer>
+                            </dialog>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if not entries %}
+            <div class="empty-state"><p>No emails sent yet.</p></div>
+            {% endif %}
+            <p id="no-results" class="empty-state" hidden>No emails match these filters. <button type="button" class="link-btn" data-clear-filters>Clear filters</button></p>
+        </section>
+    </main>
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+    <script>
+        (function () {
+            var table = document.getElementById("history-table");
+            if (!table || !window.KNYCFilterGrid || !table.tBodies[0].rows.length) { return; }
+            var grid = new window.KNYCFilterGrid(table, function (visible, total, filtered) {
+                var showing = document.getElementById("ledger-showing");
+                showing.hidden = !filtered;
+                showing.textContent = "Showing " + visible.length + " of " + total;
+                document.getElementById("clear-filters").hidden = !filtered;
+                document.getElementById("no-results").hidden = !(filtered && visible.length === 0);
+            });
+            document.querySelectorAll("#clear-filters, [data-clear-filters]").forEach(function (b) {
+                b.addEventListener("click", function () { grid.clear(); });
+            });
+        })();
+    </script>
+</body>
+</html>

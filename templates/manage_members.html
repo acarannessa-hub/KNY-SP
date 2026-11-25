@@ -12,7 +12,7 @@
         <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
         <header class="page-heading">
             <h1>Member Management</h1>
-            <p>Maintain the organization member directory used by fee records and portal accounts.</p>
+            <p>Maintain the organization member directory used by fee records, portal accounts and email notifications. A member's email is where dues reminders, meeting/event reminders and notices are sent.</p>
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -45,6 +45,10 @@
                         <label for="org_role">Organization Role</label>
                         <input id="org_role" name="org_role" value="Member" maxlength="100" required>
                     </div>
+                    <div class="form-field">
+                        <label for="email">Email (for notifications)</label>
+                        <input id="email" name="email" type="email" maxlength="254" placeholder="name@example.com">
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-primary" type="submit">Add Member</button>
@@ -61,7 +65,7 @@
             </div>
             <form method="GET" action="{{ url_for('manage_members') }}" class="form-actions">
                 <label for="member_search">Search members</label>
-                <input id="member_search" type="search" name="q" value="{{ search }}" placeholder="Membership ID, name, or org role">
+                <input id="member_search" type="search" name="q" value="{{ search }}" placeholder="Membership ID, name, org role, or email">
                 <button class="btn btn-secondary" type="submit">Search</button>
                 {% if search %}<a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Clear</a>{% endif %}
             </form>
@@ -69,7 +73,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Status</th><th>Actions</th>
+                            <th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Email</th><th>Status</th><th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -78,6 +82,7 @@
                             <td>{{ member.membership_id }}</td>
                             <td>{{ member.full_name }}</td>
                             <td>{{ member.org_role }}</td>
+                            <td>{% if member.email %}{{ member.email }}{% elif member.notify_email %}{{ member.notify_email }} <span class="muted">(login)</span>{% else %}<span class="muted">—</span>{% endif %}</td>
                             <td>{{ member.status|capitalize }}</td>
                             <td>
                                 <details>
@@ -105,6 +110,10 @@
                                                 <input id="org_role_{{ member.id }}" name="org_role" value="{{ member.org_role }}" maxlength="100" required>
                                             </div>
                                             <div class="form-field">
+                                                <label for="email_{{ member.id }}">Email</label>
+                                                <input id="email_{{ member.id }}" name="email" type="email" value="{{ member.email or '' }}" maxlength="254" placeholder="{{ member.notify_email or 'name@example.com' }}">
+                                            </div>
+                                            <div class="form-field">
                                                 <label for="status_{{ member.id }}">Status</label>
                                                 <select id="status_{{ member.id }}" name="status" required>
                                                     <option value="active" {% if member.status == "active" %}selected{% endif %}>Active</option>
@@ -118,7 +127,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5">No organization members found.</td></tr>
+                        <tr><td colspan="6">No organization members found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

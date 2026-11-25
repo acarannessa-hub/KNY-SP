@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meetings &amp; Events - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+{% macro event_fields(e=None, prefix="new") %}
+    <div class="form-grid">
+        <div class="form-field form-field-full">
+            <label for="{{ prefix }}_title">Title <span class="req" aria-hidden="true">*</span></label>
+            <input id="{{ prefix }}_title" name="title" maxlength="200" required value="{{ e.title if e else '' }}" placeholder="e.g. General Assembly">
+        </div>
+        <div class="form-field">
+            <label for="{{ prefix }}_kind">Type</label>
+            <select id="{{ prefix }}_kind" name="kind">
+                {% for value, label in kinds.items() %}<option value="{{ value }}" {% if e and e.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="{{ prefix }}_location">Where</label>
+            <input id="{{ prefix }}_location" name="location" maxlength="255" value="{{ e.location or '' if e else '' }}" placeholder="Place or online link">
+        </div>
+        <div class="form-field">
+            <label for="{{ prefix }}_date">Date <span class="req" aria-hidden="true">*</span></label>
+            <input id="{{ prefix }}_date" type="date" name="date" required value="{{ local(e.starts_at).strftime('%Y-%m-%d') if e else '' }}">
+        </div>
+        <div class="form-field">
+            <label for="{{ prefix }}_time">Start time <span class="req" aria-hidden="true">*</span></label>
+            <input id="{{ prefix }}_time" type="time" name="time" required value="{{ local(e.starts_at).strftime('%H:%M') if e else '' }}">
+        </div>
+        <div class="form-field form-field-full">
+            <label for="{{ prefix }}_description">Details for members</label>
+            <textarea id="{{ prefix }}_description" name="description" rows="3" placeholder="Agenda, what to bring, dress code…">{{ e.description or '' if e else '' }}</textarea>
+        </div>
+    </div>
+{% endmacro %}
+
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <header class="ledger-header">
+            <div>
+                <h1>Meetings &amp; Events</h1>
+                <p>Schedule a meeting or event and members are emailed a reminder automatically <strong>3 days before</strong> and <strong>the day before</strong> (around 8:00 AM). You can also email them right away.</p>
+            </div>
+            <dl class="ledger-stats">
+                <div><dt>Upcoming</dt><dd>{{ upcoming|length }}</dd></div>
+                <div><dt>Members with email</dt><dd>{{ reachable_count }}</dd></div>
+            </dl>
+        </header>
+
+        {% include "_notify_top.html" %}
+
+        {% if missing_count %}
+        <p class="muted">{{ missing_count }} active member(s) have no email yet and won't be reminded. <a href="{{ url_for('manage_members') }}">Add emails on the Members page</a>.</p>
+        {% endif %}
+
+        <section class="card ledger-card">
+            <div class="ledger-toolbar">
+                <h2>Upcoming</h2>
+                <button class="btn btn-primary" type="button" data-open="add-event">+ Schedule meeting or event</button>
+            </div>
+            {% if upcoming %}
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead><tr><th>When</th><th>What</th><th>Where</th><th>Automatic reminders</th><th>Emails sent</th><th class="actions-col"><span class="sr-only">Actions</span></th></tr></thead>
+                    <tbody>
+                    {% for e in upcoming %}
+                    <tr>
+                        <td class="nowrap">{{ when_text(e.starts_at) }}</td>
+                        <td><span class="pill pill-kind-{{ e.kind }}">{{ kinds[e.kind] }}</span> {{ e.title }}</td>
+                        <td>{{ e.location or "—" }}</td>
+                        <td class="muted">{{ next_note[e.id] }}</td>
+                        <td>{{ sent_counts.get(e.id, 0) }}</td>
+                        <td class="row-actions">
+                            <button class="link-btn" type="button" data-open="email-{{ e.id }}">Email members</button>
+                            <button class="link-btn" type="button" data-open="edit-{{ e.id }}">Edit</button>
+                            <button class="link-btn danger-link" type="button" data-open="cancel-{{ e.id }}">Cancel</button>
+
+                            <dialog id="email-{{ e.id }}" class="ledger-dialog" aria-labelledby="email-title-{{ e.id }}">
+                                <form method="POST" action="{{ url_for('email_event', event_id=e.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="batch_id" value="{{ batch_id }}-e{{ e.id }}">
+                                    <header class="dialog-header"><h2 id="email-title-{{ e.id }}">Email members about “{{ e.title }}”</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body">
+                                        <p>Sends one email to each of the {{ reachable_count }} active members with an email address.</p>
+                                        <fieldset class="choice-list">
+                                            <label><input type="radio" name="mode" value="announce" checked> <strong>Announcement</strong>: “You're invited…” with the details (good for new or changed plans)</label>
+                                            <label><input type="radio" name="mode" value="reminder"> <strong>Reminder</strong>: “This is a reminder that our {{ e.kind }} is coming up…”</label>
+                                        </fieldset>
+                                        <p class="muted">The automatic reminders still go out as scheduled.</p>
+                                    </div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Close</button><button class="btn btn-primary" type="submit" {% if not email_ready %}disabled title="Connect Gmail first"{% endif %}>Send emails</button></footer>
+                                </form>
+                            </dialog>
+
+                            <dialog id="edit-{{ e.id }}" class="ledger-dialog" aria-labelledby="edit-title-{{ e.id }}">
+                                <form method="POST" action="{{ url_for('edit_event', event_id=e.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <header class="dialog-header"><h2 id="edit-title-{{ e.id }}">Edit {{ kinds[e.kind]|lower }}</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body">{{ event_fields(e, "e" ~ e.id) }}</div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Close</button><button class="btn btn-primary" type="submit">Save changes</button></footer>
+                                </form>
+                            </dialog>
+
+                            <dialog id="cancel-{{ e.id }}" class="ledger-dialog" aria-labelledby="cancel-title-{{ e.id }}">
+                                <form method="POST" action="{{ url_for('cancel_event', event_id=e.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="batch_id" value="{{ batch_id }}-c{{ e.id }}">
+                                    <header class="dialog-header"><h2 id="cancel-title-{{ e.id }}">Cancel “{{ e.title }}”?</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body">
+                                        <p>No more reminders will be sent for it.</p>
+                                        <label class="check-row"><input type="checkbox" name="notify" value="1" {% if email_ready %}checked{% else %}disabled{% endif %}> Email members that it's cancelled</label>
+                                    </div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Keep it</button><button class="btn btn-danger" type="submit">Cancel {{ kinds[e.kind]|lower }}</button></footer>
+                                </form>
+                            </dialog>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><p>Nothing scheduled. Press <strong>Schedule meeting or event</strong> to add one.</p></div>
+            {% endif %}
+        </section>
+
+        {% if past %}
+        <section class="card ledger-card">
+            <h2>Past and cancelled</h2>
+            <div class="table-responsive">
+                <table class="ledger-table">
+                    <thead><tr><th>When</th><th>What</th><th>Status</th><th>Emails sent</th><th class="actions-col"><span class="sr-only">Actions</span></th></tr></thead>
+                    <tbody>
+                    {% for e in past %}
+                    <tr>
+                        <td class="nowrap">{{ when_text(e.starts_at) }}</td>
+                        <td><span class="pill pill-kind-{{ e.kind }}">{{ kinds[e.kind] }}</span> {{ e.title }}</td>
+                        <td>{% if e.status == "cancelled" %}<span class="pill pill-unpaid">Cancelled</span>{% else %}Done{% endif %}</td>
+                        <td>{{ sent_counts.get(e.id, 0) }}</td>
+                        <td class="row-actions">
+                            <button class="link-btn danger-link" type="button" data-open="delete-{{ e.id }}">Delete</button>
+                            <dialog id="delete-{{ e.id }}" class="ledger-dialog" aria-labelledby="delete-title-{{ e.id }}">
+                                <form method="POST" action="{{ url_for('delete_event', event_id=e.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <header class="dialog-header"><h2 id="delete-title-{{ e.id }}">Delete “{{ e.title }}”?</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body"><p>It disappears from this list. The emails already sent stay in the email history, and the deletion is recorded in the Audit Log.</p></div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Keep it</button><button class="btn btn-danger" type="submit">Delete</button></footer>
+                                </form>
+                            </dialog>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <dialog id="add-event" class="ledger-dialog" aria-labelledby="add-event-title">
+            <form method="POST" action="{{ url_for('add_event') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="batch_id" value="{{ batch_id }}-new">
+                <header class="dialog-header"><h2 id="add-event-title">Schedule a meeting or event</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                <div class="dialog-body">
+                    {{ event_fields() }}
+                    <label class="check-row"><input type="checkbox" name="announce" value="1" {% if not email_ready %}disabled{% endif %}> Also email all members about it now</label>
+                    <p class="muted">Times are Philippine time. Reminders go out automatically 3 days and 1 day before.</p>
+                </div>
+                <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Close</button><button class="btn btn-primary" type="submit">Schedule</button></footer>
+            </form>
+        </dialog>
+    </main>
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+</body>
+</html>

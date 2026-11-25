@@ -1489,3 +1489,39 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 .pill-action-update { background: var(--private-light-cyan); color: #1f5f69; }
 .pill-action-delete { background: #f5e5e8; color: #7d3640; }
 .pill-action-resync, .pill-action-member_create { background: var(--private-light-purple); color: var(--private-purple-dark); }
+
+
+/* ---------------- notifications ---------------- */
+.notify-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; border-bottom: 1px solid #e3ddef; }
+.notify-tabs a { padding: 9px 14px; border-radius: 10px 10px 0 0; color: var(--private-purple-dark, #4b3b78); text-decoration: none; font-weight: 600; }
+.notify-tabs a:hover { background: #f4f0fb; }
+.notify-tabs a[aria-current="page"] { background: #fff; border: 1px solid #e3ddef; border-bottom-color: #fff; margin-bottom: -1px; }
+.pending-batch { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pending-batch > span { flex: 1 1 320px; }
+.inline-form { display: inline; margin: 0; }
+.danger-link { color: #9b2f3c !important; }
+.choice-list { border: none; padding: 0; margin: 12px 0; display: grid; gap: 10px; }
+.choice-list label, .check-row { display: flex; gap: 8px; align-items: flex-start; font-weight: normal; margin: 12px 0 4px; }
+.check-row input, .choice-list input { margin-top: 4px; }
+.quarter-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; margin-bottom: 16px; }
+.quarter-picker select { width: auto; min-width: 90px; }
+.check-col { width: 42px; text-align: center; }
+.member-checklist { max-height: 260px; overflow-y: auto; border: 1px solid #ddd6ea; border-radius: 10px; padding: 6px 10px; margin-top: 8px; background: #fff; }
+.member-checklist label { display: flex; gap: 8px; align-items: center; padding: 6px 2px; font-weight: normal; border-bottom: 1px solid #f1edf7; }
+.member-checklist label:last-child { border-bottom: none; }
+.email-preview { margin: 14px 0; }
+.email-preview summary { cursor: pointer; font-weight: 600; }
+.email-preview pre, .email-body { white-space: pre-wrap; word-break: break-word; font-family: inherit; background: #faf8fd; border: 1px solid #ece6f5; border-radius: 10px; padding: 14px; margin: 8px 0 0; }
+.setup-steps { line-height: 1.7; padding-left: 20px; }
+.setup-steps code { background: #f2eef9; padding: 1px 6px; border-radius: 6px; }
+.missing-emails { margin-top: 16px; }
+.missing-emails summary { cursor: pointer; }
+.pill-kind-meeting { background: var(--private-light-purple, #ece6fb); color: var(--private-purple-dark, #4b3b78); }
+.pill-kind-event { background: var(--private-light-cyan, #e0f3f6); color: #1f5f69; }
+.pill-action-email, .pill-action-cancel { background: var(--private-light-purple, #ece6fb); color: var(--private-purple-dark, #4b3b78); }
+.check-row input[type="checkbox"], .choice-list input[type="radio"],
+.member-checklist input[type="checkbox"], .check-col input[type="checkbox"] {
+    width: 18px; height: 18px; min-height: 0; flex: 0 0 auto; padding: 0; margin: 3px 0 0; box-shadow: none; accent-color: var(--private-purple-dark);
+}
+.check-row, .choice-list label { justify-content: flex-start; text-align: left; }
+.member-checklist input[type="checkbox"] { margin-top: 0; }

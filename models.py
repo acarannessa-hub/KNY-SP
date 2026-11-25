@@ -56,6 +56,11 @@ class Member(db.Model):
         default="active"
     )
 
+    # Where notifications (dues reminders, meetings, events, warnings) go.
+    email = db.Column(
+        db.String(254)
+    )
+
     created_at = db.Column(
         db.DateTime(timezone=True),
         server_default=db.func.current_timestamp()
@@ -71,10 +76,15 @@ class Member(db.Model):
         back_populates="member"
     )
 
-    attendance_records = db.relationship(
-        "Attendance",
-        back_populates="member"
-    )
+    @property
+    def notify_email(self):
+        """The member's own email, or else the email of their active login."""
+        if self.email:
+            return self.email
+        for account in self.users or []:
+            if account.status == "active" and account.email:
+                return account.email
+        return None
 
     @property
     def full_name(self):
@@ -326,77 +336,6 @@ class MembershipFee(db.Model):
     member = db.relationship(
         "Member",
         back_populates="membership_fees"
-    )
-
-
-# ==================================================
-# ATTENDANCE
-# ==================================================
-
-class Attendance(db.Model):
-
-    __tablename__ = "attendance"
-    __table_args__ = (
-        UniqueConstraint(
-            "membership_id",
-            "attendance_date",
-            name="uq_attendance_member_date"
-        ),
-    )
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
-
-    membership_id = db.Column(
-        db.String(64),
-        db.ForeignKey(
-            "members.membership_id",
-            ondelete="RESTRICT",
-            onupdate="CASCADE"
-        ),
-        nullable=False,
-        index=True
-    )
-
-    attendance_date = db.Column(
-        db.Date,
-        nullable=False,
-        index=True
-    )
-
-    attendance_status = db.Column(
-        db.String(20),
-        nullable=False
-    )
-
-    time_in = db.Column(
-        db.Time
-    )
-
-    time_out = db.Column(
-        db.Time
-    )
-
-    remarks = db.Column(
-        db.Text
-    )
-
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        server_default=db.func.current_timestamp()
-    )
-
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
-        server_default=db.func.current_timestamp(),
-        onupdate=db.func.current_timestamp()
-    )
-
-    member = db.relationship(
-        "Member",
-        back_populates="attendance_records"
     )
 
 
@@ -672,3 +611,61 @@ class ExportRequest(db.Model):
         "Profile",
         foreign_keys=[admin_id]
     )
+
+
+# ==================================================
+# EVENTS  (meetings and events members are reminded about)
+# ==================================================
+
+class Event(db.Model):
+
+    __tablename__ = "events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    kind = db.Column(db.String(20), nullable=False, default="meeting")
+    starts_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    location = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    status = db.Column(db.String(20), nullable=False, default="scheduled")
+    created_by = db.Column(db.String(150))
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        server_default=db.func.current_timestamp()
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        server_default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp()
+    )
+
+
+# ==================================================
+# NOTIFICATION LOG  (one row per email the website tried to send)
+# ==================================================
+
+class NotificationLog(db.Model):
+
+    __tablename__ = "notification_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        server_default=db.func.current_timestamp(),
+        index=True
+    )
+    kind = db.Column(db.String(30), nullable=False)
+    batch_id = db.Column(db.String(40))
+    subject = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text)
+    recipient_email = db.Column(db.String(254))
+    membership_id = db.Column(db.String(64))
+    recipient_name = db.Column(db.String(255))
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey("events.id", ondelete="SET NULL")
+    )
+    status = db.Column(db.String(20), nullable=False)
+    error = db.Column(db.Text)
+    sent_by = db.Column(db.String(150))
+    dedupe_key = db.Column(db.String(120), unique=True)

@@ -44,7 +44,7 @@ try:
 except ImportError:
     pass
 
-REQUIRED_TABLES = {"members", "profiles", "attendance", "export_requests"}
+REQUIRED_TABLES = {"members", "profiles", "export_requests"}
 
 
 # --------------------------------------------------
@@ -126,7 +126,7 @@ def check_database(db_url):
         say(False, "Tables", "missing: " + ", ".join(missing)
             + "  (run 01_schema.sql in the SQL Editor)")
         return False, engine
-    say(True, "Tables", "members, profiles, attendance, export_requests")
+    say(True, "Tables", "members, profiles, export_requests")
 
     with engine.connect() as connection:
         rows = connection.execute(

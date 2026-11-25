@@ -3,6 +3,8 @@ import hmac
 import io
 import json
 import os
+import re
+import time
 import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -42,11 +44,12 @@ from models import (
     Fundraising,
     Sponsorship,
     MembershipFee,
-    Attendance,
     Expense,
     ExportRequest,
     Due,
-    AuditLog
+    AuditLog,
+    Event,
+    NotificationLog
 )
 import supabase_auth
 import google_sheets
@@ -55,6 +58,9 @@ from services.finance import ingestion as finance_ingestion
 from services.finance import membership_import as finance_membership_import
 from services.finance import records as finance_records
 from services.finance import sheets_mirror as finance_sheets_mirror
+from services.notifications import mailer as notify_mailer
+from services.notifications import messages as notify_messages
+from services.notifications import service as notify
 
 
 # ==================================================
@@ -403,100 +409,6 @@ def admin_required(f):
     return decorated_function
 
 
-def attendance_read_required(f):
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-
-        if current_user.role not in {"admin", "encoder", "viewer"}:
-            abort(403)
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-ATTENDANCE_STATUSES = ("Present", "Absent", "Late", "Excused")
-
-
-def _parse_attendance_date(value, label):
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").date()
-    except ValueError as error:
-        raise ValueError(f"Enter a valid {label}.") from error
-
-
-def _parse_attendance_time(value, label):
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, "%H:%M").time()
-    except ValueError as error:
-        raise ValueError(f"Enter a valid {label} using HH:MM.") from error
-
-
-def _attendance_filters(args):
-    filters = {
-        "attendance_date": args.get("attendance_date", "").strip(),
-        "start_date": args.get("start_date", "").strip(),
-        "end_date": args.get("end_date", "").strip(),
-        "membership_id": args.get("membership_id", "").strip(),
-        "search": args.get("search", "").strip(),
-        "status": args.get("status", "").strip(),
-    }
-    selected_date = _parse_attendance_date(
-        filters["attendance_date"], "attendance date"
-    )
-    start_date = _parse_attendance_date(
-        filters["start_date"], "start date"
-    )
-    end_date = _parse_attendance_date(
-        filters["end_date"], "end date"
-    )
-    if start_date and end_date and start_date > end_date:
-        raise ValueError("Start date cannot be later than end date.")
-
-    query = Attendance.query.join(Attendance.member)
-    if selected_date:
-        query = query.filter(Attendance.attendance_date == selected_date)
-    if start_date:
-        query = query.filter(Attendance.attendance_date >= start_date)
-    if end_date:
-        query = query.filter(Attendance.attendance_date <= end_date)
-    if filters["membership_id"]:
-        query = query.filter(
-            Member.membership_id == filters["membership_id"]
-        )
-    if filters["search"]:
-        search_pattern = f"%{filters['search']}%"
-        full_name = (
-            Member.first_name
-            + " "
-            + db.func.coalesce(Member.middle_name, "")
-            + " "
-            + Member.last_name
-        )
-        query = query.filter(
-            db.or_(
-                Member.membership_id.ilike(search_pattern),
-                Member.first_name.ilike(search_pattern),
-                Member.middle_name.ilike(search_pattern),
-                Member.last_name.ilike(search_pattern),
-                full_name.ilike(search_pattern)
-            )
-        )
-    if filters["status"] in ATTENDANCE_STATUSES:
-        query = query.filter(
-            Attendance.attendance_status == filters["status"]
-        )
-    elif filters["status"]:
-        filters["status"] = ""
-
-    return query, filters
-
-
 # ==================================================
 # LOGIN
 # ==================================================
@@ -816,6 +728,26 @@ def manage_users():
 # ADMIN MEMBER MANAGEMENT
 # ==================================================
 
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _member_email(raw):
+    """(clean email or None, error message or "")."""
+    email = (raw or "").strip().lower()
+    if not email:
+        return None, ""
+    if len(email) > 254 or not EMAIL_PATTERN.match(email):
+        return None, "Enter a valid email address (or leave it blank)."
+    return email, ""
+
+
+def _member_email_taken(email, exclude_id=None):
+    query = Member.query.filter(db.func.lower(Member.email) == email)
+    if exclude_id is not None:
+        query = query.filter(Member.id != exclude_id)
+    return query.first() is not None
+
+
 @app.route("/admin/members")
 @login_required
 @admin_required
@@ -831,7 +763,8 @@ def manage_members():
                 Member.first_name.ilike(search_term),
                 Member.middle_name.ilike(search_term),
                 Member.last_name.ilike(search_term),
-                Member.org_role.ilike(search_term)
+                Member.org_role.ilike(search_term),
+                Member.email.ilike(search_term)
             )
         )
 
@@ -856,13 +789,20 @@ def add_member():
     last_name = request.form.get("last_name", "").strip()
     middle_name = request.form.get("middle_name", "").strip()
     org_role = request.form.get("org_role", "Member").strip()
+    email, email_error = _member_email(request.form.get("email"))
 
     if not all((membership_id, first_name, last_name, org_role)):
         flash("Membership ID, first name, last name, and org role are required.", "danger")
         return redirect(url_for("manage_members"))
+    if email_error:
+        flash(email_error, "danger")
+        return redirect(url_for("manage_members"))
 
     if Member.query.filter_by(membership_id=membership_id).first():
         flash("That Membership ID is already in use.", "danger")
+        return redirect(url_for("manage_members"))
+    if email and _member_email_taken(email):
+        flash("Another member already uses that email.", "danger")
         return redirect(url_for("manage_members"))
 
     db.session.add(Member(
@@ -871,6 +811,7 @@ def add_member():
         middle_name=middle_name or None,
         last_name=last_name,
         org_role=org_role,
+        email=email,
         status="active"
     ))
     db.session.commit()
@@ -893,9 +834,16 @@ def edit_member(member_id):
     middle_name = request.form.get("middle_name", "").strip()
     org_role = request.form.get("org_role", "").strip()
     status = request.form.get("status", "")
+    email, email_error = _member_email(request.form.get("email"))
 
     if not all((membership_id, first_name, last_name, org_role)):
         flash("Membership ID, first name, last name, and org role are required.", "danger")
+        return redirect(url_for("manage_members"))
+    if email_error:
+        flash(email_error, "danger")
+        return redirect(url_for("manage_members"))
+    if email and _member_email_taken(email, exclude_id=member.id):
+        flash("Another member already uses that email.", "danger")
         return redirect(url_for("manage_members"))
     if status not in {"active", "inactive"}:
         flash("Choose a valid member status.", "danger")
@@ -919,6 +867,7 @@ def edit_member(member_id):
     member.middle_name = middle_name or None
     member.last_name = last_name
     member.org_role = org_role
+    member.email = email
     member.status = status
     db.session.commit()
     flash("Member information updated.", "success")
@@ -1049,6 +998,9 @@ def add_user():
         )
 
         db.session.add(new_profile)
+        # Notifications go to the member's email; fill it from the login if empty.
+        if not member.email and not _member_email_taken(email):
+            member.email = email
         db.session.commit()
 
     except SQLAlchemyError:
@@ -1318,6 +1270,411 @@ def reset_password(user_id):
     )
 
 # ==================================================
+# NOTIFICATIONS: MEETINGS & EVENTS, DUES REMINDERS, WARNINGS
+#
+# Emails go to each active member's email (or their login email). Sending
+# and logging live in services/notifications/. Big batches are sent in
+# rounds; a "Continue sending" banner re-posts the same batch, and the log's
+# unique keys guarantee nobody receives the same email twice.
+# ==================================================
+
+EVENT_KINDS = {"meeting": "Meeting", "event": "Event"}
+
+
+class _Form(dict):
+    """Lets a plain dict stand in for request.form when remembering a batch."""
+    def items(self, multi=False):
+        return list(super().items())
+
+
+def _actor_label():
+    return getattr(current_user, "email", None) or "admin"
+
+
+def _form_items(form, skip=("csrf_token",)):
+    return [(k, v) for k, v in form.items(multi=True) if k not in skip]
+
+
+def _flash_batch(result, what, endpoint_url=None, form=None):
+    """Flash the outcome of a send, and remember unfinished batches."""
+    if result.error and not result.attempted:
+        flash(result.error, "danger")
+    elif result.attempted or result.already:
+        category = "success" if not (result.failed or result.remaining or result.error) else "warning"
+        flash(f"{what}: {result.summary()}.", category)
+        for name, error in result.failures[:5]:
+            flash(f"Not delivered to {name}: {error}", "danger")
+        if result.error:
+            flash(result.error, "danger")
+    if result.remaining and endpoint_url and form is not None and not (result.error and not result.attempted):
+        session["notify_pending"] = {
+            "url": endpoint_url, "label": what,
+            "remaining": result.remaining, "fields": _form_items(form),
+        }
+    else:
+        session.pop("notify_pending", None)
+
+
+def _audit_send(summary, record_id=None):
+    finance_records.audit("email", "notification", actor=current_user,
+                          record_id=record_id, summary=summary)
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+
+
+def _event_from_form(form):
+    """(values dict, error) for the add/edit event forms."""
+    title = (form.get("title") or "").strip()
+    kind = form.get("kind") or "meeting"
+    day = (form.get("date") or "").strip()
+    clock = (form.get("time") or "").strip()
+    if not title:
+        return None, "Give the meeting or event a title."
+    if kind not in EVENT_KINDS:
+        return None, "Choose Meeting or Event."
+    try:
+        local_dt = datetime.strptime(f"{day} {clock}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        return None, "Enter a valid date and start time."
+    starts_at = local_dt.replace(tzinfo=notify_messages.MANILA).astimezone(timezone.utc)
+    return {
+        "title": title[:200],
+        "kind": kind,
+        "starts_at": starts_at,
+        "location": (form.get("location") or "").strip()[:255] or None,
+        "description": (form.get("description") or "").strip() or None,
+    }, ""
+
+
+def _event_snapshot(event):
+    return {
+        "title": event.title, "kind": event.kind,
+        "starts_at": notify_messages.when_text(event.starts_at),
+        "location": event.location or "", "description": event.description or "",
+        "status": event.status,
+    }
+
+
+@app.route("/admin/events")
+@login_required
+@admin_required
+def manage_events():
+    now = datetime.now(timezone.utc)
+    events = Event.query.order_by(Event.starts_at).all()
+    upcoming = [e for e in events
+                if e.status == "scheduled" and notify_messages.as_utc(e.starts_at) > now]
+    past = sorted((e for e in events if e not in upcoming),
+                  key=lambda e: notify_messages.as_utc(e.starts_at), reverse=True)[:50]
+    sent_counts = dict(
+        db.session.query(NotificationLog.event_id, db.func.count(NotificationLog.id))
+        .filter(NotificationLog.status == "sent", NotificationLog.event_id.isnot(None))
+        .group_by(NotificationLog.event_id).all()
+    )
+    reachable, missing = notify.reachable(notify.active_members())
+    return render_template(
+        "events.html",
+        upcoming=upcoming,
+        past=past,
+        sent_counts=sent_counts,
+        next_note={e.id: notify.next_reminder_text(e, now) for e in upcoming},
+        local=notify_messages.local,
+        when_text=notify_messages.when_text,
+        kinds=EVENT_KINDS,
+        reachable_count=len(reachable),
+        missing_count=len(missing),
+        email_ready=notify_mailer.is_configured(),
+        batch_id=notify.new_batch_id(),
+        pending=session.get("notify_pending"),
+    )
+
+
+def _announce(event, batch_id, builder, kind, what):
+    items, _ = notify.event_outgoing(event, builder)
+    result = notify.send_batch(
+        kind, items, sent_by=_actor_label(), batch_id=batch_id,
+        dedupe_prefix=f"batch:{batch_id}", event_id=event.id,
+    )
+    if result.attempted:
+        _audit_send(f"{what} for “{event.title}”: {result.summary()}", record_id=event.id)
+    return result
+
+
+@app.route("/admin/events/add", methods=["POST"])
+@login_required
+@admin_required
+def add_event():
+    values, error = _event_from_form(request.form)
+    if error:
+        flash(error, "danger")
+        return redirect(url_for("manage_events"))
+    event = Event(status="scheduled", created_by=_actor_label(), **values)
+    db.session.add(event)
+    db.session.flush()
+    finance_records.audit("create", "event", actor=current_user, record_id=event.id,
+                          summary=f"Scheduled {event.kind} “{event.title}”",
+                          after=_event_snapshot(event))
+    db.session.commit()
+    flash(f"“{event.title}” scheduled. Members get automatic email reminders 3 days and 1 day before.", "success")
+    if request.form.get("announce"):
+        batch_id = request.form.get("batch_id") or notify.new_batch_id()
+        result = _announce(event, batch_id, notify_messages.event_announcement,
+                           "event_announcement", "Announcement")
+        _flash_batch(result, "Announcement emails",
+                     url_for("email_event", event_id=event.id),
+                     _Form({"mode": "announce", "batch_id": batch_id}))
+    return redirect(url_for("manage_events"))
+
+
+@app.route("/admin/events/<int:event_id>/edit", methods=["POST"])
+@login_required
+@admin_required
+def edit_event(event_id):
+    event = db.get_or_404(Event, event_id)
+    values, error = _event_from_form(request.form)
+    if error:
+        flash(error, "danger")
+        return redirect(url_for("manage_events"))
+    before = _event_snapshot(event)
+    for key, value in values.items():
+        setattr(event, key, value)
+    finance_records.audit("update", "event", actor=current_user, record_id=event.id,
+                          summary=f"Edited {event.kind} “{event.title}”",
+                          before=before, after=_event_snapshot(event))
+    db.session.commit()
+    flash("Changes saved. Use “Email members” if they should know about the change.", "success")
+    return redirect(url_for("manage_events"))
+
+
+@app.route("/admin/events/<int:event_id>/email", methods=["POST"])
+@login_required
+@admin_required
+def email_event(event_id):
+    event = db.get_or_404(Event, event_id)
+    if event.status != "scheduled":
+        flash("This meeting/event was cancelled.", "danger")
+        return redirect(url_for("manage_events"))
+    batch_id = request.form.get("batch_id") or notify.new_batch_id()
+    if request.form.get("mode") == "reminder":
+        today = notify_messages.today_in_manila(datetime.now(timezone.utc))
+        result = _announce(
+            event, batch_id,
+            lambda e, name: notify_messages.event_reminder(e, name, today),
+            "event_reminder", "Reminder")
+        what = "Reminder emails"
+    else:
+        result = _announce(event, batch_id, notify_messages.event_announcement,
+                           "event_announcement", "Announcement")
+        what = "Announcement emails"
+    _flash_batch(result, what, url_for("email_event", event_id=event.id), request.form)
+    return redirect(url_for("manage_events"))
+
+
+@app.route("/admin/events/<int:event_id>/cancel", methods=["POST"])
+@login_required
+@admin_required
+def cancel_event(event_id):
+    event = db.get_or_404(Event, event_id)
+    if event.status != "cancelled":
+        before = _event_snapshot(event)
+        event.status = "cancelled"
+        finance_records.audit("cancel", "event", actor=current_user, record_id=event.id,
+                              summary=f"Cancelled {event.kind} “{event.title}”",
+                              before=before, after=_event_snapshot(event))
+        db.session.commit()
+        flash(f"“{event.title}” cancelled. No more reminders will be sent.", "success")
+    if request.form.get("notify"):
+        batch_id = request.form.get("batch_id") or notify.new_batch_id()
+        items, _ = notify.event_outgoing(event, notify_messages.event_cancelled)
+        result = notify.send_batch(
+            "event_cancelled", items, sent_by=_actor_label(), batch_id=batch_id,
+            dedupe_prefix=f"batch:{batch_id}", event_id=event.id,
+        )
+        if result.attempted:
+            _audit_send(f"Cancellation notice for “{event.title}”: {result.summary()}", record_id=event.id)
+        _flash_batch(result, "Cancellation emails", url_for("cancel_event", event_id=event.id), request.form)
+    return redirect(url_for("manage_events"))
+
+
+@app.route("/admin/events/<int:event_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def delete_event(event_id):
+    event = db.get_or_404(Event, event_id)
+    finance_records.audit("delete", "event", actor=current_user, record_id=event.id,
+                          summary=f"Deleted {event.kind} “{event.title}”",
+                          before=_event_snapshot(event))
+    db.session.delete(event)
+    db.session.commit()
+    flash("Deleted. Emails already sent stay in the email history.", "success")
+    return redirect(url_for("manage_events"))
+
+
+NOTIFY_HISTORY_SIZE = 500
+
+
+@app.route("/admin/notifications")
+@login_required
+@admin_required
+def notifications():
+    entries = NotificationLog.query.order_by(
+        NotificationLog.created_at.desc(), NotificationLog.id.desc()
+    ).limit(NOTIFY_HISTORY_SIZE).all()
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    sent_today = NotificationLog.query.filter(
+        NotificationLog.status == "sent", NotificationLog.created_at >= since
+    ).count()
+    reachable, missing = notify.reachable(notify.active_members())
+    return render_template(
+        "notifications.html",
+        entries=entries,
+        total=NotificationLog.query.count(),
+        page_size=NOTIFY_HISTORY_SIZE,
+        kind_labels=notify.KIND_LABELS,
+        local=notify_messages.local,
+        email_ready=notify_mailer.is_configured(),
+        sender=notify_mailer.sender_address(),
+        sent_today=sent_today,
+        reachable_count=len(reachable),
+        missing=missing,
+        pending=session.get("notify_pending"),
+    )
+
+
+@app.route("/admin/notifications/test", methods=["POST"])
+@login_required
+@admin_required
+def send_test_email():
+    member = current_user.member
+    name = notify.first_name(member) if member else "there"
+    subject, body = notify_messages.test_email(name)
+    item = notify.Outgoing(member=None, email=current_user.email, subject=subject,
+                           body=body, name=member.full_name if member else current_user.email)
+    result = notify.send_batch("test", [item], sent_by=_actor_label())
+    if result.sent:
+        flash(f"Test email sent to {current_user.email}. Check your inbox (and Spam).", "success")
+    else:
+        _flash_batch(result, "Test email")
+    return redirect(url_for("notifications"))
+
+
+@app.route("/admin/notifications/dues", methods=["GET", "POST"])
+@login_required
+@admin_required
+def dues_reminders():
+    default_year, default_quarter = notify.current_quarter()
+    source = request.form if request.method == "POST" else request.args
+    try:
+        year = int(source.get("year") or default_year)
+    except ValueError:
+        year = default_year
+    quarter = source.get("quarter") or default_quarter
+    if quarter not in {"Q1", "Q2", "Q3", "Q4"}:
+        quarter = default_quarter
+
+    rows, recorded = notify.dues_rows(year, quarter)
+
+    if request.method == "POST":
+        chosen = set(request.form.getlist("membership_id"))
+        note = (request.form.get("note") or "").strip()[:2000]
+        batch_id = request.form.get("batch_id") or notify.new_batch_id()
+        items = []
+        for row in rows:
+            if row.member.membership_id in chosen and row.email and row.state != "paid":
+                subject, body = notify_messages.dues_reminder(
+                    notify.first_name(row.member), year, quarter, row.state, row.balance, note)
+                items.append(notify.Outgoing(member=row.member, email=row.email,
+                                             subject=subject, body=body))
+        if not items:
+            flash("Tick at least one member who has an email and hasn't fully paid.", "danger")
+            return redirect(url_for("dues_reminders", year=year, quarter=quarter))
+        result = notify.send_batch("dues_reminder", items, sent_by=_actor_label(),
+                                   batch_id=batch_id, dedupe_prefix=f"batch:{batch_id}")
+        if result.attempted:
+            _audit_send(f"Dues reminders for {quarter} {year}: {result.summary()}")
+        _flash_batch(result, f"{quarter} {year} dues reminders",
+                     url_for("dues_reminders"), request.form)
+        return redirect(url_for("dues_reminders", year=year, quarter=quarter))
+
+    sample_row = next((r for r in rows if r.suggested), None) or (rows[0] if rows else None)
+    sample = None
+    if sample_row:
+        sample = notify_messages.dues_reminder(
+            notify.first_name(sample_row.member), year, quarter,
+            sample_row.state if sample_row.state in {"partial", "unpaid"} else "none",
+            sample_row.balance)
+    return render_template(
+        "dues_reminders.html",
+        rows=rows,
+        recorded=recorded,
+        year=year,
+        quarter=quarter,
+        years=list(range(default_year - 2, default_year + 2)),
+        sample=sample,
+        email_ready=notify_mailer.is_configured(),
+        batch_id=notify.new_batch_id(),
+        pending=session.get("notify_pending"),
+    )
+
+
+@app.route("/admin/notifications/warning", methods=["GET", "POST"])
+@login_required
+@admin_required
+def send_warning():
+    members = notify.active_members()
+    if request.method == "POST":
+        chosen = set(request.form.getlist("membership_id"))
+        category = request.form.get("category", "other")
+        message = (request.form.get("message") or "").strip()
+        batch_id = request.form.get("batch_id") or notify.new_batch_id()
+        if category not in notify_messages.WARNING_CATEGORIES:
+            category = "other"
+        if not chosen:
+            flash("Choose at least one member.", "danger")
+            return redirect(url_for("send_warning"))
+        if len(message) < 10:
+            flash("Write the message to send (at least a sentence).", "danger")
+            return redirect(url_for("send_warning"))
+        items, skipped = [], []
+        for member in members:
+            if member.membership_id not in chosen:
+                continue
+            if not member.notify_email:
+                skipped.append(member.full_name)
+                continue
+            subject, body = notify_messages.warning(notify.first_name(member), category, message[:5000])
+            items.append(notify.Outgoing(member=member, email=member.notify_email,
+                                         subject=subject, body=body))
+        if skipped:
+            flash("No email on file for: " + ", ".join(skipped) + ". Add it on the Members page.", "warning")
+        result = notify.send_batch("warning", items, sent_by=_actor_label(),
+                                   batch_id=batch_id, dedupe_prefix=f"batch:{batch_id}")
+        if result.attempted:
+            label = notify_messages.WARNING_CATEGORIES[category]
+            _audit_send(f"Warning ({label}): {result.summary()}")
+        _flash_batch(result, "Warning emails", url_for("send_warning"), request.form)
+        return redirect(url_for("send_warning"))
+
+    return render_template(
+        "send_warning.html",
+        members=members,
+        categories=notify_messages.WARNING_CATEGORIES,
+        email_ready=notify_mailer.is_configured(),
+        batch_id=notify.new_batch_id(),
+        pending=session.get("notify_pending"),
+    )
+
+
+@app.route("/admin/notifications/pending/dismiss", methods=["POST"])
+@login_required
+@admin_required
+def dismiss_pending_batch():
+    session.pop("notify_pending", None)
+    return redirect(_safe_back_url())
+
+
+# ==================================================
 # FINANCIAL MANAGEMENT
 # ==================================================
 
@@ -1360,672 +1717,6 @@ def financial_management():
             if current_user.role == "admin" else ""
         )
     )
-
-
-# ==================================================
-# ATTENDANCE MANAGEMENT
-# ==================================================
-
-@app.route("/attendance")
-@login_required
-@attendance_read_required
-def attendance_management():
-
-    today = date.today()
-    selected_date_text = request.args.get("attendance_date", "").strip()
-    try:
-        selected_date = _parse_attendance_date(
-            selected_date_text, "attendance date"
-        ) or today
-    except ValueError as error:
-        flash(str(error), "danger")
-        selected_date = today
-
-    members = Member.query.filter_by(status="active").order_by(
-        Member.membership_id
-    ).all()
-    existing_records = Attendance.query.filter(
-        Attendance.attendance_date == selected_date
-    ).all()
-    attendance_by_member = {
-        record.membership_id: record for record in existing_records
-    }
-
-    recent_query = Attendance.query.join(Attendance.member).filter(
-        Attendance.attendance_date >= today - timedelta(days=2),
-        Attendance.attendance_date <= today
-    )
-    member_search = request.args.get("search", "").strip()
-    membership_id = request.args.get("membership_id", "").strip()
-    status = request.args.get("status", "").strip()
-    if member_search:
-        search_pattern = f"%{member_search}%"
-        full_name = (
-            Member.first_name
-            + " "
-            + db.func.coalesce(Member.middle_name, "")
-            + " "
-            + Member.last_name
-        )
-        recent_query = recent_query.filter(
-            db.or_(
-                Member.membership_id.ilike(search_pattern),
-                Member.first_name.ilike(search_pattern),
-                Member.middle_name.ilike(search_pattern),
-                Member.last_name.ilike(search_pattern),
-                full_name.ilike(search_pattern)
-            )
-        )
-    if membership_id:
-        recent_query = recent_query.filter(
-            Member.membership_id == membership_id
-        )
-    if status in ATTENDANCE_STATUSES:
-        recent_query = recent_query.filter(
-            Attendance.attendance_status == status
-        )
-    elif status:
-        status = ""
-
-    recent_records = recent_query.order_by(
-        Attendance.attendance_date.desc(),
-        Member.last_name,
-        Member.first_name
-    ).all()
-
-    return render_template(
-        "attendance.html",
-        members=members,
-        attendance_by_member=attendance_by_member,
-        selected_date=selected_date,
-        recent_records=recent_records,
-        attendance_statuses=ATTENDANCE_STATUSES,
-        member_search=member_search,
-        selected_membership_id=membership_id,
-        selected_status=status
-    )
-
-
-@app.route(
-    "/attendance/save",
-    methods=["POST"]
-)
-@login_required
-@encoder_required
-def save_attendance():
-
-    try:
-        attendance_date = _parse_attendance_date(
-            request.form.get("attendance_date", ""),
-            "attendance date"
-        )
-    except ValueError as error:
-        flash(str(error), "danger")
-        return redirect(url_for("attendance_management"))
-    if attendance_date is None:
-        flash("Attendance date is required.", "danger")
-        return redirect(url_for("attendance_management"))
-
-    members = Member.query.filter_by(status="active").all()
-    updates = []
-    for member in members:
-        attendance_status = request.form.get(
-            f"status_{member.membership_id}", ""
-        ).strip()
-        if not attendance_status:
-            continue
-        if attendance_status not in ATTENDANCE_STATUSES:
-            flash(
-                f"Invalid attendance status for {member.membership_id}.",
-                "danger"
-            )
-            return redirect(url_for(
-                "attendance_management",
-                attendance_date=attendance_date.isoformat()
-            ))
-        try:
-            time_in = _parse_attendance_time(
-                request.form.get(f"time_in_{member.membership_id}", ""),
-                "time in"
-            )
-            time_out = _parse_attendance_time(
-                request.form.get(f"time_out_{member.membership_id}", ""),
-                "time out"
-            )
-        except ValueError as error:
-            flash(
-                f"{member.membership_id}: {error}",
-                "danger"
-            )
-            return redirect(url_for(
-                "attendance_management",
-                attendance_date=attendance_date.isoformat()
-            ))
-        updates.append((
-            member,
-            attendance_status,
-            time_in,
-            time_out,
-            request.form.get(
-                f"remarks_{member.membership_id}", ""
-            ).strip()
-        ))
-
-    if not updates:
-        flash("Choose an attendance status for at least one member.", "danger")
-        return redirect(url_for(
-            "attendance_management",
-            attendance_date=attendance_date.isoformat()
-        ))
-
-    member_ids = [member.membership_id for member, *_ in updates]
-    existing_records = Attendance.query.filter(
-        Attendance.attendance_date == attendance_date,
-        Attendance.membership_id.in_(member_ids)
-    ).all()
-    records_by_member = {
-        record.membership_id: record for record in existing_records
-    }
-    for member, attendance_status, time_in, time_out, remarks in updates:
-        record = records_by_member.get(member.membership_id)
-        if record is None:
-            record = Attendance(
-                membership_id=member.membership_id,
-                attendance_date=attendance_date
-            )
-            db.session.add(record)
-        record.attendance_status = attendance_status
-        record.time_in = time_in
-        record.time_out = time_out
-        record.remarks = remarks or None
-
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.logger.exception(
-            "Failed to save attendance for %s.", attendance_date
-        )
-        flash(
-            "Attendance could not be saved. Please retry; duplicate "
-            "member/date records are prevented.",
-            "danger"
-        )
-        return redirect(url_for(
-            "attendance_management",
-            attendance_date=attendance_date.isoformat()
-        ))
-
-    flash(
-        f"Attendance saved for {len(updates)} member(s) on "
-        f"{attendance_date.isoformat()}.",
-        "success"
-    )
-    return redirect(url_for(
-        "attendance_management",
-        attendance_date=attendance_date.isoformat()
-    ))
-
-
-@app.route(
-    "/attendance/<int:attendance_id>/edit",
-    methods=["POST"]
-)
-@login_required
-@encoder_required
-def edit_attendance(attendance_id):
-
-    record = Attendance.query.get_or_404(attendance_id)
-    attendance_status = request.form.get(
-        "attendance_status", ""
-    ).strip()
-    if attendance_status not in ATTENDANCE_STATUSES:
-        flash("Choose a valid attendance status.", "danger")
-        return redirect(url_for("attendance_history"))
-    try:
-        time_in = _parse_attendance_time(
-            request.form.get("time_in", ""),
-            "time in"
-        )
-        time_out = _parse_attendance_time(
-            request.form.get("time_out", ""),
-            "time out"
-        )
-    except ValueError as error:
-        flash(str(error), "danger")
-        return redirect(url_for("attendance_history"))
-
-    record.attendance_status = attendance_status
-    record.time_in = time_in
-    record.time_out = time_out
-    record.remarks = request.form.get("remarks", "").strip() or None
-    db.session.commit()
-    flash("Attendance record updated.", "success")
-    return redirect(url_for(
-        "attendance_history",
-        **request.args.to_dict()
-    ))
-
-
-@app.route(
-    "/attendance/<int:attendance_id>/delete",
-    methods=["POST"]
-)
-@login_required
-@admin_required
-def delete_attendance(attendance_id):
-
-    record = Attendance.query.get_or_404(attendance_id)
-    db.session.delete(record)
-    db.session.commit()
-    flash("Attendance record deleted.", "success")
-    return redirect(url_for(
-        "attendance_history",
-        **request.args.to_dict()
-    ))
-
-
-@app.route("/attendance/history")
-@login_required
-@attendance_read_required
-def attendance_history():
-
-    try:
-        query, filters = _attendance_filters(request.args)
-    except ValueError as error:
-        flash(str(error), "danger")
-        return redirect(url_for("attendance_history"))
-
-    records = query.order_by(
-        Attendance.attendance_date.desc(),
-        Member.last_name,
-        Member.first_name
-    ).all()
-    members = Member.query.order_by(Member.membership_id).all()
-    return render_template(
-        "attendance_history.html",
-        records=records,
-        members=members,
-        filters=filters,
-        attendance_statuses=ATTENDANCE_STATUSES
-    )
-
-
-@app.route(
-    "/attendance/import",
-    methods=["POST"]
-)
-@login_required
-@encoder_required
-def import_attendance():
-
-    uploaded_file = request.files.get("file")
-    if not uploaded_file or not uploaded_file.filename:
-        flash("Choose an attendance CSV file to import.", "danger")
-        return redirect(url_for("attendance_management"))
-    try:
-        content = uploaded_file.read().decode("utf-8-sig")
-    except UnicodeDecodeError:
-        flash("The CSV file must use UTF-8 encoding.", "danger")
-        return redirect(url_for("attendance_management"))
-
-    reader = csv.DictReader(io.StringIO(content), strict=True)
-    required_headers = {
-        "membership_id",
-        "attendance_date",
-        "attendance_status"
-    }
-    if not reader.fieldnames:
-        flash("The CSV file is empty or has no header row.", "danger")
-        return redirect(url_for("attendance_management"))
-    header_map = {
-        (header or "").strip().casefold(): header
-        for header in reader.fieldnames
-    }
-    if not required_headers.issubset(header_map):
-        flash(
-            "CSV headers must include Membership_ID, Attendance_Date, "
-            "and Attendance_Status. Time_In, Time_Out, and Remarks are optional.",
-            "danger"
-        )
-        return redirect(url_for("attendance_management"))
-    try:
-        rows = list(reader)
-    except csv.Error:
-        flash(
-            "The CSV file contains malformed rows and was not imported.",
-            "danger"
-        )
-        return redirect(url_for("attendance_management"))
-
-    optional_headers = {
-        "time_in", "time_out", "remarks"
-    }
-    members_by_id = {
-        member.membership_id: member
-        for member in Member.query.all()
-    }
-    errors = []
-    validated_rows = []
-    seen_pairs = set()
-    for row_number, row in enumerate(rows, start=2):
-        values = {
-            field: (row.get(header_map[field]) or "").strip()
-            for field in required_headers | (optional_headers & header_map.keys())
-        }
-        if not any(values.values()):
-            continue
-        membership_id = values["membership_id"]
-        member = members_by_id.get(membership_id)
-        if not member:
-            errors.append(
-                f"Row {row_number}: Membership_ID '{membership_id}' "
-                "does not exist."
-            )
-            continue
-        try:
-            attendance_date = _parse_attendance_date(
-                values["attendance_date"], "attendance date"
-            )
-        except ValueError:
-            attendance_date = None
-        if attendance_date is None:
-            errors.append(f"Row {row_number}: invalid Attendance_Date.")
-            continue
-        status = values["attendance_status"].casefold()
-        status_by_casefold = {
-            item.casefold(): item for item in ATTENDANCE_STATUSES
-        }
-        attendance_status = status_by_casefold.get(status)
-        if attendance_status is None:
-            errors.append(f"Row {row_number}: invalid Attendance_Status.")
-            continue
-        pair = (membership_id, attendance_date)
-        if pair in seen_pairs:
-            errors.append(
-                f"Row {row_number}: duplicate member/date pair in CSV."
-            )
-            continue
-        seen_pairs.add(pair)
-        try:
-            time_in = _parse_attendance_time(
-                values.get("time_in", ""), "time in"
-            )
-            time_out = _parse_attendance_time(
-                values.get("time_out", ""), "time out"
-            )
-        except ValueError as error:
-            errors.append(f"Row {row_number}: {error}")
-            continue
-        validated_rows.append({
-            "membership_id": membership_id,
-            "attendance_date": attendance_date,
-            "attendance_status": attendance_status,
-            "time_in": time_in,
-            "time_out": time_out,
-            "remarks": values.get("remarks", "") or None
-        })
-
-    existing_by_pair = {}
-    grouped_by_date = {}
-    for row in validated_rows:
-        grouped_by_date.setdefault(
-            row["attendance_date"], set()
-        ).add(row["membership_id"])
-    for attendance_date, member_ids in grouped_by_date.items():
-        existing_records = Attendance.query.filter(
-            Attendance.attendance_date == attendance_date,
-            Attendance.membership_id.in_(member_ids)
-        ).all()
-        existing_by_pair.update({
-            (record.membership_id, record.attendance_date): record
-            for record in existing_records
-        })
-
-    imported = 0
-    updated = 0
-    for row in validated_rows:
-        key = (row["membership_id"], row["attendance_date"])
-        record = existing_by_pair.get(key)
-        if record is None:
-            record = Attendance(
-                membership_id=row["membership_id"],
-                attendance_date=row["attendance_date"]
-            )
-            db.session.add(record)
-            existing_by_pair[key] = record
-            imported += 1
-        else:
-            updated += 1
-        record.attendance_status = row["attendance_status"]
-        record.time_in = row["time_in"]
-        record.time_out = row["time_out"]
-        record.remarks = row["remarks"]
-
-    if validated_rows:
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.logger.exception("Failed to import attendance CSV.")
-            flash(
-                "Attendance CSV could not be saved. No import changes were "
-                "committed.",
-                "danger"
-            )
-            return redirect(url_for("attendance_management"))
-
-    if imported or updated:
-        flash(
-            f"Attendance import complete: {imported} added, "
-            f"{updated} existing record(s) updated.",
-            "success"
-        )
-    if errors:
-        details = " ".join(errors[:10])
-        if len(errors) > 10:
-            details += f" Plus {len(errors) - 10} additional invalid row(s)."
-        flash(f"Skipped {len(errors)} row(s). {details}", "danger")
-    if not validated_rows and not errors:
-        flash("The CSV contains no attendance records.", "danger")
-    return redirect(url_for("attendance_management"))
-
-
-def _attendance_export_response(export_format):
-    try:
-        query, filters = _attendance_filters(request.args)
-    except ValueError as error:
-        flash(str(error), "danger")
-        return redirect(url_for("attendance_history"))
-
-    records = query.order_by(
-        Attendance.attendance_date.desc(),
-        Member.last_name,
-        Member.first_name
-    ).all()
-    if export_format == "csv":
-        output = io.StringIO(newline="")
-        writer = csv.writer(output)
-        writer.writerow([
-            "Membership_ID",
-            "Last_Name",
-            "First_Name",
-            "Middle_Name",
-            "Org_Role",
-            "Attendance_Date",
-            "Attendance_Status",
-            "Time_In",
-            "Time_Out",
-            "Remarks"
-        ])
-        for record in records:
-            member = record.member
-            writer.writerow([
-                member.membership_id,
-                member.last_name,
-                member.first_name,
-                member.middle_name or "",
-                member.org_role,
-                record.attendance_date.isoformat(),
-                record.attendance_status,
-                record.time_in.strftime("%H:%M") if record.time_in else "",
-                record.time_out.strftime("%H:%M") if record.time_out else "",
-                record.remarks or ""
-            ])
-        return Response(
-            "\ufeff" + output.getvalue(),
-            mimetype="text/csv; charset=utf-8",
-            headers={
-                "Content-Disposition":
-                    "attachment; filename=attendance-report.csv"
-            }
-        )
-
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER
-    from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.platypus import (
-        Paragraph,
-        SimpleDocTemplate,
-        Spacer,
-        Table,
-        TableStyle
-    )
-
-    pdf_buffer = io.BytesIO()
-    document = SimpleDocTemplate(
-        pdf_buffer,
-        pagesize=landscape(letter),
-        rightMargin=0.35 * inch,
-        leftMargin=0.35 * inch,
-        topMargin=0.4 * inch,
-        bottomMargin=0.4 * inch
-    )
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "AttendanceTitle",
-        parent=styles["Title"],
-        alignment=TA_CENTER,
-        textColor=colors.HexColor("#5d4b9a")
-    )
-    cell_style = ParagraphStyle(
-        "AttendanceCell",
-        parent=styles["BodyText"],
-        fontSize=7,
-        leading=8
-    )
-    date_label = (
-        filters["attendance_date"]
-        or (
-            f"{filters['start_date']} to {filters['end_date']}"
-            if filters["start_date"] or filters["end_date"]
-            else "All dates"
-        )
-    )
-    status_counts = {
-        status: sum(
-            record.attendance_status == status for record in records
-        )
-        for status in ATTENDANCE_STATUSES
-    }
-    total = len(records)
-    total_members = len({
-        record.membership_id for record in records
-    })
-    attendance_rate = (
-        (status_counts["Present"] + status_counts["Late"]) / total * 100
-        if total else 0
-    )
-    story = [
-        Paragraph("Organization Name (customize here)", styles["Heading2"]),
-        Paragraph("Attendance Report", title_style),
-        Paragraph(
-            f"Date: {date_label} &nbsp;&nbsp; "
-            f"Generated: {date.today().isoformat()}",
-            styles["Normal"]
-        ),
-        Spacer(1, 10),
-        Paragraph(
-            f"Total Members: {total_members} &nbsp;&nbsp; "
-            f"Attendance Records: {total} &nbsp;&nbsp; "
-            f"Present: {status_counts['Present']} &nbsp;&nbsp; "
-            f"Absent: {status_counts['Absent']} &nbsp;&nbsp; "
-            f"Late: {status_counts['Late']} &nbsp;&nbsp; "
-            f"Excused: {status_counts['Excused']} &nbsp;&nbsp; "
-            f"Attendance Rate (Present + Late): {attendance_rate:.1f}%",
-            styles["Normal"]
-        ),
-        Spacer(1, 10)
-    ]
-    table_data = [[
-        "Membership ID", "Last Name", "First Name", "Middle Name",
-        "Org Role", "Date", "Status", "Time In", "Time Out", "Remarks"
-    ]]
-    for record in records:
-        member = record.member
-        table_data.append([
-            Paragraph(escape(member.membership_id), cell_style),
-            Paragraph(escape(member.last_name), cell_style),
-            Paragraph(escape(member.first_name), cell_style),
-            Paragraph(escape(member.middle_name or ""), cell_style),
-            Paragraph(escape(member.org_role), cell_style),
-            record.attendance_date.isoformat(),
-            record.attendance_status,
-            record.time_in.strftime("%H:%M") if record.time_in else "",
-            record.time_out.strftime("%H:%M") if record.time_out else "",
-            Paragraph(escape(record.remarks or ""), cell_style)
-        ])
-    report_table = Table(
-        table_data,
-        repeatRows=1,
-        colWidths=[
-            0.78 * inch, 0.83 * inch, 0.83 * inch, 0.83 * inch,
-            0.78 * inch, 0.68 * inch, 0.62 * inch, 0.52 * inch,
-            0.52 * inch, 2.25 * inch
-        ]
-    )
-    report_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#5d4b9a")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 7),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d9d6e3")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
-            colors.white, colors.HexColor("#f4f2f8")
-        ]),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4)
-    ]))
-    story.append(report_table)
-    document.build(story)
-    pdf_buffer.seek(0)
-    return Response(
-        pdf_buffer.getvalue(),
-        mimetype="application/pdf",
-        headers={
-            "Content-Disposition":
-                "attachment; filename=attendance-report.pdf"
-        }
-    )
-
-
-@app.route("/attendance/export.csv")
-@login_required
-@encoder_required
-def export_attendance_csv():
-    return _attendance_export_response("csv")
-
-
-@app.route("/attendance/export.pdf")
-@login_required
-@encoder_required
-def export_attendance_pdf():
-    return _attendance_export_response("pdf")
 
 
 # ==================================================
@@ -2564,10 +2255,12 @@ def resync_finance_sheet():
 AUDIT_ACTION_LABELS = {
     "create": "Added", "update": "Edited", "delete": "Deleted", "import": "Imported",
     "restore": "Restored", "resync": "Sheet resync", "member_create": "Member created",
+    "cancel": "Cancelled", "email": "Emails sent",
 }
 AUDIT_ENTITY_LABELS = {
     **{key: ledger.label for key, ledger in LEDGERS.items()},
     "members": "Members", "sheet": "Google Sheet",
+    "event": "Meeting / event", "notification": "Notifications",
 }
 AUDIT_PAGE_SIZE = 500
 
@@ -2628,20 +2321,43 @@ def restore_audit_entry(entry_id):
 # token and any other caller is refused.
 # ==================================================
 
+def _cron_authorized():
+    secret = (os.getenv("CRON_SECRET") or "").strip()
+    if not secret:
+        return True
+    supplied = request.headers.get("Authorization", "")
+    return hmac.compare_digest(supplied, f"Bearer {secret}")
+
+
+def _run_reminders_safely():
+    try:
+        return notify.run_daily_reminders()
+    except Exception:   # a reminder problem must never break the keep-alive
+        db.session.rollback()
+        app.logger.exception("Daily reminders failed.")
+        return {"error": "reminders failed"}
+
+
 @app.route("/api/keepalive")
 def keepalive():
-    secret = (os.getenv("CRON_SECRET") or "").strip()
-    if secret:
-        supplied = request.headers.get("Authorization", "")
-        if not hmac.compare_digest(supplied, f"Bearer {secret}"):
-            abort(401)
+    if not _cron_authorized():
+        abort(401)
     try:
         db.session.execute(db.text("select 1 from members limit 1"))
     except SQLAlchemyError:
         db.session.rollback()
         app.logger.exception("Keep-alive query failed.")
         return {"ok": False}, 503
-    return {"ok": True}
+    return {"ok": True, "reminders": _run_reminders_safely()}
+
+
+# A second daily run (evening in Manila) sends anything the morning run
+# could not finish. Duplicates are impossible: each email is reserved first.
+@app.route("/api/reminders")
+def daily_reminders():
+    if not _cron_authorized():
+        abort(401)
+    return {"ok": True, "reminders": _run_reminders_safely()}
 
 # ==================================================
 # FINANCIAL EXPORT REQUESTS

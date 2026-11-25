@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dues Reminders - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <header class="ledger-header">
+            <div>
+                <h1>Dues Reminders</h1>
+                <p>Email members who haven't fully paid their membership dues for a quarter. Each member gets their own email showing only their own balance.</p>
+            </div>
+            {% set owing = rows|selectattr("suggested")|list %}
+            <dl class="ledger-stats">
+                <div><dt>Not fully paid</dt><dd>{{ rows|selectattr("state", "in", ["partial", "unpaid"])|list|length }}</dd></div>
+                <div><dt>No record</dt><dd>{{ rows|selectattr("state", "equalto", "none")|list|length }}</dd></div>
+            </dl>
+        </header>
+
+        {% include "_notify_top.html" %}
+
+        <form method="GET" action="{{ url_for('dues_reminders') }}" class="card quarter-picker">
+            <label for="q_year">Year</label>
+            <select id="q_year" name="year">{% for y in years %}<option {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}</select>
+            <label for="q_quarter">Quarter</label>
+            <select id="q_quarter" name="quarter">{% for q in ["Q1", "Q2", "Q3", "Q4"] %}<option {% if q == quarter %}selected{% endif %}>{{ q }}</option>{% endfor %}</select>
+            <button class="btn btn-secondary" type="submit">Show</button>
+        </form>
+
+        {% if not recorded %}
+        <div class="message warning">No dues are recorded for {{ quarter }} {{ year }} yet, so the website can't tell who has paid. Import that quarter's membership-fee sheet first (Manage Finances → Membership Fees), or tick members yourself.</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('dues_reminders') }}" id="dues-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="batch_id" value="{{ batch_id }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="quarter" value="{{ quarter }}">
+
+            <section class="card ledger-card">
+                <div class="ledger-toolbar">
+                    <h2>Who gets a reminder for {{ quarter }} {{ year }}</h2>
+                    <div class="filter-status">
+                        <button type="button" class="link-btn" data-pick="owing">Tick unpaid &amp; partial</button>
+                        <button type="button" class="link-btn" data-pick="all">Tick everyone not paid</button>
+                        <button type="button" class="link-btn" data-pick="none">Untick all</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="ledger-table">
+                        <thead><tr><th class="check-col"><span class="sr-only">Send</span></th><th>Member</th><th>Email</th><th>{{ quarter }} {{ year }} dues</th></tr></thead>
+                        <tbody>
+                        {% for row in rows %}
+                        {% set can_send = row.email and row.state != "paid" %}
+                        <tr>
+                            <td class="check-col">
+                                <input type="checkbox" name="membership_id" value="{{ row.member.membership_id }}" aria-label="Send to {{ row.member.full_name }}"
+                                       data-state="{{ row.state }}" {% if row.suggested %}checked{% endif %} {% if not can_send %}disabled{% endif %}>
+                            </td>
+                            <td>{{ row.member.full_name }} <span class="muted">{{ row.member.membership_id }}</span></td>
+                            <td>{% if row.email %}{{ row.email }}{% else %}<span class="muted">No email — <a href="{{ url_for('manage_members', q=row.member.membership_id) }}">add</a></span>{% endif %}</td>
+                            <td><span class="pill pill-{{ 'unpaid' if row.state in ['unpaid', 'none'] else row.state }}">{{ row.label }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4">No active members.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card ledger-card">
+                <h2>Message</h2>
+                <div class="form-field form-field-full">
+                    <label for="note">Extra note (optional, added to every email)</label>
+                    <textarea id="note" name="note" rows="3" maxlength="2000" placeholder="e.g. You can pay the treasurer at the next meeting or send via GCash to 09xx…"></textarea>
+                </div>
+                {% if sample %}
+                <details class="email-preview">
+                    <summary>Preview of one email</summary>
+                    <p><strong>Subject:</strong> {{ sample[0] }}</p>
+                    <pre>{{ sample[1] }}</pre>
+                </details>
+                {% endif %}
+                <div class="form-actions">
+                    <button class="btn btn-primary" type="submit" {% if not email_ready %}disabled title="Connect Gmail first"{% endif %}>Send reminders to <span id="pick-count">{{ owing|length }}</span> member(s)</button>
+                </div>
+            </section>
+        </form>
+    </main>
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+    <script>
+        (function () {
+            var boxes = Array.prototype.slice.call(document.querySelectorAll("#dues-form input[name=membership_id]:not([disabled])"));
+            var count = document.getElementById("pick-count");
+            function update() { count.textContent = boxes.filter(function (b) { return b.checked; }).length; }
+            boxes.forEach(function (b) { b.addEventListener("change", update); });
+            document.querySelectorAll("[data-pick]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var mode = button.dataset.pick;
+                    boxes.forEach(function (b) {
+                        b.checked = mode === "all" || (mode === "owing" && (b.dataset.state === "unpaid" || b.dataset.state === "partial"));
+                    });
+                    update();
+                });
+            });
+            document.getElementById("dues-form").addEventListener("submit", function (event) {
+                var n = boxes.filter(function (b) { return b.checked; }).length;
+                if (!n || !window.confirm("Send a dues reminder email to " + n + " member(s)?")) { event.preventDefault(); }
+            });
+        })();
+    </script>
+</body>
+</html>

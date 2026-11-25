@@ -1,0 +1,34 @@
+{# Shared top of the notification pages: tabs, email status, unfinished batch. #}
+<nav class="notify-tabs" aria-label="Notifications">
+    {% for endpoint, label in [("manage_events", "Meetings & Events"), ("dues_reminders", "Dues Reminders"), ("send_warning", "Send a Warning"), ("notifications", "Email History & Setup")] %}
+    <a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="message {{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
+
+{% if not email_ready %}
+<div class="message warning">
+    <strong>Email isn't connected yet.</strong> You can set everything up, but nothing will be sent until the Gmail settings are added.
+    <a href="{{ url_for('notifications') }}#setup">How to connect Gmail</a>
+</div>
+{% endif %}
+
+{% if pending %}
+<div class="message warning pending-batch">
+    <span><strong>{{ pending.label }}:</strong> {{ pending.remaining }} email(s) still to send. Sending happens in rounds so the website doesn't time out. Nobody gets a duplicate.</span>
+    <form method="POST" action="{{ pending.url }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for name, value in pending.fields %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+        <button class="btn btn-small btn-primary" type="submit">Continue sending</button>
+    </form>
+    <form method="POST" action="{{ url_for('dismiss_pending_batch') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="link-btn" type="submit">Stop here</button>
+    </form>
+</div>
+{% endif %}

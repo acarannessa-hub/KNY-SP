@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send a Warning - KNY-SP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+</head>
+<body>
+    {% include "private_header.html" %}
+    <main class="private-container ledger-page">
+        <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <header class="ledger-header">
+            <div>
+                <h1>Send a Warning</h1>
+                <p>Email a formal notice to one or more members. Each person gets a separate email, so nobody sees who else received it. Every warning is kept in the email history.</p>
+            </div>
+        </header>
+
+        {% include "_notify_top.html" %}
+
+        <form method="POST" action="{{ url_for('send_warning') }}" id="warning-form" class="card form-card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="batch_id" value="{{ batch_id }}">
+
+            <div class="form-grid">
+                <div class="form-field form-field-full">
+                    <label for="member_search">To <span class="req" aria-hidden="true">*</span></label>
+                    <input type="search" id="member_search" class="member-search" placeholder="Type a name or Membership ID to filter" autocomplete="off">
+                    <div class="member-checklist" id="member-checklist">
+                        {% for m in members %}
+                        <label data-name="{{ m.full_name }}" data-search="{{ (m.membership_id ~ ' ' ~ m.full_name ~ ' ' ~ (m.notify_email or ''))|lower }}">
+                            <input type="checkbox" name="membership_id" value="{{ m.membership_id }}" {% if not m.notify_email %}disabled{% endif %}>
+                            {{ m.full_name }} <span class="muted">{{ m.membership_id }}{% if not m.notify_email %} · no email{% endif %}</span>
+                        </label>
+                        {% else %}
+                        <p class="muted">No active members.</p>
+                        {% endfor %}
+                    </div>
+                    <small class="field-hint"><span id="chosen-count">0</span> selected. Members without an email can't be chosen; add it on the Members page.</small>
+                </div>
+                <div class="form-field">
+                    <label for="category">Reason</label>
+                    <select id="category" name="category">
+                        {% for value, label in categories.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                    <small class="field-hint">Shown in the subject line, e.g. “Notice from Kaya Natin! Youth – Candelaria: Conduct”.</small>
+                </div>
+                <div class="form-field form-field-full">
+                    <label for="message">Message <span class="req" aria-hidden="true">*</span></label>
+                    <textarea id="message" name="message" rows="7" maxlength="5000" required placeholder="Explain the concern, what is expected, and by when. Each email starts with “Hi (first name),” automatically."></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-danger" type="submit" {% if not email_ready %}disabled title="Connect Gmail first"{% endif %}>Send warning</button>
+            </div>
+        </form>
+    </main>
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+    <script>
+        (function () {
+            var search = document.getElementById("member_search");
+            var labels = Array.prototype.slice.call(document.querySelectorAll("#member-checklist label"));
+            var count = document.getElementById("chosen-count");
+            function chosen() { return labels.filter(function (l) { return l.querySelector("input").checked; }); }
+            search.addEventListener("input", function () {
+                var q = search.value.trim().toLowerCase();
+                labels.forEach(function (l) { l.hidden = q && l.dataset.search.indexOf(q) === -1; });
+            });
+            labels.forEach(function (l) { l.querySelector("input").addEventListener("change", function () { count.textContent = chosen().length; }); });
+            document.getElementById("warning-form").addEventListener("submit", function (event) {
+                var names = chosen().map(function (l) { return l.dataset.name; });
+                if (!names.length) { event.preventDefault(); window.alert("Choose at least one member."); return; }
+                if (!window.confirm("Send this warning by email to " + names.length + " member(s)?\n\n" + names.slice(0, 10).join("\n") + (names.length > 10 ? "\n…" : ""))) {
+                    event.preventDefault();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
