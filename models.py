@@ -669,3 +669,28 @@ class NotificationLog(db.Model):
     error = db.Column(db.Text)
     sent_by = db.Column(db.String(150))
     dedupe_key = db.Column(db.String(120), unique=True)
+
+
+# ==================================================
+# PASSWORD RESET TOKENS  ("Forgot password" links; only a hash is stored)
+# ==================================================
+
+class PasswordResetToken(db.Model):
+
+    __tablename__ = "password_reset_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(
+        Uuid,
+        db.ForeignKey("profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        server_default=db.func.current_timestamp()
+    )
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True))
+    requested_ip = db.Column(db.String(64))

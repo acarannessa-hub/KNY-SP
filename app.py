@@ -61,6 +61,7 @@ from services.finance import sheets_mirror as finance_sheets_mirror
 from services.notifications import mailer as notify_mailer
 from services.notifications import messages as notify_messages
 from services.notifications import service as notify
+from services import accounts
 
 
 # ==================================================
@@ -517,25 +518,71 @@ def logout():
 def forgot_password():
 
     if current_user.is_authenticated:
-
-        return redirect(
-            url_for("dashboard")
-        )
+        return redirect(url_for("change_password"))
 
     if request.method == "POST":
+        email = request.form.get("email", "")
+        try:
+            status = accounts.request_reset(email, _client_ip(), _reset_link)
+        except Exception:   # never reveal anything about the account
+            db.session.rollback()
+            app.logger.exception("Password reset request failed.")
+            status = "failed"
+        if status in {"failed", "limited"}:
+            app.logger.warning("Password reset request not sent (%s).", status)
 
+        # Same answer whatever happened, so nobody can test which emails exist.
         flash(
-            "If that email is registered, please contact an administrator to reset your password.",
+            "If that email belongs to an active account, we've sent a link to reset "
+            "the password. It works for 30 minutes. Check your Spam folder too, and "
+            "if nothing arrives, contact an administrator.",
             "success"
         )
+        return redirect(url_for("forgot_password"))
 
-        return redirect(
-            url_for("forgot_password")
+    return render_template("forgot_password.html")
+
+
+def _client_ip():
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    return (forwarded.split(",")[0].strip() if forwarded else request.remote_addr) or ""
+
+
+def _reset_link(token):
+    base = (os.getenv("SITE_URL") or "").strip().rstrip("/")
+    path = url_for("reset_password_with_link", token=token)
+    return f"{base}{path}" if base else url_for("reset_password_with_link", token=token, _external=True)
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password_with_link(token):
+
+    if request.method == "POST":
+        ok, message = accounts.complete_reset(
+            token,
+            request.form.get("password", ""),
+            request.form.get("confirm_password", ""),
         )
+        if ok:
+            if current_user.is_authenticated:
+                logout_user()
+            flash(message, "success")
+            return redirect(url_for("login"))
+        flash(message, "danger")
+        if message == accounts.INVALID_LINK:
+            return redirect(url_for("forgot_password"))
+        return redirect(url_for("reset_password_with_link", token=token))
 
-    return render_template(
-        "forgot_password.html"
-    )
+    row, profile = accounts.check_token(token)
+    if row is None:
+        flash(accounts.INVALID_LINK, "danger")
+        return redirect(url_for("forgot_password"))
+
+    response = app.make_response(render_template("reset_password.html", email=profile.email))
+    # The link is a secret: never cache this page or leak it to other sites.
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 # ==================================================
@@ -636,6 +683,8 @@ def change_password():
             return redirect(
                 url_for("change_password")
             )
+
+        accounts.notify_password_changed(current_user, "from your account's Change Password page")
 
         flash(
             "Password changed successfully.",
@@ -1259,6 +1308,8 @@ def reset_password(user_id):
     except supabase_auth.AuthError as error:
         flash(str(error), "danger")
         return redirect(url_for("manage_users"))
+
+    accounts.notify_password_changed(user, "by an administrator")
 
     flash(
         f"Password for {user.email} has been reset.",
@@ -2255,12 +2306,12 @@ def resync_finance_sheet():
 AUDIT_ACTION_LABELS = {
     "create": "Added", "update": "Edited", "delete": "Deleted", "import": "Imported",
     "restore": "Restored", "resync": "Sheet resync", "member_create": "Member created",
-    "cancel": "Cancelled", "email": "Emails sent",
+    "cancel": "Cancelled", "email": "Emails sent", "password_reset": "Password reset",
 }
 AUDIT_ENTITY_LABELS = {
     **{key: ledger.label for key, ledger in LEDGERS.items()},
     "members": "Members", "sheet": "Google Sheet",
-    "event": "Meeting / event", "notification": "Notifications",
+    "event": "Meeting / event", "notification": "Notifications", "account": "Account",
 }
 AUDIT_PAGE_SIZE = 500
 

@@ -28,6 +28,8 @@ KIND_LABELS = {
     "dues_reminder": "Dues reminder",
     "warning": "Warning / notice",
     "test": "Test email",
+    "password_reset": "Password reset link",
+    "password_changed": "Password changed notice",
 }
 
 INTERRUPTED = "Sending was interrupted; this email may not have been delivered."
@@ -75,6 +77,7 @@ class Outgoing:
     subject: str
     body: str
     name: str = ""
+    log_body: str | None = None     # what the history stores, if different (e.g. link removed)
 
 
 @dataclass
@@ -155,7 +158,7 @@ def send_batch(kind, outgoing, *, sent_by, dedupe_prefix=None, event_id=None,
                     kind=kind,
                     batch_id=batch_id,
                     subject=item.subject[:255],
-                    body=item.body,
+                    body=item.body if item.log_body is None else item.log_body,
                     recipient_email=item.email,
                     membership_id=item.member.membership_id if item.member is not None else None,
                     recipient_name=(item.name or (item.member.full_name if item.member is not None else ""))[:255],

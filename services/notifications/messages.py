@@ -141,5 +141,33 @@ def test_email(sender_name):
     return subject, body
 
 
+def password_reset(first_name, link, minutes):
+    subject = f"Reset your {ORG_NAME} password"
+    body = (
+        f"Hi {first_name},\n\n"
+        "Someone (hopefully you) asked to reset the password for your account on "
+        f"the {ORG_NAME} website. To choose a new password, open this link:\n\n"
+        f"{link}\n\n"
+        f"The link works once and expires in {minutes} minutes.\n\n"
+        "If you didn't ask for this, you can ignore this email. Your password "
+        "stays the same.\n\n"
+        f"{_sign_off()}"
+    )
+    return subject, body
+
+
+def password_changed(first_name, how):
+    subject = f"Your {ORG_NAME} password was changed"
+    body = (
+        f"Hi {first_name},\n\n"
+        f"The password for your account on the {ORG_NAME} website was just changed {how}.\n\n"
+        "If this was you, there's nothing else to do.\n\n"
+        "If it wasn't you, use \"Forgot Password?\" on the login page right away to "
+        "set a new password, and tell an administrator.\n\n"
+        f"{_sign_off()}"
+    )
+    return subject, body
+
+
 def today_in_manila(now):
     return now.astimezone(MANILA).date() if now else date.today()
