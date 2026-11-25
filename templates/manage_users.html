@@ -3,20 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - KNY-SP</title>
+    <title>Portal Accounts - KNY-SP</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
 </head>
 <body>
     {% include "private_header.html" %}
-    <main class="private-container">
+    <main class="private-container ledger-page">
         <a class="back" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
-        <div class="page-heading-row">
-            <header class="page-heading">
-                <h1>User Management</h1>
-                <p>Manage portal accounts and assign system permissions independently of organization roles.</p>
-            </header>
-            <a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Manage Members</a>
-        </div>
+
+        <header class="ledger-header">
+            <div>
+                <h1>Portal Accounts</h1>
+                <p>Logins to this website. Each account belongs to a member and has a system role that decides what they can do. Deactivated accounts can't log in.</p>
+            </div>
+            <dl class="ledger-stats">
+                {% for role, label in roles.items() %}
+                <div><dt>{{ label }}s</dt><dd>{{ counts[role] }}</dd></div>
+                {% endfor %}
+                {% if inactive %}<div><dt>Inactive</dt><dd>{{ inactive }}</dd></div>{% endif %}
+            </dl>
+        </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
@@ -24,183 +30,186 @@
             {% endfor %}
         {% endwith %}
 
-        <section class="card add-user" id="add-user-form">
-            <h2>Add New User</h2>
-            <p>Select an existing member; their name and organization role remain in the member directory.</p>
-            <form method="POST" action="{{ url_for('add_user') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-grid record-form-grid">
-                    <div class="form-field form-field-full">
-                        <label for="new_membership_id">Member</label>
-                        <select id="new_membership_id" name="membership_id" required>
-                            <option value="">Select an active member</option>
-                            {% for member in members if member.status == "active" %}
-                            <option value="{{ member.membership_id }}">{{ member.membership_id }} — {{ member.full_name }} ({{ member.org_role }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label for="new_email">Email</label>
-                        <input type="email" id="new_email" name="email" placeholder="Email address" required>
-                    </div>
-                    <div class="form-field">
-                        <label for="new_password">Temporary Password</label>
-                        <input type="password" id="new_password" name="password" minlength="8" required>
-                    </div>
-                    <div class="form-field">
-                        <label for="new_role">System Role</label>
-                        <select id="new_role" name="role" required>
-                            <option value="" selected disabled>Select a system role</option>
-                            <option value="viewer">Viewer</option>
-                            <option value="encoder">Encoder</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label for="new_status">Status</label>
-                        <select id="new_status" name="status" required>
-                            <option value="active" selected>Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
+        <section class="card ledger-card" aria-label="Portal accounts">
+            <div class="ledger-toolbar">
+                <div class="filter-status">
+                    <span class="muted">Use the ▾ on a column heading to sort or filter.</span>
+                    <span id="ledger-showing" class="filter-count" hidden></span>
+                    <button type="button" class="link-btn" id="clear-filters" hidden>Clear filters</button>
                 </div>
-                <div class="form-actions">
-                    <button class="btn btn-primary" type="submit">Create User</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="card user-filters-card" aria-labelledby="user-filters-heading">
-            <h2 id="user-filters-heading">Search and Filter Users</h2>
-            <form method="GET" action="{{ url_for('manage_users') }}">
-                <div class="user-filter-grid">
-                    <div class="form-field">
-                        <label for="search">Search</label>
-                        <input type="search" id="search" name="search" value="{{ search }}" placeholder="Search users...">
-                    </div>
-                    <div class="form-field">
-                        <label for="org_role">Organization Role</label>
-                        <select id="org_role" name="org_role">
-                            <option value="">All Roles</option>
-                            {% for role in org_roles %}
-                            <option value="{{ role }}" {% if selected_org_role == role %}selected{% endif %}>{{ role }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label for="system_role">System Role</label>
-                        <select id="system_role" name="system_role">
-                            <option value="">All System Roles</option>
-                            <option value="admin" {% if selected_system_role == "admin" %}selected{% endif %}>Admin</option>
-                            <option value="encoder" {% if selected_system_role == "encoder" %}selected{% endif %}>Encoder</option>
-                            <option value="viewer" {% if selected_system_role == "viewer" %}selected{% endif %}>Viewer</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label for="status">Status</label>
-                        <select id="status" name="status">
-                            <option value="">All Statuses</option>
-                            <option value="active" {% if selected_status == "active" %}selected{% endif %}>Active</option>
-                            <option value="inactive" {% if selected_status == "inactive" %}selected{% endif %}>Inactive</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="user-filter-actions">
-                    <button class="btn btn-primary" type="submit">Search</button>
-                    <a class="btn btn-secondary" href="{{ url_for('manage_users') }}">Clear</a>
-                </div>
-            </form>
-        </section>
-
-        <section class="card records-card">
-            <div class="card-heading table-card-header">
-                <div>
-                    <h2>Portal Accounts</h2>
-                    <p>System Role controls portal access; Org Role describes the person's organization position.</p>
+                <div class="toolbar-actions">
+                    <a class="btn btn-secondary" href="{{ url_for('manage_members') }}">Members</a>
+                    <button class="btn btn-primary" type="button" data-open="add-account">+ Create account</button>
                 </div>
             </div>
             <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Membership ID</th><th>Full Name</th><th>Org Role</th><th>Email</th><th>System Role</th><th>Status</th><th>Actions</th>
-                        </tr>
-                    </thead>
+                <table class="ledger-table filterable" id="accounts-table">
+                    <thead><tr>
+                        {% for heading, kind in [("Name", "text"), ("Login email", "text"), ("Role", "text"), ("Status", "text"), ("Created", "date")] %}
+                        <th data-kind="{{ kind }}"><button type="button" class="col-filter" aria-haspopup="true" aria-expanded="false">{{ heading }}<span class="caret" aria-hidden="true">▾</span></button></th>
+                        {% endfor %}
+                        <th class="actions-col"><span class="sr-only">Actions</span></th>
+                    </tr></thead>
                     <tbody>
-                        {% for account in users %}
-                        <tr>
-                            <td>{{ account.member.membership_id }}</td>
-                            <td>{{ account.member.full_name }}</td>
-                            <td>{{ account.member.org_role }}</td>
-                            <td>{{ account.email }}</td>
-                            <td>{{ account.role|capitalize }}</td>
-                            <td>
-                                {% if account.status == "active" %}
-                                <span class="status-badge">Active</span>
-                                {% else %}
-                                <span class="status-badge inactive">Inactive</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if account.id != user.id %}
-                                <div class="user-actions">
-                                    <details>
-                                        <summary><span class="btn btn-small btn-secondary">Edit Details</span></summary>
-                                        <form method="POST" action="{{ url_for('edit_user', user_id=account.id) }}" class="edit-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <div class="edit-grid">
-                                                <div class="form-field">
-                                                    <label for="edit_member_{{ account.id }}">Member</label>
-                                                    <select id="edit_member_{{ account.id }}" name="membership_id" required>
-                                                        {% for member in members %}
-                                                        <option value="{{ member.membership_id }}" {% if account.membership_id == member.membership_id %}selected{% endif %}>
-                                                            {{ member.membership_id }} — {{ member.full_name }} ({{ member.org_role }})
-                                                        </option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
-                                                <div class="form-field">
-                                                    <label for="edit_email_{{ account.id }}">Email</label>
-                                                    <input type="email" id="edit_email_{{ account.id }}" name="email" value="{{ account.email }}" required>
-                                                </div>
-                                                <div class="form-field">
-                                                    <label for="edit_role_{{ account.id }}">System Role</label>
-                                                    <select id="edit_role_{{ account.id }}" name="role" required>
-                                                        <option value="viewer" {% if account.role == "viewer" %}selected{% endif %}>Viewer</option>
-                                                        <option value="encoder" {% if account.role == "encoder" %}selected{% endif %}>Encoder</option>
-                                                        <option value="admin" {% if account.role == "admin" %}selected{% endif %}>Admin</option>
-                                                    </select>
-                                                </div>
-                                                <div class="form-field">
-                                                    <label for="edit_status_{{ account.id }}">Status</label>
-                                                    <select id="edit_status_{{ account.id }}" name="status" required>
-                                                        <option value="active" {% if account.status == "active" %}selected{% endif %}>Active</option>
-                                                        <option value="inactive" {% if account.status == "inactive" %}selected{% endif %}>Inactive</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <button class="btn btn-small btn-primary" type="submit">Save Changes</button>
-                                        </form>
-                                    </details>
-                                    <form method="POST" action="{{ url_for('toggle_user_status', user_id=account.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button class="btn btn-small btn-secondary" type="submit">
-                                            {{ "Deactivate" if account.status == "active" else "Activate" }}
-                                        </button>
+                    {% for a in accounts %}
+                    {% set name = a.member.full_name if a.member else a.membership_id %}
+                    {% set created = local(a.created_at).strftime("%Y-%m-%d") if a.created_at else "" %}
+                    <tr>
+                        <td data-value="{{ name }}">{{ name }}{% if a.id == current_user.id %} <span class="muted">(you)</span>{% endif %}<br><span class="muted">{{ a.membership_id }}</span></td>
+                        <td data-value="{{ a.email }}">{{ a.email }}</td>
+                        <td data-value="{{ roles.get(a.role, a.role) }}"><span class="pill pill-role-{{ a.role }}">{{ roles.get(a.role, a.role) }}</span></td>
+                        <td data-value="{{ a.status|capitalize }}"><span class="pill {{ 'pill-paid' if a.status == 'active' else 'pill-unpaid' }}">{{ a.status|capitalize }}</span></td>
+                        <td class="nowrap" data-value="{{ created }}">{{ created }}</td>
+                        <td class="row-actions">
+                            <button class="link-btn" type="button" data-open="edit-{{ a.id }}">Edit</button>
+                            <button class="link-btn" type="button" data-open="pw-{{ a.id }}">Password</button>
+                            {% if a.id != current_user.id %}
+                            <button class="link-btn {{ 'danger-link' if a.status == 'active' else '' }}" type="button" data-open="status-{{ a.id }}">{{ "Deactivate" if a.status == "active" else "Reactivate" }}</button>
+                            {% endif %}
+
+                            <dialog id="edit-{{ a.id }}" class="ledger-dialog" aria-labelledby="edit-title-{{ a.id }}">
+                                <form method="POST" action="{{ url_for('edit_user', user_id=a.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <header class="dialog-header"><h2 id="edit-title-{{ a.id }}">Edit account: {{ name }}</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body form-grid">
+                                        <div class="form-field form-field-full">
+                                            <label for="email-{{ a.id }}">Login email</label>
+                                            <input id="email-{{ a.id }}" type="email" name="email" value="{{ a.email }}" required maxlength="150">
+                                            <small class="field-hint">Changing it changes the email they log in with.</small>
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="role-{{ a.id }}">System role</label>
+                                            <select id="role-{{ a.id }}" name="role">
+                                                {% for role, label in roles.items() %}<option value="{{ role }}" {% if a.role == role %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-field">
+                                            <label for="status-sel-{{ a.id }}">Status</label>
+                                            <select id="status-sel-{{ a.id }}" name="status">
+                                                <option value="active" {% if a.status == "active" %}selected{% endif %}>Active</option>
+                                                <option value="inactive" {% if a.status != "active" %}selected{% endif %}>Inactive (can't log in)</option>
+                                            </select>
+                                        </div>
+                                        <input type="hidden" name="membership_id" value="{{ a.membership_id }}">
+                                        <div class="form-field form-field-full">
+                                            <ul class="role-help">{% for role, label in roles.items() %}<li><strong>{{ label }}:</strong> {{ role_help[role] }}</li>{% endfor %}</ul>
+                                        </div>
+                                    </div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-primary" type="submit">Save changes</button></footer>
+                                </form>
+                            </dialog>
+
+                            <dialog id="pw-{{ a.id }}" class="ledger-dialog" aria-labelledby="pw-title-{{ a.id }}">
+                                <header class="dialog-header"><h2 id="pw-title-{{ a.id }}">Password for {{ name }}</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                <div class="dialog-body">
+                                    <h3>Recommended: email them a reset link</h3>
+                                    <p>They choose their own password; you never see it. The link goes to <strong>{{ a.email }}</strong> and works once, for 30 minutes.</p>
+                                    <form method="POST" action="{{ url_for('send_reset_link_admin', user_id=a.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button class="btn btn-primary" type="submit" {% if not email_ready or a.status != "active" %}disabled{% endif %}>Send reset link</button>
+                                        {% if not email_ready %}<span class="muted">Email isn't connected.</span>{% elif a.status != "active" %}<span class="muted">Reactivate the account first.</span>{% endif %}
                                     </form>
-                                    <form method="POST" action="{{ url_for('reset_password', user_id=account.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button class="btn btn-small btn-secondary" type="submit">Reset Password</button>
+                                    <hr class="dialog-divider">
+                                    <h3>Or set a password yourself</h3>
+                                    <p class="muted">Only if they can't get email. Give it to them privately and ask them to change it after logging in. They'll get an email saying their password was changed.</p>
+                                    <form method="POST" action="{{ url_for('reset_password', user_id=a.id) }}" class="inline-password-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <label class="sr-only" for="newpw-{{ a.id }}">New password</label>
+                                        <input id="newpw-{{ a.id }}" type="password" name="new_password" minlength="8" required autocomplete="new-password" placeholder="New password (8+ characters)">
+                                        <button class="btn btn-secondary" type="submit">Set password</button>
                                     </form>
                                 </div>
-                                {% else %}
-                                <span>Current account</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7">No users found.</td></tr>
-                        {% endfor %}
+                                <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Close</button></footer>
+                            </dialog>
+
+                            {% if a.id != current_user.id %}
+                            <dialog id="status-{{ a.id }}" class="ledger-dialog ledger-dialog-small" aria-labelledby="status-title-{{ a.id }}">
+                                <form method="POST" action="{{ url_for('toggle_user_status', user_id=a.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <header class="dialog-header"><h2 id="status-title-{{ a.id }}">{{ "Deactivate" if a.status == "active" else "Reactivate" }} {{ name }}?</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+                                    <div class="dialog-body"><p>{% if a.status == "active" %}They are logged out and can't log in until reactivated. Their member record and history stay.{% else %}They will be able to log in again with their current password.{% endif %}</p></div>
+                                    <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn {{ 'btn-danger' if a.status == 'active' else 'btn-primary' }}" type="submit">{{ "Deactivate" if a.status == "active" else "Reactivate" }}</button></footer>
+                                </form>
+                            </dialog>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>
+            <p id="no-results" class="empty-state" hidden>No accounts match these filters. <button type="button" class="link-btn" data-clear-filters>Clear filters</button></p>
         </section>
     </main>
+
+    <dialog id="add-account" class="ledger-dialog" aria-labelledby="add-account-title">
+        <form method="POST" action="{{ url_for('add_user') }}" id="add-account-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <header class="dialog-header"><h2 id="add-account-title">Create a portal account</h2><button class="dialog-x" type="button" data-close aria-label="Close">×</button></header>
+            <div class="dialog-body form-grid">
+                {% if members %}
+                <div class="form-field form-field-full">
+                    <label for="new_member">Member <span class="req" aria-hidden="true">*</span></label>
+                    <select id="new_member" name="membership_id" required>
+                        <option value="">Choose a member…</option>
+                        {% for m in members %}<option value="{{ m.membership_id }}" data-email="{{ m.email or '' }}">{{ m.full_name }} ({{ m.membership_id }})</option>{% endfor %}
+                    </select>
+                    <small class="field-hint">Only active members without an active login are listed. Add new people on the <a href="{{ url_for('manage_members') }}">Members</a> page first.</small>
+                </div>
+                <div class="form-field form-field-full">
+                    <label for="new_email">Login email <span class="req" aria-hidden="true">*</span></label>
+                    <input id="new_email" type="email" name="email" required maxlength="150" placeholder="name@example.com">
+                </div>
+                <div class="form-field form-field-full">
+                    <label for="new_role">System role</label>
+                    <select id="new_role" name="role">
+                        {% for role, label in roles.items() %}<option value="{{ role }}" {% if role == "viewer" %}selected{% endif %}>{{ label }}: {{ role_help[role] }}</option>{% endfor %}
+                    </select>
+                </div>
+                <fieldset class="choice-list form-field-full">
+                    <legend>How will they get their password?</legend>
+                    <label><input type="radio" name="password_mode" value="invite" {% if email_ready %}checked{% else %}disabled{% endif %}> <span><strong>Email them a link to set their own password</strong> (recommended, valid 3 days){% if not email_ready %} <span class="muted">— email isn't connected</span>{% endif %}</span></label>
+                    <label><input type="radio" name="password_mode" value="set" {% if not email_ready %}checked{% endif %}> <span><strong>Set a password now</strong> and give it to them privately</span></label>
+                    <input type="password" name="password" id="new_password" minlength="8" autocomplete="new-password" placeholder="Password (8+ characters)" {% if email_ready %}hidden{% endif %}>
+                </fieldset>
+                {% else %}
+                <p class="form-field-full">Every active member already has a login. Add new people on the <a href="{{ url_for('manage_members') }}">Members</a> page first.</p>
+                {% endif %}
+            </div>
+            <footer class="dialog-footer"><button class="btn btn-secondary" type="button" data-close>Cancel</button>{% if members %}<button class="btn btn-primary" type="submit">Create account</button>{% endif %}</footer>
+        </form>
+    </dialog>
+
+    <script>window.LEDGER = {};</script>
+    <script src="{{ url_for('static', filename='js/ledger.js') }}"></script>
+    <script>
+        (function () {
+            var table = document.getElementById("accounts-table");
+            if (window.KNYCFilterGrid && table.tBodies[0].rows.length) {
+                var grid = new window.KNYCFilterGrid(table, function (visible, total, filtered) {
+                    var showing = document.getElementById("ledger-showing");
+                    showing.hidden = !filtered;
+                    showing.textContent = "Showing " + visible.length + " of " + total;
+                    document.getElementById("clear-filters").hidden = !filtered;
+                    document.getElementById("no-results").hidden = !(filtered && visible.length === 0);
+                });
+                document.querySelectorAll("#clear-filters, [data-clear-filters]").forEach(function (b) {
+                    b.addEventListener("click", function () { grid.clear(); });
+                });
+            }
+            var memberSel = document.getElementById("new_member");
+            var emailInput = document.getElementById("new_email");
+            if (memberSel) {
+                memberSel.addEventListener("change", function () {
+                    var opt = memberSel.options[memberSel.selectedIndex];
+                    if (opt && opt.dataset.email && !emailInput.value) { emailInput.value = opt.dataset.email; }
+                });
+            }
+            var pw = document.getElementById("new_password");
+            document.querySelectorAll("input[name=password_mode]").forEach(function (radio) {
+                radio.addEventListener("change", function () {
+                    var set = radio.value === "set" && radio.checked;
+                    pw.hidden = !set;
+                    pw.required = set;
+                    if (set) { pw.focus(); }
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

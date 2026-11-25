@@ -29,6 +29,7 @@ KIND_LABELS = {
     "warning": "Warning / notice",
     "test": "Test email",
     "password_reset": "Password reset link",
+    "account_invite": "Account invitation",
     "password_changed": "Password changed notice",
 }
 

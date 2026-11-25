@@ -156,6 +156,22 @@ def password_reset(first_name, link, minutes):
     return subject, body
 
 
+def account_invite(first_name, link, email, role_label, hours):
+    subject = f"Your account on the {ORG_NAME} website"
+    role = f" as {role_label}" if role_label else ""
+    body = (
+        f"Hi {first_name},\n\n"
+        f"An account has been created for you{role} on the {ORG_NAME} website.\n\n"
+        f"Your login email: {email}\n\n"
+        "To start, choose your own password with this link:\n\n"
+        f"{link}\n\n"
+        f"The link works once and expires in {hours} hours. If it expires, use "
+        "\"Forgot Password?\" on the login page to get a new one.\n\n"
+        f"{_sign_off()}"
+    )
+    return subject, body
+
+
 def password_changed(first_name, how):
     subject = f"Your {ORG_NAME} password was changed"
     body = (

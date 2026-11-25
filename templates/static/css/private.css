@@ -1525,3 +1525,16 @@ th.is-filtered .col-filter .caret, th.is-sorted .col-filter .caret { opacity: 1;
 }
 .check-row, .choice-list label { justify-content: flex-start; text-align: left; }
 .member-checklist input[type="checkbox"] { margin-top: 0; }
+
+/* ---------------- members & accounts ---------------- */
+.pill-role-admin { background: var(--private-light-purple); color: var(--private-purple-dark); }
+.pill-role-encoder { background: var(--private-light-cyan); color: #1f5f69; }
+.pill-role-viewer { background: #eef0f3; color: #4a5260; }
+.row-focus td { background: #fff8e1 !important; }
+.role-help { margin: 4px 0 0; padding-left: 18px; color: #555; font-size: 0.92rem; line-height: 1.6; }
+.dialog-divider { border: none; border-top: 1px solid #ece6f5; margin: 18px 0; }
+.dialog-body h3 { font-size: 1rem; margin: 0 0 6px; }
+.inline-password-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.inline-password-form input { flex: 1 1 220px; width: auto; }
+.choice-list legend { font-weight: 600; margin-bottom: 4px; }
+.choice-list input[type="password"] { margin-top: 6px; }

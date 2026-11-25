@@ -700,83 +700,22 @@ def change_password():
     )
 
 # ==================================================
-# ADMIN USER MANAGEMENT
+# USER MANAGEMENT: MEMBERS (the roster) AND PORTAL ACCOUNTS (logins)
+#
+# Members are everyone in the organization; an account is a login for a
+# member, with a system role. Every change is written to the audit log.
 # ==================================================
 
-@app.route("/admin/users")
-@login_required
-@admin_required
-def manage_users():
-
-    search = request.args.get("search", "").strip()
-    org_role = request.args.get("org_role", "").strip()
-    system_role = request.args.get("system_role", "").strip()
-    status = request.args.get("status", "").strip()
-
-    query = Profile.query.join(Profile.member)
-    if search:
-        search_pattern = f"%{search}%"
-        full_name = (
-            Member.first_name
-            + " "
-            + db.func.coalesce(Member.middle_name, "")
-            + " "
-            + Member.last_name
-        )
-        name_without_middle = (
-            Member.first_name + " " + Member.last_name
-        )
-        query = query.filter(
-            db.or_(
-                Member.first_name.ilike(search_pattern),
-                Member.middle_name.ilike(search_pattern),
-                Member.last_name.ilike(search_pattern),
-                full_name.ilike(search_pattern),
-                name_without_middle.ilike(search_pattern),
-                Profile.email.ilike(search_pattern),
-                Member.membership_id.ilike(search_pattern)
-            )
-        )
-    if org_role:
-        query = query.filter(Member.org_role == org_role)
-    if system_role in {"admin", "encoder", "viewer"}:
-        query = query.filter(Profile.role == system_role)
-    elif system_role:
-        system_role = ""
-    if status in {"active", "inactive"}:
-        query = query.filter(Profile.status == status)
-    elif status:
-        status = ""
-
-    users = query.order_by(Profile.created_at.desc()).all()
-    org_roles = [
-        role for (role,) in db.session.query(Member.org_role)
-        .distinct()
-        .order_by(Member.org_role)
-        .all()
-        if role
-    ]
-    members = Member.query.order_by(
-        Member.membership_id
-    ).all()
-
-    return render_template(
-        "manage_users.html",
-        user=current_user,
-        users=users,
-        members=members,
-        org_roles=org_roles,
-        search=search,
-        selected_org_role=org_role,
-        selected_system_role=system_role,
-        selected_status=status
-    )
-
-
-# ==================================================
-# ADMIN MEMBER MANAGEMENT
-# ==================================================
-
+SYSTEM_ROLES = {
+    "admin": "Admin",
+    "encoder": "Encoder",
+    "viewer": "Viewer",
+}
+SYSTEM_ROLE_HELP = {
+    "admin": "Everything: finances, members, accounts, notifications, audit log.",
+    "encoder": "Adds and edits financial records.",
+    "viewer": "Can log in and view the dashboard and public transparency page.",
+}
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -797,528 +736,365 @@ def _member_email_taken(email, exclude_id=None):
     return query.first() is not None
 
 
+def _member_snapshot(member):
+    return {
+        "membership_id": member.membership_id, "first_name": member.first_name,
+        "middle_name": member.middle_name or "", "last_name": member.last_name,
+        "org_role": member.org_role, "email": member.email or "", "status": member.status,
+    }
+
+
+def _account_snapshot(profile):
+    return {
+        "email": profile.email, "membership_id": profile.membership_id,
+        "role": profile.role, "status": profile.status,
+    }
+
+
+def _audit_and_commit(action, entity, record_id, summary, before=None, after=None):
+    finance_records.audit(action, entity, actor=current_user, record_id=record_id,
+                          summary=summary, before=before, after=after)
+    db.session.commit()
+
+
+def _other_active_admins(profile_id):
+    return Profile.query.filter(
+        Profile.role == "admin", Profile.status == "active", Profile.id != profile_id
+    ).count()
+
+
+def _account_link(token):
+    return _reset_link(token)
+
+
+# ------------------------------ members ------------------------------
+
 @app.route("/admin/members")
 @login_required
 @admin_required
 def manage_members():
-
-    search = request.args.get("q", "").strip()
-    query = Member.query
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            db.or_(
-                Member.membership_id.ilike(search_term),
-                Member.first_name.ilike(search_term),
-                Member.middle_name.ilike(search_term),
-                Member.last_name.ilike(search_term),
-                Member.org_role.ilike(search_term),
-                Member.email.ilike(search_term)
-            )
-        )
-
-    members = query.order_by(Member.membership_id).all()
+    members = Member.query.order_by(Member.last_name, Member.first_name).all()
+    rows = []
+    for member in members:
+        accounts_for = [a for a in member.users or []]
+        account = next((a for a in accounts_for if a.status == "active"), None) or (accounts_for[0] if accounts_for else None)
+        rows.append({
+            "member": member,
+            "account": account,
+            "notify_email": member.notify_email,
+            "values": _member_snapshot(member),
+        })
+    active = [r for r in rows if r["member"].status == "active"]
+    org_roles = sorted({m.org_role for m in members if m.org_role} | {"Member"})
     return render_template(
         "manage_members.html",
-        members=members,
-        search=search
+        rows=rows,
+        org_roles=org_roles,
+        stats={
+            "active": len(active),
+            "with_email": sum(1 for r in active if r["notify_email"]),
+            "with_login": sum(1 for r in active if r["account"] is not None),
+            "inactive": len(rows) - len(active),
+        },
+        focus=request.args.get("q", "").strip(),
     )
 
 
-@app.route(
-    "/admin/members/add",
-    methods=["POST"]
-)
+def _member_form(form):
+    values = {
+        "membership_id": (form.get("membership_id") or "").strip(),
+        "first_name": (form.get("first_name") or "").strip(),
+        "middle_name": (form.get("middle_name") or "").strip() or None,
+        "last_name": (form.get("last_name") or "").strip(),
+        "org_role": (form.get("org_role") or "Member").strip() or "Member",
+        "status": form.get("status") or "active",
+    }
+    email, email_error = _member_email(form.get("email"))
+    values["email"] = email
+    if not all((values["membership_id"], values["first_name"], values["last_name"])):
+        return values, "Membership ID, first name and last name are required."
+    if email_error:
+        return values, email_error
+    if values["status"] not in {"active", "inactive"}:
+        return values, "Choose a valid member status."
+    return values, ""
+
+
+@app.route("/admin/members/add", methods=["POST"])
 @login_required
 @admin_required
 def add_member():
-
-    membership_id = request.form.get("membership_id", "").strip()
-    first_name = request.form.get("first_name", "").strip()
-    last_name = request.form.get("last_name", "").strip()
-    middle_name = request.form.get("middle_name", "").strip()
-    org_role = request.form.get("org_role", "Member").strip()
-    email, email_error = _member_email(request.form.get("email"))
-
-    if not all((membership_id, first_name, last_name, org_role)):
-        flash("Membership ID, first name, last name, and org role are required.", "danger")
+    values, error = _member_form(request.form)
+    if not error and Member.query.filter_by(membership_id=values["membership_id"]).first():
+        error = "That Membership ID is already in use."
+    if not error and values["email"] and _member_email_taken(values["email"]):
+        error = "Another member already uses that email."
+    if error:
+        flash(error, "danger")
         return redirect(url_for("manage_members"))
-    if email_error:
-        flash(email_error, "danger")
-        return redirect(url_for("manage_members"))
-
-    if Member.query.filter_by(membership_id=membership_id).first():
-        flash("That Membership ID is already in use.", "danger")
-        return redirect(url_for("manage_members"))
-    if email and _member_email_taken(email):
-        flash("Another member already uses that email.", "danger")
-        return redirect(url_for("manage_members"))
-
-    db.session.add(Member(
-        membership_id=membership_id,
-        first_name=first_name,
-        middle_name=middle_name or None,
-        last_name=last_name,
-        org_role=org_role,
-        email=email,
-        status="active"
-    ))
-    db.session.commit()
-    flash("Member added successfully.", "success")
+    member = Member(**values)
+    db.session.add(member)
+    db.session.flush()
+    _audit_and_commit("create", "members", member.membership_id,
+                      f"Added member {member.full_name} ({member.membership_id})",
+                      after=_member_snapshot(member))
+    flash(f"{member.full_name} added.", "success")
     return redirect(url_for("manage_members"))
 
 
-@app.route(
-    "/admin/members/<int:member_id>/edit",
-    methods=["POST"]
-)
+@app.route("/admin/members/<int:member_id>/edit", methods=["POST"])
 @login_required
 @admin_required
 def edit_member(member_id):
-
-    member = Member.query.get_or_404(member_id)
-    membership_id = request.form.get("membership_id", "").strip()
-    first_name = request.form.get("first_name", "").strip()
-    last_name = request.form.get("last_name", "").strip()
-    middle_name = request.form.get("middle_name", "").strip()
-    org_role = request.form.get("org_role", "").strip()
-    status = request.form.get("status", "")
-    email, email_error = _member_email(request.form.get("email"))
-
-    if not all((membership_id, first_name, last_name, org_role)):
-        flash("Membership ID, first name, last name, and org role are required.", "danger")
-        return redirect(url_for("manage_members"))
-    if email_error:
-        flash(email_error, "danger")
-        return redirect(url_for("manage_members"))
-    if email and _member_email_taken(email, exclude_id=member.id):
-        flash("Another member already uses that email.", "danger")
-        return redirect(url_for("manage_members"))
-    if status not in {"active", "inactive"}:
-        flash("Choose a valid member status.", "danger")
-        return redirect(url_for("manage_members"))
-    duplicate = Member.query.filter(
-        Member.membership_id == membership_id,
-        Member.id != member.id
-    ).first()
-    if duplicate:
-        flash("That Membership ID is already in use.", "danger")
+    member = db.get_or_404(Member, member_id)
+    values, error = _member_form(request.form)
+    if not error:
+        duplicate = Member.query.filter(
+            Member.membership_id == values["membership_id"], Member.id != member.id
+        ).first()
+        if duplicate:
+            error = "That Membership ID is already in use."
+    if not error and values["email"] and _member_email_taken(values["email"], exclude_id=member.id):
+        error = "Another member already uses that email."
+    if error:
+        flash(error, "danger")
         return redirect(url_for("manage_members"))
 
-    if membership_id != member.membership_id:
+    before = _member_snapshot(member)
+    if values["membership_id"] != member.membership_id:
         for account in member.users:
-            account.membership_id = membership_id
+            account.membership_id = values["membership_id"]
         for fee in member.membership_fees:
-            fee.membership_id = membership_id
-
-    member.membership_id = membership_id
-    member.first_name = first_name
-    member.middle_name = middle_name or None
-    member.last_name = last_name
-    member.org_role = org_role
-    member.email = email
-    member.status = status
-    db.session.commit()
-    flash("Member information updated.", "success")
+            fee.membership_id = values["membership_id"]
+    for key, value in values.items():
+        setattr(member, key, value)
+    after = _member_snapshot(member)
+    if after != before:
+        _audit_and_commit("update", "members", member.membership_id,
+                          f"Edited member {member.full_name} ({member.membership_id})",
+                          before=before, after=after)
+    flash("Member saved.", "success")
     return redirect(url_for("manage_members"))
 
 
-# ==================================================
-# ADD USER
-# ==================================================
+# ------------------------------ accounts ------------------------------
 
-@app.route(
-    "/admin/users/add",
-    methods=["GET", "POST"]
-)
+@app.route("/admin/users")
+@login_required
+@admin_required
+def manage_users():
+    accounts_list = Profile.query.order_by(Profile.created_at.desc()).all()
+    members_without_login = [
+        m for m in Member.query.filter_by(status="active").order_by(Member.last_name, Member.first_name)
+        if not any(a.status == "active" for a in m.users or [])
+    ]
+    counts = {role: 0 for role in SYSTEM_ROLES}
+    for account in accounts_list:
+        if account.status == "active" and account.role in counts:
+            counts[account.role] += 1
+    return render_template(
+        "manage_users.html",
+        accounts=accounts_list,
+        members=members_without_login,
+        roles=SYSTEM_ROLES,
+        role_help=SYSTEM_ROLE_HELP,
+        counts=counts,
+        inactive=sum(1 for a in accounts_list if a.status != "active"),
+        email_ready=notify_mailer.is_configured(),
+        local=notify_messages.local,
+    )
+
+
+@app.route("/admin/users/add", methods=["GET", "POST"])
 @login_required
 @admin_required
 def add_user():
-
     if request.method == "GET":
-
-        members = Member.query.filter_by(status="active").order_by(
-            Member.membership_id
-        ).all()
-
-        return render_template("add_user.html", members=members)
-
-    membership_id = request.form.get(
-        "membership_id",
-        ""
-    ).strip()
-
-    # Supabase treats emails as case-insensitive and stores them in lowercase.
-    email = request.form.get(
-        "email",
-        ""
-    ).strip().lower()
-
-    password = request.form.get(
-        "password",
-        ""
-    )
-
-    role = request.form.get(
-        "role",
-        ""
-    )
-
-    status = request.form.get(
-        "status",
-        "active"
-    )
-
-    if not email:
-        flash("Email is required.", "danger")
         return redirect(url_for("manage_users"))
 
-    # ------------------------------------------
-    # VALIDATE REQUIRED FIELDS
-    # ------------------------------------------
+    membership_id = request.form.get("membership_id", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    role = request.form.get("role", "")
+    mode = request.form.get("password_mode", "invite")
+    password = request.form.get("password", "")
 
-    member = Member.query.filter_by(
-        membership_id=membership_id
-    ).first()
-
+    member = Member.query.filter_by(membership_id=membership_id).first()
+    error = ""
     if not member or member.status != "active":
-
-        flash(
-            "Select an active organization member for this account.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("manage_users")
-        )
-
-    if len(password) < 8:
-        flash("Password must be at least 8 characters.", "danger")
+        error = "Choose an active member for this account."
+    elif not email or not EMAIL_PATTERN.match(email):
+        error = "Enter a valid login email."
+    elif role not in SYSTEM_ROLES:
+        error = "Choose a valid system role."
+    elif mode not in {"invite", "set"}:
+        error = "Choose how the person gets their password."
+    elif mode == "set" and len(password) < 8:
+        error = "The password must be at least 8 characters."
+    elif mode == "invite" and not notify_mailer.is_configured():
+        error = "Email isn't connected, so an invitation can't be sent. Choose “Set a password now” instead."
+    elif Profile.query.filter(db.func.lower(Profile.email) == email).first():
+        error = "An account with that email already exists."
+    if error:
+        flash(error, "danger")
         return redirect(url_for("manage_users"))
 
-    if role not in {"admin", "encoder", "viewer"}:
-        flash("Choose a valid system role.", "danger")
-        return redirect(url_for("manage_users"))
-
-    if status not in {"active", "inactive"}:
-        flash("Choose a valid account status.", "danger")
-        return redirect(url_for("manage_users"))
-
-    # ------------------------------------------
-    # CHECK EXISTING EMAIL
-    # ------------------------------------------
-
-    existing_user = Profile.query.filter(
-        db.func.lower(Profile.email) == email
-    ).first()
-
-    if existing_user:
-
-        flash(
-            "A user with that email already exists.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("manage_users")
-        )
-
-    # ------------------------------------------
-    # 1) CREATE THE LOGIN IN SUPABASE AUTH
-    # ------------------------------------------
-
+    # 1) the login in Supabase Auth (an unknown random password for invitations)
     try:
-        auth_id = supabase_auth.create_user(email, password)
-    except supabase_auth.AuthError as error:
-        flash(str(error), "danger")
+        auth_id = supabase_auth.create_user(
+            email, password if mode == "set" else accounts.random_password())
+    except supabase_auth.AuthError as auth_error:
+        flash(str(auth_error), "danger")
         return redirect(url_for("manage_users"))
 
-    # ------------------------------------------
-    # 2) CREATE THE PROFILE (role, status, member)
-    # ------------------------------------------
-
+    # 2) the profile (role, status, member)
     try:
-        new_profile = Profile(
-            id=auth_id,
-            membership_id=membership_id,
-            email=email,
-            role=role,
-            status=status
-        )
-
-        db.session.add(new_profile)
-        # Notifications go to the member's email; fill it from the login if empty.
+        profile = Profile(id=auth_id, membership_id=membership_id, email=email,
+                          role=role, status="active")
+        db.session.add(profile)
         if not member.email and not _member_email_taken(email):
-            member.email = email
+            member.email = email      # notifications go to the member's email
+        db.session.flush()
+        finance_records.audit("create", "account", actor=current_user, record_id=profile.id,
+                              summary=f"Created {SYSTEM_ROLES[role]} account for {member.full_name} ({email})",
+                              after=_account_snapshot(profile))
         db.session.commit()
-
     except SQLAlchemyError:
         db.session.rollback()
         app.logger.exception("Could not save the profile for a new login.")
-
-        # Undo step 1 so no login exists without a profile.
-        supabase_auth.delete_user(auth_id)
-
-        flash(
-            "The account could not be saved. Nothing was created.",
-            "danger"
-        )
-
+        supabase_auth.delete_user(auth_id)      # no login without a profile
+        flash("The account could not be saved. Nothing was created.", "danger")
         return redirect(url_for("manage_users"))
 
-    flash(
-        "User added successfully.",
-        "success"
-    )
+    if mode == "invite":
+        status = accounts.send_invite(profile, _account_link, current_user.email, SYSTEM_ROLES[role])
+        if status == "sent":
+            flash(f"Account created. {member.full_name} was emailed a link to set their password (valid 3 days).", "success")
+        else:
+            flash("Account created, but the invitation email could not be sent. "
+                  "Use “Send reset link” to try again.", "warning")
+    else:
+        flash(f"Account created for {member.full_name}. Give them the password privately; "
+              "they can change it after logging in.", "success")
+    return redirect(url_for("manage_users"))
 
-    return redirect(
-        url_for("manage_users")
-    )
 
-# ==================================================
-# EDIT USER
-# ==================================================
-
-@app.route(
-    "/admin/users/<uuid:user_id>/edit",
-    methods=["GET", "POST"]
-)
+@app.route("/admin/users/<uuid:user_id>/edit", methods=["GET", "POST"])
 @login_required
 @admin_required
 def edit_user(user_id):
-
-    user = Profile.query.get_or_404(
-        user_id
-    )
-
+    user = db.get_or_404(Profile, user_id)
     if request.method == "GET":
-
-        members = Member.query.order_by(Member.membership_id).all()
-
-        return render_template(
-            "edit_user.html",
-            user=user,
-            members=members
-        )
-
-    membership_id = request.form.get(
-        "membership_id",
-        ""
-    ).strip()
-
-    email = request.form.get(
-        "email",
-        ""
-    ).strip().lower()
-
-    role = request.form.get(
-        "role",
-        ""
-    )
-
-    status = request.form.get(
-        "status",
-        "active"
-    )
-
-    if not email:
-        flash("Email is required.", "danger")
         return redirect(url_for("manage_users"))
 
-    # ------------------------------------------
-    # VALIDATE REQUIRED FIELDS
-    # ------------------------------------------
+    membership_id = request.form.get("membership_id", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    role = request.form.get("role", "")
+    status = request.form.get("status", "active")
 
-    member = Member.query.filter_by(
-        membership_id=membership_id
-    ).first()
-
-    if not member or not email:
-
-        flash(
-            "Select an existing member and provide an email address.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("manage_users")
-        )
-
-    if role not in {"admin", "encoder", "viewer"}:
-        flash("Choose a valid system role.", "danger")
+    error = ""
+    if not Member.query.filter_by(membership_id=membership_id).first():
+        error = "Choose an existing member."
+    elif not email or not EMAIL_PATTERN.match(email):
+        error = "Enter a valid login email."
+    elif role not in SYSTEM_ROLES or status not in {"active", "inactive"}:
+        error = "Choose a valid role and status."
+    elif Profile.query.filter(db.func.lower(Profile.email) == email, Profile.id != user.id).first():
+        error = "An account with that email already exists."
+    elif user.id == current_user.id and (role != "admin" or status != "active"):
+        error = "You can't remove your own admin access. Ask another admin to do it."
+    elif (user.role == "admin" and user.status == "active"
+          and (role != "admin" or status != "active") and _other_active_admins(user.id) == 0):
+        error = "This is the only active admin. Make someone else an admin first."
+    if error:
+        flash(error, "danger")
         return redirect(url_for("manage_users"))
 
-    if status not in {"active", "inactive"}:
-        flash("Choose a valid account status.", "danger")
-        return redirect(url_for("manage_users"))
-
-    # ------------------------------------------
-    # CHECK IF EMAIL IS ALREADY USED
-    # ------------------------------------------
-
-    existing_user = Profile.query.filter(
-        db.func.lower(Profile.email) == email,
-        Profile.id != user.id
-    ).first()
-
-    if existing_user:
-
-        flash(
-            "A user with that email already exists.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("manage_users")
-        )
-
-    # ------------------------------------------
-    # UPDATE USER INFORMATION
-    # (database first, then the login email in Supabase; if Supabase
-    #  refuses, the database change is rolled back too)
-    # ------------------------------------------
-
+    before = _account_snapshot(user)
     email_changed = email != (user.email or "").lower()
-
     user.membership_id = membership_id
     user.email = email
     user.role = role
     user.status = status
-
     try:
         db.session.flush()
-
         if email_changed:
             supabase_auth.update_user(user.id, email=email)
-
+        after = _account_snapshot(user)
+        if after != before:
+            finance_records.audit("update", "account", actor=current_user, record_id=user.id,
+                                  summary=f"Edited account {email}", before=before, after=after)
         db.session.commit()
-
-    except supabase_auth.AuthError as error:
+    except supabase_auth.AuthError as auth_error:
         db.session.rollback()
-        flash(str(error), "danger")
+        flash(str(auth_error), "danger")
         return redirect(url_for("manage_users"))
-
     except SQLAlchemyError:
         db.session.rollback()
         app.logger.exception("Could not update a user profile.")
         flash("The changes could not be saved.", "danger")
         return redirect(url_for("manage_users"))
 
-    flash(
-        "User information updated successfully.",
-        "success"
-    )
+    flash("Account saved.", "success")
+    return redirect(url_for("manage_users"))
 
-    return redirect(
-        url_for("manage_users")
-    )
 
-# ==================================================
-# CHANGE USER STATUS
-# ==================================================
-
-@app.route(
-    "/admin/users/<uuid:user_id>/toggle-status",
-    methods=["POST"]
-)
+@app.route("/admin/users/<uuid:user_id>/toggle-status", methods=["POST"])
 @login_required
 @admin_required
 def toggle_user_status(user_id):
-
-    user = Profile.query.get_or_404(
-        user_id
-    )
-
-    # ------------------------------------------
-    # PREVENT ADMIN FROM DISABLING OWN ACCOUNT
-    # ------------------------------------------
-
+    user = db.get_or_404(Profile, user_id)
     if user.id == current_user.id:
-
-        flash(
-            "You cannot deactivate your own account.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("manage_users")
-        )
-
-    # ------------------------------------------
-    # TOGGLE STATUS
-    # ------------------------------------------
-
-    if user.status == "active":
-
-        user.status = "inactive"
-
-    else:
-
-        user.status = "active"
-
-    db.session.commit()
-
-    flash(
-        "User status updated.",
-        "success"
-    )
-
-    return redirect(
-        url_for("manage_users")
-    )
+        flash("You cannot deactivate your own account.", "danger")
+        return redirect(url_for("manage_users"))
+    if user.status == "active" and user.role == "admin" and _other_active_admins(user.id) == 0:
+        flash("This is the only active admin. Make someone else an admin first.", "danger")
+        return redirect(url_for("manage_users"))
+    before = _account_snapshot(user)
+    user.status = "inactive" if user.status == "active" else "active"
+    verb = "Deactivated" if user.status == "inactive" else "Reactivated"
+    _audit_and_commit("update", "account", user.id, f"{verb} account {user.email}",
+                      before=before, after=_account_snapshot(user))
+    flash(f"{verb} {user.email}." + (" They can no longer log in." if user.status == "inactive" else ""), "success")
+    return redirect(url_for("manage_users"))
 
 
-# ==================================================
-# ADMIN RESET USER PASSWORD
-# ==================================================
-
-@app.route(
-    "/admin/users/<uuid:user_id>/reset-password",
-    methods=["POST"]
-)
+@app.route("/admin/users/<uuid:user_id>/reset-password", methods=["POST"])
 @login_required
 @admin_required
 def reset_password(user_id):
-
-    user = Profile.query.get_or_404(
-        user_id
-    )
-
-    new_password = request.form.get(
-        "new_password",
-        ""
-    )
-
+    user = db.get_or_404(Profile, user_id)
+    new_password = request.form.get("new_password", "")
     if len(new_password) < 8:
-
-        flash(
-            "Password must be at least 8 characters.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("manage_users")
-        )
-
-    try:
-        supabase_auth.update_user(
-            user.id,
-            password=new_password
-        )
-    except supabase_auth.AuthError as error:
-        flash(str(error), "danger")
+        flash("Password must be at least 8 characters.", "danger")
         return redirect(url_for("manage_users"))
-
+    try:
+        supabase_auth.update_user(user.id, password=new_password)
+    except supabase_auth.AuthError as auth_error:
+        flash(str(auth_error), "danger")
+        return redirect(url_for("manage_users"))
+    _audit_and_commit("password_set", "account", user.id, f"Set a new password for {user.email}")
     accounts.notify_password_changed(user, "by an administrator")
+    flash(f"New password set for {user.email}. Give it to them privately.", "success")
+    return redirect(url_for("manage_users"))
 
-    flash(
-        f"Password for {user.email} has been reset.",
-        "success"
-    )
 
-    return redirect(
-        url_for("manage_users")
-    )
+@app.route("/admin/users/<uuid:user_id>/send-reset", methods=["POST"])
+@login_required
+@admin_required
+def send_reset_link_admin(user_id):
+    user = db.get_or_404(Profile, user_id)
+    status = accounts.send_reset_link(user, _account_link, current_user.email)
+    if status == "sent":
+        _audit_and_commit("reset_link", "account", user.id, f"Emailed a password reset link to {user.email}")
+        flash(f"Reset link emailed to {user.email}. It works once, for 30 minutes.", "success")
+    elif status == "inactive":
+        flash("That account is inactive. Reactivate it first.", "danger")
+    elif status == "not_configured":
+        flash("Email isn't connected yet, so no link was sent.", "danger")
+    else:
+        flash("The email could not be sent. Please try again in a few minutes.", "danger")
+    return redirect(url_for("manage_users"))
+
 
 # ==================================================
 # NOTIFICATIONS: MEETINGS & EVENTS, DUES REMINDERS, WARNINGS
@@ -2307,6 +2083,7 @@ AUDIT_ACTION_LABELS = {
     "create": "Added", "update": "Edited", "delete": "Deleted", "import": "Imported",
     "restore": "Restored", "resync": "Sheet resync", "member_create": "Member created",
     "cancel": "Cancelled", "email": "Emails sent", "password_reset": "Password reset",
+    "password_set": "Password set by admin", "reset_link": "Reset link sent",
 }
 AUDIT_ENTITY_LABELS = {
     **{key: ledger.label for key, ledger in LEDGERS.items()},

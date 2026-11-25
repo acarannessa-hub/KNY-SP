@@ -30,12 +30,13 @@ from services.notifications import service as notify
 log = logging.getLogger(__name__)
 
 TOKEN_MINUTES = 30
+INVITE_MINUTES = 72 * 60          # account invitations stay valid for 3 days
 MAX_PER_ACCOUNT_PER_HOUR = 3
 MAX_PER_IP_PER_HOUR = 10
 MIN_PASSWORD_LENGTH = 8
 
-INVALID_LINK = ("This reset link is invalid or has expired. Links work once and only "
-                "for 30 minutes. Please request a new one.")
+INVALID_LINK = ("This link is invalid or has expired. Each link works only once and for "
+                "a limited time. Please request a new one below.")
 
 
 def _hash(token):
@@ -80,30 +81,67 @@ def request_reset(email, ip, link_for):
     if recent_for_account >= MAX_PER_ACCOUNT_PER_HOUR or recent_for_ip >= MAX_PER_IP_PER_HOUR:
         return "limited"
 
+    return _email_link(profile, ip, link_for, TOKEN_MINUTES, "password_reset",
+                       "password reset request")
+
+
+def _issue_token(profile, ip, minutes):
+    """Store the hash of a new one-time link; returns the token (or None)."""
     token = secrets.token_urlsafe(32)
     db.session.add(PasswordResetToken(
         profile_id=profile.id,
         token_hash=_hash(token),
         created_at=_now(),
-        expires_at=_now() + timedelta(minutes=TOKEN_MINUTES),
+        expires_at=_now() + timedelta(minutes=minutes),
         requested_ip=(ip or "")[:64] or None,
     ))
     try:
         db.session.commit()
+        return token
     except SQLAlchemyError:
         db.session.rollback()
-        log.exception("Could not save a password reset token")
-        return "failed"
+        log.exception("Could not save a password link token")
+        return None
 
+
+def _email_link(profile, ip, link_for, minutes, kind, sent_by, role_label=""):
+    token = _issue_token(profile, ip, minutes)
+    if token is None:
+        return "failed"
     link = link_for(token)
-    subject, body = messages.password_reset(_first_name(profile), link, TOKEN_MINUTES)
+    if kind == "account_invite":
+        subject, body = messages.account_invite(_first_name(profile), link, profile.email,
+                                                role_label, minutes // 60)
+    else:
+        subject, body = messages.password_reset(_first_name(profile), link, minutes)
     item = notify.Outgoing(
         member=profile.member, email=profile.email, subject=subject, body=body,
         name=profile.member.full_name if profile.member else profile.email,
-        log_body=body.replace(link, "[reset link removed]"),
+        log_body=body.replace(link, "[link removed]"),
     )
-    result = notify.send_batch("password_reset", [item], sent_by="password reset request")
-    return "sent" if result.sent else "failed"
+    result = notify.send_batch(kind, [item], sent_by=sent_by)
+    if result.sent:
+        return "sent"
+    return "not_configured" if result.error and "not set up" in result.error else "failed"
+
+
+def send_reset_link(profile, link_for, admin_email):
+    """An administrator emails someone a reset link (no hourly limit)."""
+    if profile.status != "active":
+        return "inactive"
+    return _email_link(profile, None, link_for, TOKEN_MINUTES, "password_reset",
+                       admin_email or "administrator")
+
+
+def send_invite(profile, link_for, admin_email, role_label):
+    """Email a new account owner a link to set their first password (valid 3 days)."""
+    return _email_link(profile, None, link_for, INVITE_MINUTES, "account_invite",
+                       admin_email or "administrator", role_label=role_label)
+
+
+def random_password():
+    """A password nobody knows, used until an invited person sets their own."""
+    return secrets.token_urlsafe(24) + "aA1!"
 
 
 def check_token(token):
