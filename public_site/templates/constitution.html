@@ -15,9 +15,10 @@
 
 {% block content %}
 <header class="page-head">
+    {% include "_art_constitution.html" %}
     <div class="wrap">
         <ol class="breadcrumb"><li><a href="{{ url_for('public_home') }}">Home</a></li><li>About</li></ol>
-        <div class="page-head-chev" aria-hidden="true"><i></i><i></i><i></i></div>
+        {% include "_logo_mark.html" %}
         <h1>Constitution and By-Laws</h1>
         <p class="lead">The governing principles, structure, responsibilities, and procedures of the organization.</p>
     </div>

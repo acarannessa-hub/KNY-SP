@@ -4,6 +4,20 @@
 {% block body_class %}page-home{% endblock %}
 
 {% block content %}
+<script>
+    // The home sky follows the visitor's clock: morning, afternoon, sunset or night.
+    (function () {
+        function daypart() {
+            var h = new Date().getHours() + new Date().getMinutes() / 60;
+            return h >= 5 && h < 9.5 ? "morning" : h >= 9.5 && h < 16 ? "day" : h >= 16 && h < 18.75 ? "sunset" : "night";
+        }
+        // ?sky=morning|day|sunset|night previews a time of day
+        var pick = (location.search.match(/[?&]sky=(morning|day|sunset|night)/) || [])[1];
+        function apply() { document.documentElement.setAttribute("data-daypart", pick || daypart()); }
+        apply();
+        setInterval(apply, 600000);
+    })();
+</script>
 <section class="holo-hero" aria-labelledby="org-name">
     {% include "_countryside.html" %}
     <div class="wrap holo-inner">

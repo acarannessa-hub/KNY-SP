@@ -301,9 +301,9 @@ Surfaces are friendly and soft: rounded corners, gentle ambient shadows, and a s
 
 **Creative North Star (public site): "The Logo in Its Own Countryside"**
 
-The public site takes its light from the organization's logo: an iridescent pastel field (lavender, lagoon, butter, mint, pink) over a fine white grid, forward chevrons drawn in the four official colors, and chunky rounded Nunito type. The home page stands the full name, "Kaya Natin! Youth – Candelaria", over a flat illustrated Candelaria countryside of hills, rice-field rows, a glowing sun and swaying coconut palms, then offers four poster-style destination banners with About first. The countryside is pixel art in the idiom of the organization's own posters, set against the smooth holographic light.
+The public site takes its light from the organization's logo: an iridescent pastel field (lavender, lagoon, butter, mint, pink) over a fine white grid, forward chevrons drawn in the four official colors, and chunky rounded Nunito type. The home page stands the full name, "Kaya Natin! Youth – Candelaria", over a pixel-art Candelaria countryside of hills, rice-field rows, a glowing sun and swaying coconut palms, then offers four poster-style destination banners with About first. The countryside is pixel art in the idiom of the organization's own posters, set against the smooth holographic light.
 
-Every inner page is a line in one color of the palette (violet, indigo, teal, forest, leaf, gold, lagoon, ink). That color tints the holographic page head, fills its three chevrons, rings the section markers, draws the "you are here" station strip and fills the primary button. Containers are generously rounded (20–28px), borders are soft hairlines, and the site closes on a dark ink footer under the four-color ribbon. Professional and colorful, never cutesy: no script faces, no mascots, no glyph icons.
+Every inner page is a line in one color of the palette (violet, indigo, teal, forest, leaf, gold, lagoon, ink). That color tints the holographic page head, fills the chevron section markers, the current section tab and the primary button. Behind each page head runs a full-bleed, animated pixel-art scene of the page's subject, in a Candelaria town of houses, shops and streets, peopled by small pixel-art youth in everyday clothes. The home sky follows the visitor's clock. Containers are generously rounded (20–28px), borders are soft hairlines, and the site closes on a dark ink footer under the four-color ribbon. Professional and colorful, never cutesy: no script faces, no mascots, no glyph icons.
 
 **Key Characteristics (public site):**
 - Iridescent pastel radial washes over a 40–44px white grid, on the home hero and every page head.
@@ -311,7 +311,8 @@ Every inner page is a line in one color of the palette (violet, indigo, teal, fo
 - Nunito 800–1000 for display, Figtree for text, both from Google Fonts.
 - One line color per page, with text-safe deeper steps wherever color carries type.
 - Pill buttons with a drawn arrowhead; rounded 20–28px containers; hairline borders.
-- A pixel-art countryside (crisp-edged hills and coconut palm sprites) in the posters' idiom.
+- A pixel-art countryside (crisp-edged hills and coconut palm sprites) in the posters' idiom on home, and a moving pixel-art scene behind every inner page head.
+- Home changes with the time of day: morning, day, sunset, night.
 - Slow, quiet motion (float, sway, glow) that stops entirely under reduced motion.
 
 ## Colors
@@ -373,7 +374,7 @@ Each inner page sets one line, a deep step and a pale tint: Introduction violet 
 
 **The Text-Safe Step Rule (public).** The official four are for shapes: chevrons, ribbons, fills, markers. Type in color always uses its text-safe step (#6650a8, #0e7c8f, #3d7a29, #8a6d00, #b8397a) or the page's line where it already clears 4.5:1. The single exception is Display Cyan (#1897ab), allowed only on display type 24px bold and larger.
 
-**The One Line Rule (public).** An inner page wears exactly one line color, set once on the body, and every colored element on the page (head wash, chevrons, section markers, station strip, numbered stops, primary button, tags, table hover) reads from it. Home alone uses all four.
+**The One Line Rule (public).** An inner page wears exactly one line color, set once on the body, and every colored element on the page (head wash, chevrons, section markers, section tabs, numbered stops, primary button, tags, table hover) reads from it. Home alone uses all four.
 
 ## Typography
 
@@ -409,7 +410,7 @@ Both load from Google Fonts in `public_base.html`. Sizes come from `--t-*` varia
 - **Lead** (Figtree 400, 19px, 1.55, max 58ch): page head intro.
 - **Body** (Figtree 400, 17px, 16px under 560px, 1.6, measure 66ch).
 - **UI** (Figtree 800, 15px): buttons, nav labels, destination actions.
-- **Meta** (Figtree 700, 14px): station names, breadcrumb, notes.
+- **Meta** (Figtree 700, 14px): section tabs, breadcrumb, notes.
 - **Label** (Figtree 800, 12px, 0.1–0.12em, capitals): table column heads, figure labels, contact field names. Labels name data; they never sit above a heading.
 - **Figures** (Nunito 900, clamp(22px, 2.4vw, 32px), tabular numerals): transparency totals.
 
@@ -430,7 +431,7 @@ Portal spacing runs on a 4px base: 4, 8, 12, 16, 24, 32, 48, 72, 104px (`--space
 
 **Public site (Persuade / Read).** A sticky white header (97% white, 10px backdrop blur, hairline bottom) topped by a 6px four-color ribbon, over a 1200px centered column with a 24px gutter (16px under 560px). The home hero fills the first viewport (100svh less the header) and centers the chevrons, name, tagline and two actions, with the countryside pinned along its bottom edge (1600 × 580 aspect, at least 260px tall). Under 700px the hero is no longer full-height, and the scene keeps at least 250px with its own phone palm set. Below it, the destinations stack in a single 980px column on a pale green-to-white fade.
 
-Inner pages open with the holographic page head (72px top, 48px bottom; breadcrumb, three chevrons, title, lead, left-aligned), then the station strip, then full-width sections 72px apart (48px under 860px) separated by hairlines, alternating white and the page's tint. Long documents (Introduction, Constitution) read in one 860px column; the station strip is their contents. Two-column splits, feature cards, numbered lists and the contact grid collapse to one column under 860px; the nav becomes a menu button under 960px.
+Inner pages open with the holographic page head (at least 440px tall; breadcrumb, logo mark, title and lead on the left over a pale wash, the page scene full-bleed behind them; at 860px and below the scene becomes a 250px band along the bottom), then the section tabs, then full-width sections 72px apart (48px under 860px) separated by hairlines, alternating white and the page's tint. Long documents (Introduction, Constitution) read in one 860px column; the section tabs are their contents. Two-column splits, feature cards, numbered lists and the contact grid collapse to one column under 860px; the nav becomes a menu button under 960px.
 
 Public spacing runs on `--s1`–`--s9`: 4, 8, 12, 16, 24, 32, 48, 72, 112px.
 
@@ -457,7 +458,8 @@ Depth on the public site is mostly light, not shadow: layered pastel washes, the
 - **Destination hover** (`box-shadow: 0 14px 30px` the banner's color at 18%): banners on hover, with an 8px slide right.
 - **Dropdown** (`box-shadow: 0 22px 50px rgba(27, 29, 41, 0.16)`): the About menu.
 - **Header logo** (`box-shadow: 0 4px 12px rgba(117, 98, 181, 0.25)`).
-The header and station strip use no shadow, only a hairline and blur.
+- **Logo mark** (`filter: drop-shadow(0 4px 10px rgba(117, 98, 181, 0.25))`): the mark in inner page heads.
+The header and section tabs use no shadow, only a hairline and blur.
 
 ### Named Rules
 **The Gentle Lift Rule.** Only things you can click lift on hover (1px for buttons, 2px for cards). Static content never moves.
@@ -466,7 +468,7 @@ The header and station strip use no shadow, only a hairline and blur.
 
 **Portal.** Consistently rounded, never sharp, never blobby: 8px on controls (buttons, inputs, nav links, menus), 12px on portal cards, 16px on dialogs, full pills for statuses and counts. Borders are 1px hairlines in slate at 8–10% opacity. The brand mark is a 46px rounded square (12px) filled with the purple-to-cyan-to-green gradient.
 
-**Public site.** Rounder and bolder. Buttons, nav links, tags and the menu toggle are full pills or circles. Containers step from 12px (fields, flash messages, event dates) to 16px (dropdown), 18px (destination chevron tiles), 20px (report frame, empty state), 24px (panels, feature cards) and 28px (destination banners; 22px on phones). Borders are 2px soft rules (rgba(27, 29, 41, 0.12)); destination banners use a 3px border of their color at 35%. Circles mark places: section markers (24px ring with a 6px line-colored inset), station dots, numbered stops (56px), person photos (with an 8px tint halo). The recurring silhouette is the forward chevron, `polygon(0 0, 55% 0, 100% 50%, 55% 100%, 0 100%, 45% 50%)`; buttons and links end in a drawn arrowhead (an 8px rotated corner of 2.5px strokes).
+**Public site.** Rounder and bolder. Buttons, nav links, tags and the menu toggle are full pills or circles. Containers step from 12px (fields, flash messages, event dates) to 16px (dropdown), 18px (destination chevron tiles), 20px (report frame, empty state), 24px (panels, feature cards) and 28px (destination banners; 22px on phones). Borders are 2px soft rules (rgba(27, 29, 41, 0.12)); destination banners use a 3px border of their color at 35%. Circles mark numbered stops (56px) and person photos (with an 8px tint halo); section markers are drawn chevrons (20 × 26px). The recurring silhouette is the forward chevron, `polygon(0 0, 55% 0, 100% 50%, 55% 100%, 0 100%, 45% 50%)`; buttons and links end in a drawn arrowhead (an 8px rotated corner of 2.5px strokes).
 
 ## Components
 
@@ -524,7 +526,7 @@ Pills that point forward.
 - **Phones (under 960px):** a 46px circular menu button with a drawn three-line icon reveals the same links, About grouped under a small capitals label, and a full-width Contact button.
 
 ### Chevron (signature, public)
-The logo's forward chevron, drawn with a clip-path, never typed. On home, four 28px chevrons (24px on phones) in violet, lagoon, leaf and gold slide in from the left with a 0.1s stagger. On inner pages, three 26px chevrons in the page's line at full, 75% and 50% opacity. Inside destination banners, one 26 × 30px chevron in a tinted 56px rounded tile, sliding 5px right on hover.
+The logo's forward chevron, drawn with a clip-path, never typed. On home, four 28px chevrons (24px on phones) in violet, lagoon, leaf and gold slide in from the left with a 0.1s stagger. Inner page heads carry the logo's own mark instead (`_logo_mark.html`, 112px wide): a dot and three rounded chevrons with white rims and gradient fills (violet to lagoon, lagoon to mint, leaf to butter), from the organization's cover banner, stepping in with a 0.08s stagger. Inside destination banners, one 26 × 30px chevron in a tinted 56px rounded tile, sliding 5px right on hover.
 
 ### Home Hero (signature, public)
 Centered on the pastel field: chevrons, the two-color "Kaya Natin!", spaced "YOUTH", per-letter "Candelaria" (letters settle in with a 0.05s stagger), the tagline, then "Get to know us" (About) and the ghost "Our advocacies". The whole name floats 10px on a 6s loop after the entrance.
@@ -536,14 +538,30 @@ Pixel art in the idiom of the organization's posters, not smooth vector. An inli
 Stacked, full-width poster rows in a 980px column: chevron tile, a Nunito 900 title in the destination's text color over a one-line description, and an action word with an arrowhead ("Start here", "Explore", "See what's on", "See our finances"). White with a 3px border at 35% of the color; hover slides 8px right, firms the border and adds a tinted shadow. **About** is the filled primary: Text Violet fill, white type, a larger title, hovering to Indigo.
 
 ### Holographic Page Head (signature, public)
-Every inner page opens in its own color as light: two radial washes of the line (32% and 22%) with pastel lagoon and pink, on #faf8ff, under a 40px white grid. Night breadcrumb (joined by short bars), three line chevrons, the page title and an Ink 2 lead.
+Every inner page opens in its own color as light: two radial washes of the line (32% and 22%) with pastel lagoon and pink, on #faf8ff, under a 40px white grid. Night breadcrumb (joined by short bars), the logo mark, the page title and an Ink 2 lead, held legible by a pale wash (#faf8ff at 94% fading to clear by 56% across, or top-down on phones) over the page scene (see Page Scene).
 
-### Station Strip (signature, public)
-"You are here" for inner pages. Built by `public.js` from the page's section headings (two or more) and pinned under the header: a 6px bar in the line color with a 24px ringed station per section and its name (14px, 700). The station for the section in view fills with the line, grows 12% and gains a tint halo; on narrow screens the strip scrolls sideways to keep it in view.
+### Page Scene (signature, public)
+Each inner page head is a moving background, not a picture beside the title: a generated, full-bleed pixel-art SVG (`public_site/templates/_art_<page>.html`, class `page-scene`) on a 260 × 72-cell grid, anchored bottom right (`xMaxYMax slice`) and drawn with `shape-rendering: crispEdges`, people included, in the idiom of the organization's posters and cover banner. Most pages stand in a Candelaria town backdrop: rows of pastel houses, a sari-sari-style shop, mid-rise buildings, street lamps and an asphalt street; a jeepney drives across Introduction and Contact. Each page then shows its subject: Introduction, the rural edge of town (palms, bahay kubo, a farmer in a salakot, a carabao, rice rows); Constitution, a civic hall with columns, scales of justice, the Philippine sun and stars, an open book on a lectern, a gavel; Best practices, a checklist, lightbulb, medal and teammates; Roster, members standing together; Advocacies, young advocates with a megaphone, heart-and-leaf placards, a sapling and a raised arm; Events, banderitas, a calendar, a stage with a microphone, a crowd; Transparency, a bar chart, coin stacks, a peso coin, a magnifier; Contact, envelopes, a phone, speech bubbles, a map pin.
+
+**Motion vocabulary.** travel (the jeepney and clouds cross the scene), fly (envelopes on an arc), sway and sway-top (palms, banderitas, ±1°), tilt (the scales, ±3°), spin (the Philippine sun, 40s), twinkle (stars), glow, bob, rise (coins, check badges), fall (confetti), pop (speech bubbles), flip (the peso coin), sweep (the magnifier), and a one-time grow (bars). People move only in small whole-pixel steps: idle (a 1-cell bob on a stepped 2s beat, timed per person), hop (performers, stepped 0, -2, -3, -1 cells over 1.1s), waving (two arm frames swapped on a 0.8s step), and audience heads bobbing. No one walks. Under reduced motion everything stops. The scene is decoration (`aria-hidden`).
+
+**The Small Pixel People Rule (public).** People are small pixel-art sprites, about 23 cells tall in the 72-row scene, with crisp edges and the same 1px dark outline as the rest of the scenery. They wear varied everyday clothes (tees, hoodies with pocket and strings, jackets over tees, striped shirts, polos, dresses, long sleeves; jeans, cargo pants, shorts, skirts; caps and totes), with Filipino skin tones and varied hair (short, long, bob, bun, ponytail, curly, spiky). Props are held, not floating: megaphone, a placard with heart and leaf icons, a seedling pot, a phone, a tote. A farmer in a salakot belongs on Introduction. Motion is idle only (bob, hop, a two-frame wave), in whole-pixel steps. No walk cycles, no uniforms as a rule, no mascots.
+
+**The Picture-Not-Words Rule (public).** Page scenes are pixel art, people included, in the posters' idiom, picturing the page's subject. They never contain words or numbers, and never invent facts (no fake figures, no real people's likenesses, no events that did not happen).
+
+### Time of Day (signature, public home)
+The home hero follows the visitor's clock. A small inline script sets `data-daypart` on the root element: morning (5:00–9:30), day (9:30–16:00), sunset (16:00–18:45) and night (the rest), checking again every 10 minutes; `?sky=morning|day|sunset|night` previews each one.
+- **Morning:** peach light low on the left (#ffe3c2 over the pastels on #fbf7ff), a low golden sun (#ffd27a) left of centre, a faint peach veil (#ffb27a at 8%) over the fields.
+- **Day:** the standard pastel field and sun.
+- **Sunset:** a lavender-to-pink-to-orange sky (#efe4ff, #ffe6ee, #ffe0c4 with #ffc58f and #ffc2d6 glows), an orange sun (#ff9a5c) sinking right, a warm veil (#ff6f61 at 14%) over the fields.
+- **Night:** a deep violet sky (#17143a to #3a2f73), the grid nearly gone (6% white), a pixel crescent moon and twinkling stars (stars hidden on phones), the fields under a dark veil at 50%. The hero type switches to light steps: "Kaya" #b9a8ff, "Natin!" #6fe0f0, "YOUTH" #f4f2ff, "Candelaria" letters #c6b6ff, #7fe3f2, #a6e483, #ffe27a and #ff9cc9, the tagline #e3dcff. The ghost button turns light-on-dark (#f4f2ff text and border on 8% white).
+
+### Section Tabs (signature, public)
+"On this page" for inner pages. Built by `public.js` from the page's section headings (two or more) and pinned under the header (97% white, 10px blur, hairline bottom). A Nunito 800 14px "On this page" label (hidden at 560px and below), then a sideways-scrolling row of pill tabs: white, 2px border at 30% of the line, Figtree 700 14px Night labels, each led by a small drawn chevron (9 × 11px) in the line color. Hover tints the tab with the line's tint and firms the border. The tab for the section in view fills with the line's head color and its text color for the line (white, Night on gold), with a matching chevron, and scrolls into view on narrow screens.
 
 ### Public Containers
 - **Panel:** white, 2px soft rule, 24px corners, the violet panel shadow, 32px padding.
-- **Section marker:** each section heading starts with a 24px ring in the page's line.
+- **Section marker:** each section heading starts with a drawn chevron (20 × 26px; 16 × 21px on phones) in the page's line head color.
 - **Numbered stops:** 56px line-filled circles in Nunito 900 joined by a 14px line track at 20%.
 - **Timetable lists** (events, tables, figures, contact details): a 3px Night top rule, strong-rule row dividers, small capitals column labels, and the line's tint on row hover. Event dates sit in line-filled 12px-rounded blocks.
 - **Empty state:** a 2px dashed rule, 20px corners, centered Night title and Ink 2 note.
@@ -568,7 +586,7 @@ Entrances use `cubic-bezier(0.16, 1, 0.3, 1)` (0.7–0.9s); loops are slow (floa
 - **Do** put new portal pages in the sidebar group that matches the job, and build them from the page header + panels skeleton.
 - **Do** publish real totals wherever the public site shows money; show an empty state, never a fake ₱0.00 placeholder.
 - **Do** use the 8 / 12 / 16px radius ladder and the 1px slate hairline for borders.
-- **Do** give every new public inner page one line color on its body class and build it from the holographic page head, station strip and ringed section heads.
+- **Do** give every new public inner page one line color on its body class and build it from the holographic page head with its logo mark and moving page scene, the section tabs and chevron section heads.
 - **Do** set colored public type in the text-safe steps (#6650a8, #0e7c8f, #3d7a29, #8a6d00, #b8397a) and keep the official four for chevrons, ribbons and fills.
 - **Do** draw every chevron and arrowhead in CSS or SVG.
 - **Do** keep public containers at 20–28px corners with soft 2px rules, and buttons as pills.
@@ -588,3 +606,8 @@ Entrances use `cubic-bezier(0.16, 1, 0.3, 1)` (0.7–0.9s); loops are slow (floa
 - **Don't** set "Candelaria" or any public heading in a script face, and don't add mascots or cartoon type.
 - **Don't** redraw the countryside as smooth vector curves or replace it with stock photography; keep it crisp-edged pixel art on one grid.
 - **Don't** use Display Cyan (#1897ab) below 24px bold.
+- **Don't** put words, numbers or invented facts in page scenes, or draw them as smooth vector or clip art.
+- **Don't** put a static picture box beside a page title; page illustration is the moving background scene behind the head.
+- **Don't** draw people as smooth vector figures, as mascots, larger than the scenery's scale, or without Filipino skin tones.
+- **Don't** give people walk cycles or travel; their motion stays idle (bob, hop, two-frame wave) in whole-pixel steps.
+- **Don't** bring back a station-line or progress-rail navigation for page sections; sections are reached through the pill tabs.

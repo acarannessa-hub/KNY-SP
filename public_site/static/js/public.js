@@ -41,8 +41,8 @@
     if (year) { year.textContent = new Date().getFullYear(); }
 })();
 
-/* Station strip: the page's sections become stations on its line, and the
-   station for the section being read is marked "you are here". */
+/* Section tabs: the page's sections become a row of tabs under the page head;
+   the tab for the section being read is marked current. */
 (function () {
     "use strict";
     var head = document.querySelector(".page-head");
@@ -54,15 +54,19 @@
     if (headings.length < 2) { return; }
 
     var strip = document.createElement("nav");
-    strip.className = "station-strip";
+    strip.className = "section-tabs";
     strip.setAttribute("aria-label", "Sections on this page");
     var wrap = document.createElement("div");
     wrap.className = "wrap";
-    var list = document.createElement("ol");
+    var label = document.createElement("span");
+    label.className = "section-tabs-label";
+    label.textContent = "On this page";
+    wrap.appendChild(label);
+    var list = document.createElement("ul");
     var links = [];
     headings.forEach(function (h, i) {
         var holder = h.closest("article[id]");
-        if (!h.id && !holder) { h.id = "station-" + (i + 1); }
+        if (!h.id && !holder) { h.id = "section-" + (i + 1); }
         h.dataset.anchor = holder ? holder.id : h.id;
         var li = document.createElement("li");
         var a = document.createElement("a");
@@ -83,7 +87,7 @@
         });
         var active = links[index];
         if (active && active.scrollIntoView && list.scrollWidth > list.clientWidth) {
-            list.scrollTo({ left: active.parentNode.offsetLeft - 24, behavior: "smooth" });
+            list.scrollTo({ left: active.parentNode.offsetLeft - list.offsetLeft - 8, behavior: "smooth" });
         }
         var id = headings[index] && headings[index].dataset.anchor;
         tocLinks.forEach(function (a) {

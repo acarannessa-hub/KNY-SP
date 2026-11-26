@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-26T14:04:29+00:00",
+  "generatedAt": "2026-11-26T15:17:35+00:00",
   "title": "Design System: Kaya Natin! Youth – Candelaria",
   "extensions": {
     "colorMeta": {
@@ -723,7 +723,7 @@
       },
       "public-h2": {
         "displayName": "Public Section",
-        "purpose": "Public h2, led by a ringed section marker."
+        "purpose": "Public h2, led by a drawn chevron section marker."
       },
       "public-h3": {
         "displayName": "Public Title",
@@ -747,7 +747,7 @@
       },
       "public-meta": {
         "displayName": "Public Meta",
-        "purpose": "Station names, breadcrumb, notes."
+        "purpose": "Section tabs, breadcrumb, notes."
       },
       "public-label": {
         "displayName": "Public Label",
@@ -804,6 +804,11 @@
         "name": "public-logo",
         "value": "0 4px 12px rgba(117, 98, 181, 0.25)",
         "purpose": "Header logo image."
+      },
+      {
+        "name": "public-logo-mark",
+        "value": "drop-shadow(0 4px 10px rgba(117, 98, 181, 0.25))",
+        "purpose": "Logo mark (filter) in inner page heads."
       }
     ],
     "motion": [
@@ -851,6 +856,66 @@
         "name": "public-reduced-motion",
         "value": "all animation and transition none; SVG paused at frame 0",
         "purpose": "prefers-reduced-motion: reduce."
+      },
+      {
+        "name": "public-scene-travel",
+        "value": "linear infinite translateX(var(--from) to var(--to))",
+        "purpose": "The jeepney and clouds crossing page scenes; people never travel."
+      },
+      {
+        "name": "public-scene-fly",
+        "value": "linear infinite arc",
+        "purpose": "Envelopes on Contact."
+      },
+      {
+        "name": "public-scene-sway",
+        "value": "6s (sway) / 5s (sway-top) ease-in-out, ±1deg",
+        "purpose": "Palms, banderitas."
+      },
+      {
+        "name": "public-scene-tilt",
+        "value": "5s ease-in-out, ±3deg",
+        "purpose": "Scales of justice."
+      },
+      {
+        "name": "public-scene-spin",
+        "value": "40s linear infinite",
+        "purpose": "The Philippine sun."
+      },
+      {
+        "name": "public-scene-small-loops",
+        "value": "twinkle 2.4s, glow 3.2s, bob 1.8s, pop 4s, flip 3s, sweep 7s, fall 6s, rise 9s",
+        "purpose": "Stars, lightbulb, placards, speech bubbles, peso coin, magnifier, confetti, coins and check badges."
+      },
+      {
+        "name": "public-scene-grow",
+        "value": "1.2s once, scaleY from 0",
+        "purpose": "Transparency bars."
+      },
+      {
+        "name": "public-mark-in",
+        "value": "0.7s ease-out, 0.08s stagger, from translateX(-10px) scale(0.85)",
+        "purpose": "Logo mark in inner page heads."
+      },
+      {
+        "name": "public-daypart",
+        "value": "morning 5:00-9:30, day 9:30-16:00, sunset 16:00-18:45, night otherwise; rechecked every 10 min",
+        "purpose": "Home sky follows the visitor clock via html[data-daypart]."
+      },
+      {
+        "name": "public-scene-idle",
+        "value": "2s steps(1) infinite, 1-cell bob, per-person delay",
+        "purpose": "Standing people and audience heads."
+      },
+      {
+        "name": "public-scene-hop",
+        "value": "1.1s steps(1) infinite, 0/-2/-3/-1 cells",
+        "purpose": "Performers on stage."
+      },
+      {
+        "name": "public-scene-waving",
+        "value": "0.8s steps(1) infinite, two arm frames (fa/fb)",
+        "purpose": "Waving arms."
       }
     ],
     "breakpoints": [
@@ -885,6 +950,10 @@
       {
         "name": "public-phone",
         "value": "560px"
+      },
+      {
+        "name": "public-scene-band",
+        "value": "860px"
       }
     ]
   },
@@ -1004,21 +1073,21 @@
       "name": "Holographic Page Head",
       "kind": "custom",
       "refersTo": "public-page-head",
-      "description": "Inner page opening: the page line as pastel light over a white grid, with breadcrumb, three line chevrons, title and lead.",
+      "description": "Inner page opening: the page line as pastel light over a white grid, breadcrumb, logo mark, title and lead over a pale wash, with the moving pixel-art page scene full-bleed behind (scene not reproduced in this snippet).",
       "html": "<header class=\"ds-phead\" style=\"--line:#2f6e2c\"><ol class=\"ds-crumb\"><li>Home</li><li>Roster</li></ol><div class=\"ds-phead-chev\"><i></i><i></i><i></i></div><h1>Our officers and members</h1><p>Meet the people behind Kaya Natin! Youth – Candelaria.</p></header>",
       "css": ":host{--violet:#7562b5;--indigo:#3f2c8c;--lagoon:#1fa2b8;--leaf:#5a9e3c;--gold:#e7bf1e;--night:#1b1d29;--txt-violet:#6650a8;--txt-lagoon:#0e7c8f;--txt-leaf:#3d7a29;--txt-gold:#8a6d00;--display-cyan:#1897ab;--teal:#0b7485;--forest:#2f6e2c;} .ds-phead{position:relative;padding:56px 32px 40px;border-radius:24px;overflow:hidden;color:var(--night);font-family:\"Figtree\",\"Segoe UI\",Arial,sans-serif;background:radial-gradient(55% 90% at 8% 10%,color-mix(in srgb,var(--line) 32%,transparent) 0%,transparent 60%),radial-gradient(50% 80% at 92% 20%,#c4f1f4 0%,transparent 62%),radial-gradient(45% 80% at 75% 100%,#ffd2ef 0%,transparent 60%),radial-gradient(40% 70% at 30% 100%,color-mix(in srgb,var(--line) 22%,transparent) 0%,transparent 60%),#faf8ff;} .ds-phead::before{content:\"\";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.78) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.78) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;} .ds-phead>*{position:relative;} .ds-crumb{display:flex;gap:8px;align-items:center;margin:0 0 24px;padding:0;list-style:none;font-size:14px;font-weight:800;} .ds-crumb li+li::before{content:\"\";display:inline-block;width:18px;height:3px;margin-right:8px;vertical-align:middle;background:currentColor;opacity:.55;} .ds-phead-chev{display:inline-flex;gap:2px;margin-bottom:16px;} .ds-phead-chev i{display:block;width:26px;height:26px;background:var(--line);clip-path:polygon(0 0,55% 0,100% 50%,55% 100%,0 100%,45% 50%);} .ds-phead-chev i:nth-child(2){opacity:.75;} .ds-phead-chev i:nth-child(3){opacity:.5;} .ds-phead h1{margin:0;max-width:16ch;font-family:\"Nunito\",\"Segoe UI\",sans-serif;font-size:48px;font-weight:900;line-height:.98;letter-spacing:-.02em;} .ds-phead p{margin:16px 0 0;max-width:58ch;font-size:19px;line-height:1.55;color:#474c5b;}"
     },
     {
-      "name": "Station Strip",
+      "name": "Section Tabs",
       "kind": "nav",
-      "description": "\"You are here\" strip under the page head: sections as ringed stations on the page line; the current one fills and grows.",
-      "html": "<nav class=\"ds-stations\" style=\"--line:#0b7485;--line-tint:#e3f2f4\"><ol><li><a href=\"#\">What we do well</a></li><li><a href=\"#\" aria-current=\"true\">How we run activities</a></li><li><a href=\"#\">Working with partners</a></li></ol></nav>",
-      "css": ":host{--violet:#7562b5;--indigo:#3f2c8c;--lagoon:#1fa2b8;--leaf:#5a9e3c;--gold:#e7bf1e;--night:#1b1d29;--txt-violet:#6650a8;--txt-lagoon:#0e7c8f;--txt-leaf:#3d7a29;--txt-gold:#8a6d00;--display-cyan:#1897ab;--teal:#0b7485;--forest:#2f6e2c;} .ds-stations{font-family:\"Figtree\",\"Segoe UI\",Arial,sans-serif;background:rgba(255,255,255,.97);border-bottom:1px solid rgba(27,29,41,.12);} .ds-stations ol{display:flex;margin:0;padding:12px 0 10px;list-style:none;overflow-x:auto;} .ds-stations li{position:relative;flex:1 0 auto;min-width:130px;} .ds-stations li::before{content:\"\";position:absolute;top:9px;left:0;right:0;height:6px;background:var(--line);} .ds-stations li:first-child::before{left:10px;} .ds-stations li:last-child::before{right:auto;width:10px;} .ds-stations a{position:relative;display:grid;gap:6px;justify-items:start;padding-right:16px;color:#4a4f5e;font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;white-space:nowrap;} .ds-stations a::before{content:\"\";width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px var(--line) inset;transition:background-color .25s,transform .25s cubic-bezier(.16,1,.3,1);} .ds-stations a:hover,.ds-stations a[aria-current=\"true\"]{color:var(--night);} .ds-stations a[aria-current=\"true\"]::before{background:var(--line);box-shadow:0 0 0 5px var(--line) inset,0 0 0 4px var(--line-tint);transform:scale(1.12);} .ds-stations a:focus-visible{outline:3px solid var(--night);outline-offset:3px;border-radius:6px;}"
+      "description": "\"On this page\" pill tabs under the page head, each led by a drawn chevron in the line color; the current tab fills with the line.",
+      "html": "<nav class=\"ds-tabs\" style=\"--line:#0b7485;--line-head:#0b7485;--line-tint:#e3f2f4;--on-line:#fff\"><span class=\"ds-tabs-label\">On this page</span><ul><li><a href=\"#\">What we do well</a></li><li><a href=\"#\" aria-current=\"true\">How we run activities</a></li><li><a href=\"#\">Working with partners</a></li></ul></nav>",
+      "css": ":host{--night:#1b1d29;} .ds-tabs{display:flex;align-items:center;gap:16px;font-family:\"Figtree\",\"Segoe UI\",Arial,sans-serif;background:rgba(255,255,255,.97);border-bottom:1px solid rgba(27,29,41,.12);} .ds-tabs-label{flex:0 0 auto;color:#4a4f5e;font:800 14px/1 \"Nunito\",\"Segoe UI\",sans-serif;} .ds-tabs ul{display:flex;gap:8px;margin:0;padding:12px 2px;list-style:none;overflow-x:auto;scrollbar-width:none;} .ds-tabs a{display:inline-flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;color:var(--night);font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;text-decoration:none;background:#fff;border:2px solid color-mix(in srgb,var(--line) 30%,#fff);border-radius:999px;transition:background-color .2s,border-color .2s,color .2s;} .ds-tabs a::before{content:\"\";width:9px;height:11px;flex:0 0 auto;background:var(--line-head);clip-path:polygon(0 0,55% 0,100% 50%,55% 100%,0 100%,45% 50%);} .ds-tabs a:hover{border-color:var(--line);background:var(--line-tint);} .ds-tabs a[aria-current=\"true\"]{color:var(--on-line);background:var(--line-head);border-color:var(--line-head);} .ds-tabs a[aria-current=\"true\"]::before{background:var(--on-line);} .ds-tabs a:focus-visible{outline:3px solid var(--night);outline-offset:3px;} @media (max-width:560px){.ds-tabs-label{display:none;}}"
     }
   ],
   "narrative": {
     "northStar": "The Bright Civic Desk (portal) / The Logo in Its Own Countryside (public site)",
-    "overview": "This project carries two worlds that share one organization and its four official colors. The **officers' portal** (`templates/`, `static/css/private.css`) is a calm workspace. The **public website** (`public_site/templates/`, `public_site/static/css/public.css`) is the organization's logo made into a place. Each world's rules apply only inside its own templates and stylesheet; never mix their tokens.\n\nA cheerful but businesslike workspace. The organization's four official colors bring youthful energy, but they sit on a clean, efficient desk: near-white surfaces, slate text, generous whitespace and orderly tables. Color guides the eye to what matters (the main action, a status, a total) and never competes with the numbers. The officers' portal is a calm place where volunteers record, review and approve records between activities.\n\nSurfaces are friendly and soft: rounded corners, gentle ambient shadows, and a small lift on hover tell people what is clickable without shouting. Density is moderate. Tables carry most of the portal's information, with sticky purple-tinted headers, right-aligned tabular figures and quiet row stripes. Forms open in centered dialogs rather than inline accordions.\n\nThe public site takes its light from the organization's logo: an iridescent pastel field (lavender, lagoon, butter, mint, pink) over a fine white grid, forward chevrons drawn in the four official colors, and chunky rounded Nunito type. The home page stands the full name, \"Kaya Natin! Youth – Candelaria\", over a flat illustrated Candelaria countryside of hills, rice-field rows, a glowing sun and swaying coconut palms, then offers four poster-style destination banners with About first. The countryside is pixel art in the idiom of the organization's own posters, set against the smooth holographic light.\n\nEvery inner page is a line in one color of the palette (violet, indigo, teal, forest, leaf, gold, lagoon, ink). That color tints the holographic page head, fills its three chevrons, rings the section markers, draws the \"you are here\" station strip and fills the primary button. Containers are generously rounded (20–28px), borders are soft hairlines, and the site closes on a dark ink footer under the four-color ribbon. Professional and colorful, never cutesy: no script faces, no mascots, no glyph icons.",
+    "overview": "This project carries two worlds that share one organization and its four official colors. The **officers' portal** (`templates/`, `static/css/private.css`) is a calm workspace. The **public website** (`public_site/templates/`, `public_site/static/css/public.css`) is the organization's logo made into a place. Each world's rules apply only inside its own templates and stylesheet; never mix their tokens.\n\nA cheerful but businesslike workspace. The organization's four official colors bring youthful energy, but they sit on a clean, efficient desk: near-white surfaces, slate text, generous whitespace and orderly tables. Color guides the eye to what matters (the main action, a status, a total) and never competes with the numbers. The officers' portal is a calm place where volunteers record, review and approve records between activities.\n\nSurfaces are friendly and soft: rounded corners, gentle ambient shadows, and a small lift on hover tell people what is clickable without shouting. Density is moderate. Tables carry most of the portal's information, with sticky purple-tinted headers, right-aligned tabular figures and quiet row stripes. Forms open in centered dialogs rather than inline accordions.\n\nThe public site takes its light from the organization's logo: an iridescent pastel field (lavender, lagoon, butter, mint, pink) over a fine white grid, forward chevrons drawn in the four official colors, and chunky rounded Nunito type. The home page stands the full name, \"Kaya Natin! Youth – Candelaria\", over a pixel-art Candelaria countryside of hills, rice-field rows, a glowing sun and swaying coconut palms, then offers four poster-style destination banners with About first. The countryside is pixel art in the idiom of the organization's own posters, set against the smooth holographic light.\n\nEvery inner page is a line in one color of the palette (violet, indigo, teal, forest, leaf, gold, lagoon, ink). That color tints the holographic page head, fills the chevron section markers, the current section tab and the primary button. Behind each page head runs a full-bleed, animated pixel-art scene of the page's subject, in a Candelaria town of houses, shops and streets, peopled by small pixel-art youth in everyday clothes. The home sky follows the visitor's clock. Containers are generously rounded (20–28px), borders are soft hairlines, and the site closes on a dark ink footer under the four-color ribbon. Professional and colorful, never cutesy: no script faces, no mascots, no glyph icons.",
     "keyCharacteristics": [
       "Four official brand colors (purple, cyan, green, yellow), led by purple, on near-white.",
       "Slate ink, never pure black; muted slate for secondary text.",
@@ -1030,7 +1099,8 @@
       "Nunito 800–1000 for display, Figtree for text, both from Google Fonts.",
       "One line color per page, with text-safe deeper steps wherever color carries type.",
       "Pill buttons with a drawn arrowhead; rounded 20–28px containers; hairline borders.",
-      "A pixel-art countryside (crisp-edged hills and coconut palm sprites) in the posters' idiom.",
+      "A pixel-art countryside (crisp-edged hills and coconut palm sprites) in the posters' idiom on home, and a moving pixel-art scene behind every inner page head.",
+      "Home changes with the time of day: morning, day, sunset, night.",
       "Slow, quiet motion (float, sway, glow) that stops entirely under reduced motion."
     ],
     "rules": [
@@ -1051,7 +1121,7 @@
       },
       {
         "name": "The One Line Rule (public)",
-        "body": "An inner page wears exactly one line color, set once on the body, and every colored element on the page (head wash, chevrons, section markers, station strip, numbered stops, primary button, tags, table hover) reads from it. Home alone uses all four.",
+        "body": "An inner page wears exactly one line color, set once on the body, and every colored element on the page (head wash, chevrons, section markers, section tabs, numbered stops, primary button, tags, table hover) reads from it. Home alone uses all four.",
         "section": "colors"
       },
       {
@@ -1083,6 +1153,16 @@
         "name": "The Gentle Lift Rule",
         "body": "Only things you can click lift on hover (1px for buttons, 2px for cards). Static content never moves.",
         "section": "elevation"
+      },
+      {
+        "name": "The Small Pixel People Rule (public)",
+        "body": "People are small pixel-art sprites, about 23 cells tall in the 72-row scene, with crisp edges and the same 1px dark outline as the rest of the scenery. They wear varied everyday clothes (tees, hoodies with pocket and strings, jackets over tees, striped shirts, polos, dresses, long sleeves; jeans, cargo pants, shorts, skirts; caps and totes), with Filipino skin tones and varied hair (short, long, bob, bun, ponytail, curly, spiky). Props are held, not floating: megaphone, a placard with heart and leaf icons, a seedling pot, a phone, a tote. A farmer in a salakot belongs on Introduction. Motion is idle only (bob, hop, a two-frame wave), in whole-pixel steps. No walk cycles, no uniforms as a rule, no mascots.",
+        "section": "components"
+      },
+      {
+        "name": "The Picture-Not-Words Rule (public)",
+        "body": "Page scenes are pixel art, people included, in the posters' idiom, picturing the page's subject. They never contain words or numbers, and never invent facts (no fake figures, no real people's likenesses, no events that did not happen).",
+        "section": "components"
       }
     ],
     "dos": [
@@ -1094,7 +1174,7 @@
       "**Do** put new portal pages in the sidebar group that matches the job, and build them from the page header + panels skeleton.",
       "**Do** publish real totals wherever the public site shows money; show an empty state, never a fake ₱0.00 placeholder.",
       "**Do** use the 8 / 12 / 16px radius ladder and the 1px slate hairline for borders.",
-      "**Do** give every new public inner page one line color on its body class and build it from the holographic page head, station strip and ringed section heads.",
+      "**Do** give every new public inner page one line color on its body class and build it from the holographic page head with its logo mark and moving page scene, the section tabs and chevron section heads.",
       "**Do** set colored public type in the text-safe steps (#6650a8, #0e7c8f, #3d7a29, #8a6d00, #b8397a) and keep the official four for chevrons, ribbons and fills.",
       "**Do** draw every chevron and arrowhead in CSS or SVG.",
       "**Do** keep public containers at 20–28px corners with soft 2px rules, and buttons as pills.",
@@ -1113,7 +1193,12 @@
       "**Don't** type chevrons, arrows or icons as glyphs or emoji.",
       "**Don't** set \"Candelaria\" or any public heading in a script face, and don't add mascots or cartoon type.",
       "**Don't** redraw the countryside as smooth vector curves or replace it with stock photography; keep it crisp-edged pixel art on one grid.",
-      "**Don't** use Display Cyan (#1897ab) below 24px bold."
+      "**Don't** use Display Cyan (#1897ab) below 24px bold.",
+      "**Don't** put words, numbers or invented facts in page scenes, or draw them as smooth vector or clip art.",
+      "**Don't** put a static picture box beside a page title; page illustration is the moving background scene behind the head.",
+      "**Don't** draw people as smooth vector figures, as mascots, larger than the scenery's scale, or without Filipino skin tones.",
+      "**Don't** give people walk cycles or travel; their motion stays idle (bob, hop, two-frame wave) in whole-pixel steps.",
+      "**Don't** bring back a station-line or progress-rail navigation for page sections; sections are reached through the pill tabs."
     ]
   }
 }
