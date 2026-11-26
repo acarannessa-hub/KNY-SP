@@ -212,10 +212,7 @@ def _public_finance_summary():
 @app.route("/")
 def public_home():
 
-    return render_template(
-        "public/landing.html",
-        finance=_public_finance_summary()
-    )
+    return render_template("public/landing.html")
 
 
 @app.route("/introduction")

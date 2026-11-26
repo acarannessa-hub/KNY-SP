@@ -40,3 +40,66 @@
     var year = document.getElementById("currentYear");
     if (year) { year.textContent = new Date().getFullYear(); }
 })();
+
+/* Station strip: the page's sections become stations on its line, and the
+   station for the section being read is marked "you are here". */
+(function () {
+    "use strict";
+    var head = document.querySelector(".page-head");
+    if (!head) { return; }
+    var headings = Array.prototype.filter.call(
+        document.querySelectorAll("main section h2, main article h2"),
+        function (h) { return !h.classList.contains("sr-only") && !h.closest(".page-head") && !h.closest(".site-footer"); }
+    );
+    if (headings.length < 2) { return; }
+
+    var strip = document.createElement("nav");
+    strip.className = "station-strip";
+    strip.setAttribute("aria-label", "Sections on this page");
+    var wrap = document.createElement("div");
+    wrap.className = "wrap";
+    var list = document.createElement("ol");
+    var links = [];
+    headings.forEach(function (h, i) {
+        var holder = h.closest("article[id]");
+        if (!h.id && !holder) { h.id = "station-" + (i + 1); }
+        h.dataset.anchor = holder ? holder.id : h.id;
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.href = "#" + h.dataset.anchor;
+        a.textContent = h.textContent.replace(/\s+/g, " ").trim().replace(/^\[|\]$/g, "").slice(0, 34);
+        li.appendChild(a);
+        list.appendChild(li);
+        links.push(a);
+    });
+    wrap.appendChild(list);
+    strip.appendChild(wrap);
+    head.insertAdjacentElement("afterend", strip);
+
+    var tocLinks = document.querySelectorAll(".doc-toc a");
+    function mark(index) {
+        links.forEach(function (a, i) {
+            if (i === index) { a.setAttribute("aria-current", "true"); } else { a.removeAttribute("aria-current"); }
+        });
+        var active = links[index];
+        if (active && active.scrollIntoView && list.scrollWidth > list.clientWidth) {
+            list.scrollTo({ left: active.parentNode.offsetLeft - 24, behavior: "smooth" });
+        }
+        var id = headings[index] && headings[index].dataset.anchor;
+        tocLinks.forEach(function (a) {
+            if (a.getAttribute("href") === "#" + id) {
+                a.setAttribute("aria-current", "true");
+            } else { a.removeAttribute("aria-current"); }
+        });
+    }
+    function update() {
+        var line = 180, current = 0;
+        headings.forEach(function (h, i) { if (h.getBoundingClientRect().top - line <= 0) { current = i; } });
+        mark(current);
+    }
+    var ticking = false;
+    window.addEventListener("scroll", function () {
+        if (!ticking) { ticking = true; requestAnimationFrame(function () { update(); ticking = false; }); }
+    }, { passive: true });
+    update();
+})();

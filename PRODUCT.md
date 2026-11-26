@@ -50,11 +50,14 @@ Financial transparency is the point, not a feature. The database is the official
 
 - Name: **Kaya Natin! Youth – Candelaria** (short form "Kaya Natin! Youth", portal abbreviation "KNY"). Keep the exclamation mark.
 - Content language: English.
+- Tagline: "Basta't sama-sama, Kaya Natin!" (confirmed by the organization, 2026-11-26).
+- Logo: purple "K", cyan "N", four forward chevrons (purple, cyan, green, yellow), "youth" in spaced lettering, multicolor "Candelaria". The original file is still to be supplied; the site uses a small screenshot (public_site/static/img/kny-logo.png) until then.
+- Setting: Candelaria is a rural, coconut-growing town (Quezon); imagery may draw on that countryside.
 
 ## Evidence on Hand
 
 - Real financial data: the treasurer's spreadsheets (kept outside the repository; they contain personal data and must never be committed).
-- Public-site text is **not yet written**: home, introduction, nature, history, mission, vision, the eight advocacies and their focus areas are placeholders. The organization will supply real text and photos later. Never invent mission statements, advocacy titles, history, testimonials, member names or statistics to fill them.
+- Public-site text is **mostly not yet written** (the tagline is now real): home, introduction, nature, history, mission, vision, the eight advocacies and their focus areas are placeholders. The organization will supply real text and photos later. Never invent mission statements, advocacy titles, history, testimonials, member names or statistics to fill them.
 
 ## Product Principles
 

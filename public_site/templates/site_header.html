@@ -1,9 +1,9 @@
 {% set ep = request.endpoint %}
 {% set about_pages = [
-    ("public_introduction", "Introduction"),
-    ("public_constitution", "Constitution & By-Laws"),
-    ("public_best_practices", "Best practices"),
-    ("public_roster", "Roster"),
+    ("public_introduction", "Introduction", "introduction"),
+    ("public_constitution", "Constitution & By-Laws", "constitution"),
+    ("public_best_practices", "Best practices", "best-practices"),
+    ("public_roster", "Roster", "roster"),
 ] %}
 {% set about_current = ep in about_pages|map(attribute=0)|list %}
 <a class="skip-link" href="#main">Skip to content</a>
@@ -11,23 +11,23 @@
     <div class="site-ribbon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
     <div class="wrap site-header-inner">
         <a class="brand" href="{{ url_for('public_home') }}">
-            <span class="brand-mark" aria-hidden="true">KNY</span>
+            <img class="brand-logo" src="{{ url_for('public_static', filename='img/kny-logo.png') }}" alt="" width="46" height="46">
             <span>Kaya Natin! Youth<small>Candelaria</small></span>
         </a>
 
         <nav class="site-nav" aria-label="Main">
-            <a href="{{ url_for('public_home') }}" {% if ep == "public_home" %}aria-current="page"{% endif %}>Home</a>
+            <a href="{{ url_for('public_home') }}" data-line="home" {% if ep == "public_home" %}aria-current="page"{% endif %}><span class="home-word" aria-label="Home"><span aria-hidden="true">H</span><span aria-hidden="true">o</span><span aria-hidden="true">m</span><span aria-hidden="true">e</span></span></a>
             <div class="nav-menu {% if about_current %}is-current{% endif %}">
                 <button type="button" aria-expanded="false" aria-controls="about-menu" data-menu-button>About</button>
                 <ul class="nav-dropdown" id="about-menu" hidden>
-                    {% for endpoint, label in about_pages %}
-                    <li><a href="{{ url_for(endpoint) }}" {% if ep == endpoint %}aria-current="page"{% endif %}>{{ label }}</a></li>
+                    {% for endpoint, label, line in about_pages %}
+                    <li><a href="{{ url_for(endpoint) }}" data-line="{{ line }}" {% if ep == endpoint %}aria-current="page"{% endif %}>{{ label }}</a></li>
                     {% endfor %}
                 </ul>
             </div>
-            <a href="{{ url_for('public_advocacies') }}" {% if ep == "public_advocacies" %}aria-current="page"{% endif %}>Advocacies</a>
-            <a href="{{ url_for('public_events') }}" {% if ep == "public_events" %}aria-current="page"{% endif %}>Events</a>
-            <a href="{{ url_for('public_financial_dashboard') }}" {% if ep == "public_financial_dashboard" %}aria-current="page"{% endif %}>Transparency</a>
+            <a href="{{ url_for('public_advocacies') }}" data-line="advocacies" {% if ep == "public_advocacies" %}aria-current="page"{% endif %}>Advocacies</a>
+            <a href="{{ url_for('public_events') }}" data-line="events" {% if ep == "public_events" %}aria-current="page"{% endif %}>Events</a>
+            <a href="{{ url_for('public_financial_dashboard') }}" data-line="transparency" {% if ep == "public_financial_dashboard" %}aria-current="page"{% endif %}>Transparency</a>
             <a class="nav-cta" href="{{ url_for('public_contact') }}" {% if ep == "public_contact" %}aria-current="page"{% endif %}>Contact us</a>
         </nav>
 
@@ -38,13 +38,13 @@
     </div>
 
     <nav class="mobile-nav wrap" id="mobile-nav" aria-label="Main" hidden>
-        <a href="{{ url_for('public_home') }}" {% if ep == "public_home" %}aria-current="page"{% endif %}>Home</a>
-        <a href="{{ url_for('public_advocacies') }}" {% if ep == "public_advocacies" %}aria-current="page"{% endif %}>Advocacies</a>
-        <a href="{{ url_for('public_events') }}" {% if ep == "public_events" %}aria-current="page"{% endif %}>Events</a>
-        <a href="{{ url_for('public_financial_dashboard') }}" {% if ep == "public_financial_dashboard" %}aria-current="page"{% endif %}>Transparency</a>
+        <a href="{{ url_for('public_home') }}" data-line="home" {% if ep == "public_home" %}aria-current="page"{% endif %}><span class="home-word" aria-label="Home"><span aria-hidden="true">H</span><span aria-hidden="true">o</span><span aria-hidden="true">m</span><span aria-hidden="true">e</span></span></a>
+        <a href="{{ url_for('public_advocacies') }}" data-line="advocacies" {% if ep == "public_advocacies" %}aria-current="page"{% endif %}>Advocacies</a>
+        <a href="{{ url_for('public_events') }}" data-line="events" {% if ep == "public_events" %}aria-current="page"{% endif %}>Events</a>
+        <a href="{{ url_for('public_financial_dashboard') }}" data-line="transparency" {% if ep == "public_financial_dashboard" %}aria-current="page"{% endif %}>Transparency</a>
         <p>About</p>
-        {% for endpoint, label in about_pages %}
-        <a href="{{ url_for(endpoint) }}" {% if ep == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+        {% for endpoint, label, line in about_pages %}
+        <a href="{{ url_for(endpoint) }}" data-line="{{ line }}" {% if ep == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
         <a class="btn btn-primary" href="{{ url_for('public_contact') }}">Contact us</a>
     </nav>

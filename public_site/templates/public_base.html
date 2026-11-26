@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Kaya Natin! Youth – Candelaria{% endblock %}</title>
     <meta name="description" content="{% block description %}Kaya Natin! Youth – Candelaria: who we are, our advocacies, events, and an open record of how our funds are raised and spent.{% endblock %}">
+    <link rel="icon" type="image/png" href="{{ url_for('public_static', filename='img/kny-logo.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600..1000&family=Figtree:ital,wght@0,400..800;1,400..600&display=swap">
     <link rel="stylesheet" href="{{ url_for('public_static', filename='css/public.css') }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
